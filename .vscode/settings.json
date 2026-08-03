@@ -1,0 +1,23 @@
+{
+  "[json]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+
+  "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": "explicit"
+  },
+
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "editor.formatOnSave": true,
+  "i18n-ally.dirStructure": "dir",
+  "i18n-ally.keystyle": "nested",
+  "i18n-ally.localesPaths": ["i18n", "i18n/locales"],
+  "i18n-ally.sourceLanguage": "pl",
+  "search.exclude": {
+    "**/.husky": true,
+    "**/.nuxt": true,
+    "**/.output": true,
+    "**/node_modules": true
+  },
+  "stylelint.validate": ["css", "vue"]
+}

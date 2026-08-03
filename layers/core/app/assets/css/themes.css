@@ -1,0 +1,57 @@
+html.theme-dark[data-theme='light'],
+html[data-theme='light'] {
+  --color-surface: 242 242 242;
+  --color-surface-container: 233 233 233;
+  --color-surface-inverted: 0 0 0;
+  --color-on-surface: 5 3 21;
+  --color-on-surface-dim: 90 90 90;
+  --color-on-surface-inverted: 255 255 255;
+  --color-accent: 0 114 245;
+  --color-accent-dim: 121 180 239;
+  --color-info: 82 128 234;
+  --color-info-container: 82 128 234;
+  --color-warning: 255 106 0;
+  --color-warning-container: 255 106 0;
+  --color-error: 220 38 38;
+  --color-error-container: 220 38 38;
+  --color-success: 132 204 22;
+  --color-success-container: 132 204 22;
+}
+
+html[data-theme='dark'] {
+  --color-surface: 11 13 17;
+  --color-surface-container: 20 24 29;
+  --color-surface-inverted: 231 231 231;
+  --color-on-surface: 255 255 255;
+  --color-on-surface-dim: 179 179 179;
+  --color-on-surface-inverted: 0 0 0;
+  --color-accent: 59 130 246;
+  --color-accent-dim: 35 78 148;
+  --color-info: 82 128 234;
+  --color-info-container: 82 128 234;
+  --color-warning: 255 106 0;
+  --color-warning-container: 255 106 0;
+  --color-error: 220 38 38;
+  --color-error-container: 220 38 38;
+  --color-success: 132 204 22;
+  --color-success-container: 132 204 22;
+}
+
+html[data-theme='blue'] {
+  --color-surface: 14 19 27;
+  --color-surface-container: 29 33 41;
+  --color-surface-inverted: 231 231 232;
+  --color-on-surface: 255 255 255;
+  --color-on-surface-dim: 179 179 179;
+  --color-on-surface-inverted: 0 0 0;
+  --color-accent: 0 201 228;
+  --color-accent-dim: 0 121 137;
+  --color-info: 82 128 234;
+  --color-info-container: 82 128 234;
+  --color-warning: 255 106 0;
+  --color-warning-container: 255 106 0;
+  --color-error: 220 38 38;
+  --color-error-container: 220 38 38;
+  --color-success: 132 204 22;
+  --color-success-container: 132 204 22;
+}

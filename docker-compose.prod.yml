@@ -1,0 +1,11 @@
+services:
+  moonbase-studio-web:
+    image: moonbase/moonbase-studio-web:prod
+    build:
+      target: prod
+    environment:
+      - ENVIRONMENT=production
+      - PORT=3000
+      - HOST=127.0.0.1
+    env_file:
+      - .env.prod

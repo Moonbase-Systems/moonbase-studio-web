@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json.schemastore.org/prettierrc",
+  "endOfLine": "auto",
+  "jsonRecursiveSort": true,
+  "plugins": ["prettier-plugin-sort-json", "prettier-plugin-tailwindcss"],
+  "printWidth": 120,
+  "semi": true,
+  "singleAttributePerLine": true,
+  "singleQuote": true,
+  "tabWidth": 2,
+  "trailingComma": "all"
+}

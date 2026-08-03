@@ -1,0 +1,19 @@
+{
+  "recommendations": [
+    "Vue.volar",
+    "Nuxtr.nuxtr-vscode",
+    "dbaeumer.vscode-eslint",
+    "esbenp.prettier-vscode",
+    "stylelint.vscode-stylelint",
+    "vitest.explorer",
+    "bradlc.vscode-tailwindcss",
+    "formulahendry.auto-rename-tag",
+    "christian-kohler.path-intellisense",
+    "lokalise.i18n-ally",
+    "antfu.goto-alias",
+    "aaron-bond.better-comments",
+    "wmaurer.change-case",
+    "oouo-diogo-perdigao.docthis",
+    "wayou.vscode-todo-highlight"
+  ]
+}

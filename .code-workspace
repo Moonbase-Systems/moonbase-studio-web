@@ -1,0 +1,51 @@
+{
+  "folders": [
+    {
+      "path": ".",
+    },
+    {
+      "path": "../moonbase-core",
+    }
+  ],
+  "extensions": {
+    "recommendations": [
+      "Vue.volar",
+      "Nuxtr.nuxtr-vscode",
+      "dbaeumer.vscode-eslint",
+      "esbenp.prettier-vscode",
+      "stylelint.vscode-stylelint",
+      "vitest.explorer",
+      "bradlc.vscode-tailwindcss",
+      "formulahendry.auto-rename-tag",
+      "christian-kohler.path-intellisense",
+      "lokalise.i18n-ally",
+      "antfu.goto-alias",
+      "aaron-bond.better-comments",
+      "wmaurer.change-case",
+      "oouo-diogo-perdigao.docthis",
+      "wayou.vscode-todo-highlight",
+    ],
+  },
+  "settings": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "editor.formatOnSave": true,
+    "editor.codeActionsOnSave": {
+      "source.fixAll.eslint": "explicit",
+    },
+
+    "[json]": {
+      "editor.defaultFormatter": "esbenp.prettier-vscode",
+    },
+
+    "search.exclude": {
+      "**/.nuxt": true,
+      "**/.husky": true,
+      "**/.output": true,
+      "**/node_modules": true,
+    },
+    "i18n-ally.dirStructure": "dir",
+    "i18n-ally.localesPaths": ["i18n", "i18n/locales"],
+    "i18n-ally.keystyle": "nested",
+    "stylelint.validate": ["css", "vue"],
+  },
+}
