@@ -10,6 +10,9 @@ export default {
         sans: ['Inter', 'sans-serif'],
         display: ['Lalezar', 'sans-serif'],
       },
+      colors: {
+        'accent-alt': 'rgb(var(--color-accent-alt) / <alpha-value>)',
+      },
     },
   },
 } satisfies Partial<Config>;

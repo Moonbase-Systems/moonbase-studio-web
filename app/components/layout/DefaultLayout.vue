@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import Nav from '~/components/nav/Nav.vue';
 import { PAGE_TITLE } from '~/constants/page-title';
 
 const head = useLocaleHead();
@@ -29,6 +30,7 @@ useHead({
 
 <template>
   <div class="md:h-[100svh] md:overflow-hidden">
+    <Nav />
     <slot />
   </div>
 </template>
