@@ -1,0 +1,11 @@
+export type ProjectId = string;
+export type SceneId = string;
+export type ElementId = string;
+export type GroupId = string;
+export type SourceId = string;
+export type AssetId = string;
+export type TransitionId = string;
+export type ChannelId = string;
+export type EffectId = string;
+export type AnimationId = string;
+export type HistoryEntryId = string;

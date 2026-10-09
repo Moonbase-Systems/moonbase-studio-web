@@ -22,6 +22,8 @@ This document defines how an AI assistant should behave when working on the `moo
 5. Register any new async data key in `layers/core/app/constants/async-data-keys.ts`.
 6. Add i18n translation files to **both** `i18n/locales/pl/{feature}.json` and `i18n/locales/en/{feature}.json`.
 
+For **studio domain** work, follow `.ai/docs/architecture/` (models, stores, ADRs) and `.ai/docs/requirements/user-stories.md`. Domain types live in `layers/studio/app/models/`; do not put studio business models in `moonbase-core` or `layers/core`.
+
 ---
 
 ## When Adding a New Page

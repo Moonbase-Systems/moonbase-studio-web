@@ -15,7 +15,7 @@ The application is currently in early development (v0.1.0). The default locale i
 | Framework            | Nuxt 4 (`nuxt ^4.3.1`)                                                     |
 | Language             | TypeScript (strict mode)                                                   |
 | Styling              | Tailwind CSS + custom design tokens                                        |
-| Component library    | Custom (via `moonbase-core`) + `reka-ui`                            |
+| Component library    | Custom (via `moonbase-core`) + `reka-ui`                                   |
 | State management     | Pinia + `pinia-plugin-persistedstate` (stored in cookies)                  |
 | Form handling        | VeeValidate + Zod                                                          |
 | Routing              | `vue-router` + `nuxt-typed-router`                                         |
@@ -66,6 +66,11 @@ moonbase-studio-web/
 │   │   │   ├── services/       # auth.service.ts
 │   │   │   └── store/          # user-session.store.ts (Pinia)
 │   │   └── nuxt.config.ts
+│   ├── studio/                 # Studio domain (models + Zod; stores TBD)
+│   │   ├── app/
+│   │   │   ├── models/         # Project, Scene, Source, Asset, Audio, …
+│   │   │   └── schemas/        # project-file.schema.ts
+│   │   └── nuxt.config.ts
 │   └── core/                   # Application-level core layer
 │       ├── app/
 │       │   ├── composables/    # useApi.ts
@@ -76,11 +81,16 @@ moonbase-studio-web/
 │       └── server/
 │           └── api/
 │               └── [...path].ts  # API proxy to backend
+├── .ai/docs/
+│   ├── architecture/           # Studio domain architecture
+│   └── requirements/           # User stories
 ├── moonbase-core/       # Symlink/submodule to shared UI layer
 ├── nuxt.config.ts
 ├── tailwind.config.ts
 └── package.json
 ```
+
+Studio domain architecture: see [architecture/overview.md](./architecture/overview.md).
 
 ---
 

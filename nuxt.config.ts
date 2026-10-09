@@ -74,6 +74,7 @@ export default defineNuxtConfig({
     ],
     './layers/core',
     './layers/auth',
+    './layers/studio',
   ],
 
   piniaPluginPersistedstate: {
