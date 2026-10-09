@@ -10,9 +10,12 @@ moonbase-core  (external, shared UI primitives + design system)
 layers/core           (app-level infrastructure: $api plugin, proxy, store keys)
     ↓  used by
 layers/auth           (auth logic: store, middleware, services — no UI yet)
+layers/studio         (studio domain models + Zod; ProjectStore/EditorStore TBD)
     ↓  used by
 app/                  (global layouts, root composables, shared constants)
 ```
+
+Studio data architecture (models, stores, diagrams, ADRs, user stories): `.ai/docs/architecture/` and `.ai/docs/requirements/user-stories.md`.
 
 Each layer has its own `nuxt.config.ts` and its own `app/` directory following Nuxt conventions. Layers never import from a layer above them.
 
