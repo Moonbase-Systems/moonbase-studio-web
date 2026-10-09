@@ -1,4 +1,4 @@
-import { COOKIE_MAX_AGE_DAYS, getFilesForLocale, IS_DEV, CORE_LAYER_PATH } from './config';
+import { COOKIE_MAX_AGE_DAYS, CORE_LAYER_PATH, getFilesForLocale, IS_DEV } from './config';
 
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
@@ -17,6 +17,7 @@ export default defineNuxtConfig({
     pageTransition: { name: 'fade', mode: 'out-in' },
     layoutTransition: { name: 'fade', mode: 'out-in' },
   },
+  css: ['~/assets/css/main.css'],
   typescript: {
     typeCheck: true,
     strict: true,
@@ -73,6 +74,7 @@ export default defineNuxtConfig({
     ],
     './layers/core',
     './layers/auth',
+    './layers/studio',
   ],
 
   piniaPluginPersistedstate: {
@@ -86,7 +88,7 @@ export default defineNuxtConfig({
     families: {
       Roboto: '400..700',
       Inter: '400..700',
-      'Space Grotesk': '400..700',
+      Lalezar: true,
     },
     preload: true,
   },
@@ -99,7 +101,7 @@ export default defineNuxtConfig({
     provider: 'local',
   },
   fontMetrics: {
-    fonts: ['Roboto', { family: 'Roboto' }, 'Inter', 'Space Grotesk'],
+    fonts: ['Roboto', { family: 'Roboto' }, 'Inter', 'Lalezar'],
   },
   image: {
     domains: process.env.API_BASE_URL ? [new URL(process.env.API_BASE_URL).hostname] : [],
