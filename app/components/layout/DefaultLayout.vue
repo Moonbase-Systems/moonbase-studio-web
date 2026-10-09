@@ -22,7 +22,7 @@ useHead({
   link: head.value.link,
   meta: [...head.value.meta, { name: 'apple-mobile-web-app-title', content: title.value }],
   bodyAttrs: {
-    class: 'font-roboto md:overflow-hidden',
+    class: 'font-sans md:overflow-hidden',
   },
 });
 </script>
