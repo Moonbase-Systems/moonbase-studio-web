@@ -2,4 +2,33 @@ html,
 body {
   background-color: rgb(var(--color-surface));
   color: rgb(var(--color-on-surface));
+  font-family: Inter, sans-serif;
+}
+
+h1 {
+  font-size: 4.5rem;
+  font-weight: 700;
+  color: rgb(var(--color-on-surface));
+  font-family: Lalezar, sans-serif;
+}
+
+h2 {
+  font-size: 3.6rem;
+  font-weight: 600;
+  color: rgb(var(--color-on-surface));
+  font-family: Lalezar, sans-serif;
+}
+
+h3 {
+  font-size: 2.8rem;
+  font-weight: 600;
+  color: rgb(var(--color-on-surface));
+  font-family: Lalezar, sans-serif;
+}
+
+p {
+  font-size: 1.6rem;
+  font-weight: 400;
+  color: rgb(var(--color-on-surface));
+  font-family: Inter, sans-serif;
 }
