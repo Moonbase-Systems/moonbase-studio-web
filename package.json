@@ -23,7 +23,10 @@
     "lint:prettier": "prettier --check .",
     "lint:prettier:fix": "prettier --write .",
     "lint": "pnpm lint:eslint && pnpm lint:stylelint && pnpm lint:prettier",
-    "lint:fix": "pnpm lint:eslint:fix && pnpm lint:stylelint:fix && pnpm lint:prettier:fix"
+    "lint:fix": "pnpm lint:eslint:fix && pnpm lint:stylelint:fix && pnpm lint:prettier:fix",
+    "fix": "pnpm lint:fix",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@nuxt/fonts": "^0.13.0",
@@ -73,6 +76,7 @@
     "stylelint-config-standard-vue": "^1.0.0",
     "ts-toolbelt": "^9.6.0",
     "typescript": "^5.9.3",
+    "vitest": "^3.2.7",
     "vue-tsc": "^3.2.5"
   }
 }
