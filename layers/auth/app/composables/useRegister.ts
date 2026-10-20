@@ -1,6 +1,6 @@
+import type { RegisterSchema } from '../schemas';
 import { mapMeToAuthenticatedUser, useAuthService } from '../services/auth.service';
 import { useUserSessionStore } from '../store/user-session.store';
-import type { RegisterSchema } from '../schemas';
 
 export const useRegister = () => {
   const authService = useAuthService();

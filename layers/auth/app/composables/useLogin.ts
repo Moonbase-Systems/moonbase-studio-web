@@ -1,7 +1,7 @@
 import { isPasswordChangeRequiredResponse } from '../models/auth-api.domain';
+import type { LoginSchema } from '../schemas';
 import { mapMeToAuthenticatedUser, useAuthService } from '../services/auth.service';
 import { useUserSessionStore } from '../store/user-session.store';
-import type { LoginSchema } from '../schemas';
 
 export const useLogin = () => {
   const authService = useAuthService();
