@@ -17,12 +17,50 @@ const appearanceSchema = z.object({
   blendMode: z.string().optional(),
 });
 
-const elementEffectSchema = z.object({
+const elementEffectBaseFields = {
   id: idSchema,
-  type: z.string().min(1),
   enabled: z.boolean(),
-  parameters: z.record(z.string(), z.unknown()),
-});
+};
+
+const elementEffectSchema = z.discriminatedUnion('type', [
+  z.object({
+    ...elementEffectBaseFields,
+    type: z.literal('crop'),
+    parameters: z.object({
+      top: z.number().min(0).max(1),
+      right: z.number().min(0).max(1),
+      bottom: z.number().min(0).max(1),
+      left: z.number().min(0).max(1),
+    }),
+  }),
+  z.object({
+    ...elementEffectBaseFields,
+    type: z.literal('chroma-key'),
+    parameters: z.object({
+      keyColor: z.string().min(1),
+      similarity: z.number().min(0).max(1),
+      smoothness: z.number().min(0).max(1),
+      spill: z.number().min(0).max(1),
+    }),
+  }),
+  z.object({
+    ...elementEffectBaseFields,
+    type: z.literal('color-correction'),
+    parameters: z.object({
+      brightness: z.number().min(-1).max(1),
+      contrast: z.number().min(-1).max(1),
+      saturation: z.number().min(-1).max(1),
+      hue: z.number().min(-180).max(180),
+    }),
+  }),
+  z.object({
+    ...elementEffectBaseFields,
+    type: z.literal('blur'),
+    parameters: z.object({
+      radius: z.number().min(0),
+    }),
+  }),
+]);
 
 const assetLocationSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('storageKey'), key: z.string().min(1) }),
@@ -207,13 +245,47 @@ const audioMixerSchema = z.object({
   channels: z.array(audioChannelSchema),
 });
 
-const transitionSchema = z.object({
+const transitionBaseFields = {
   id: idSchema,
-  type: z.string().min(1),
   durationMs: z.number().nonnegative(),
   easing: z.string().min(1),
-  settings: z.record(z.string(), z.unknown()),
-});
+};
+
+const transitionSchema = z.discriminatedUnion('type', [
+  z.object({
+    ...transitionBaseFields,
+    type: z.literal('cut'),
+    settings: z.object({}),
+  }),
+  z.object({
+    ...transitionBaseFields,
+    type: z.literal('fade'),
+    settings: z.object({
+      curve: z.enum(['linear', 'ease-in', 'ease-out', 'ease-in-out']).optional(),
+    }),
+  }),
+  z.object({
+    ...transitionBaseFields,
+    type: z.literal('dissolve'),
+    settings: z.object({
+      softEdge: z.number().min(0).max(1).optional(),
+    }),
+  }),
+  z.object({
+    ...transitionBaseFields,
+    type: z.literal('slide'),
+    settings: z.object({
+      direction: z.enum(['left', 'right', 'up', 'down']),
+    }),
+  }),
+  z.object({
+    ...transitionBaseFields,
+    type: z.literal('zoom'),
+    settings: z.object({
+      scale: z.number().positive(),
+    }),
+  }),
+]);
 
 const projectSettingsSchema = z.object({
   video: z.object({
