@@ -18,12 +18,11 @@ export const useAuthService = () => {
 
   const login = (payload: LoginPayload) => api.post<LoginResponse>(`${AUTH_BASE}/login`, { body: payload });
 
-  const register = (payload: RegisterPayload) =>
-    api.post<RegisterResponse>(`${AUTH_BASE}/register`, { body: payload });
+  const register = (payload: RegisterPayload) => api.post<RegisterResponse>(`${AUTH_BASE}/register`, { body: payload });
 
   const me = () => api.get<MeResponse>(`${AUTH_BASE}/me`);
 
-  const logout = () => api.post<void>(`${AUTH_BASE}/logout`);
+  const logout = () => api.post<undefined>(`${AUTH_BASE}/logout`);
 
   const forceChangePassword = (payload: ForceChangePasswordPayload) =>
     api.post<ForceChangePasswordResponse>(`${AUTH_BASE}/force-change-password`, { body: payload });
