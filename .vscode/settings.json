@@ -19,5 +19,18 @@
     "**/.output": true,
     "**/node_modules": true
   },
-  "stylelint.validate": ["css", "vue"]
+  "stylelint.validate": ["css", "vue"],
+  "terminal.integrated.automationProfile.linux": {
+    "path": "/bin/bash"
+  },
+  "terminal.integrated.defaultProfile.linux": "bash",
+  "terminal.integrated.env.linux": {
+    "SHELL": "/bin/bash"
+  },
+  "terminal.integrated.profiles.linux": {
+    "bash": {
+      "icon": "terminal-bash",
+      "path": "/bin/bash"
+    }
+  }
 }
