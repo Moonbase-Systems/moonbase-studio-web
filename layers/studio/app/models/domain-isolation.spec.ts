@@ -52,7 +52,8 @@ describe('studio domain isolation', () => {
         path.includes(`${join('app', 'models')}`) ||
         path.includes(`${join('app', 'schemas')}`) ||
         path.includes(`${join('app', 'serialization')}`) ||
-        path.includes(`${join('app', 'ports')}`)
+        path.includes(`${join('app', 'ports')}`) ||
+        path.includes(`${join('app', 'application')}`)
       );
     });
 

@@ -44,6 +44,7 @@ export const createProjectFileWithSources = (): ProjectFile => {
           elements: [
             {
               id: elementId,
+              name: 'Hero Layer',
               type: 'image',
               sourceId,
               parentGroupId: null,
@@ -51,7 +52,7 @@ export const createProjectFileWithSources = (): ProjectFile => {
               appearance: { opacity: 1 },
               effects: [],
               visibility: true,
-              zIndex: 0,
+              locked: false,
             },
           ],
         },
