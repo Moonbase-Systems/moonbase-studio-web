@@ -1,0 +1,450 @@
+import type { Appearance, ElementEffect, Transform2D } from '../../models/common.domain';
+import type { ElementId, SceneId, SourceId } from '../../models/ids.domain';
+import { createSourceBackedElement, type OverlayContent, type SceneElement } from '../../models/scene-element.domain';
+import { portErr } from '../../ports/result';
+import { assertInitialized, commitProjectChange, withClonedProject } from '../command-utils';
+import type { CommandContext } from '../context';
+import type { StudioResult } from '../errors';
+import { duplicateSceneElement } from '../scene-clone';
+import { findLayerInScene, findSceneInProject, type StudioSession } from '../session';
+import { selectLayer } from './session-commands';
+
+const ALLOWED_LAYER_UPDATE_KEYS = new Set([
+  'name',
+  'visibility',
+  'locked',
+  'transform',
+  'appearance',
+  'effects',
+  'content',
+]);
+
+export type LayerUpdateChanges = {
+  name?: string;
+  visibility?: boolean;
+  locked?: boolean;
+  transform?: Partial<Transform2D>;
+  appearance?: Partial<Appearance>;
+  effects?: ElementEffect[];
+  content?: OverlayContent;
+};
+
+const assertUniqueEffectIds = (effects: ElementEffect[]): StudioResult<void> => {
+  const seen = new Set<string>();
+  for (const effect of effects) {
+    if (seen.has(effect.id)) {
+      return portErr({
+        kind: 'invalid-argument',
+        message: `Duplicate effect id: ${effect.id}`,
+      });
+    }
+    seen.add(effect.id);
+  }
+  return { ok: true, value: undefined };
+};
+
+const applyLayerUpdate = (element: SceneElement, changes: LayerUpdateChanges): StudioResult<void> => {
+  for (const key of Object.keys(changes)) {
+    if (!ALLOWED_LAYER_UPDATE_KEYS.has(key)) {
+      return portErr({
+        kind: 'invalid-argument',
+        message: `Field "${key}" cannot be updated via updateLayer`,
+      });
+    }
+  }
+
+  if (changes.content !== undefined && element.type !== 'overlay') {
+    return portErr({
+      kind: 'invalid-argument',
+      message: 'content can only be updated on overlay layers',
+    });
+  }
+
+  if (changes.name !== undefined) {
+    const trimmed = changes.name.trim();
+    if (!trimmed) {
+      return portErr({ kind: 'invalid-argument', message: 'Layer name cannot be empty' });
+    }
+    element.name = trimmed;
+  }
+
+  if (changes.visibility !== undefined) {
+    element.visibility = changes.visibility;
+  }
+
+  if (changes.locked !== undefined) {
+    element.locked = changes.locked;
+  }
+
+  if (changes.transform) {
+    element.transform = { ...element.transform, ...changes.transform };
+  }
+
+  if (changes.appearance) {
+    element.appearance = { ...element.appearance, ...changes.appearance };
+  }
+
+  if (changes.effects) {
+    const unique = assertUniqueEffectIds(changes.effects);
+    if (!unique.ok) {
+      return unique;
+    }
+    element.effects = structuredClone(changes.effects);
+  }
+
+  if (changes.content !== undefined && element.type === 'overlay') {
+    element.content = structuredClone(changes.content);
+  }
+
+  return { ok: true, value: undefined };
+};
+
+export const addLayer = (
+  session: StudioSession,
+  sceneId: SceneId,
+  sourceId: SourceId,
+  options: { name?: string; transform?: Partial<Transform2D>; appearance?: Partial<Appearance> } | undefined,
+  ctx: CommandContext,
+): StudioResult<StudioSession> => {
+  const ready = assertInitialized(session);
+  if (!ready.ok) {
+    return ready;
+  }
+  if (!session.project) {
+    return portErr({ kind: 'no-project' });
+  }
+
+  if (!findSceneInProject(session.project, sceneId)) {
+    return portErr({ kind: 'scene-not-found', sceneId });
+  }
+
+  const source = session.project.sources.find((item) => item.id === sourceId);
+  if (!source) {
+    return portErr({ kind: 'source-not-found', sourceId });
+  }
+
+  const elementId = ctx.generateId();
+
+  const updated = withClonedProject(
+    session,
+    (project) => {
+      const scene = project.scenes.find((item) => item.id === sceneId)!;
+      const element = createSourceBackedElement({
+        id: elementId,
+        source,
+        name: options?.name,
+        video: project.settings.video,
+        transform: options?.transform,
+        appearance: options?.appearance,
+      });
+      scene.elements.push(element);
+    },
+    ctx,
+  );
+
+  if (!updated.ok) {
+    return updated;
+  }
+
+  if (updated.value.editor.activeSceneId === sceneId) {
+    return selectLayer(updated.value, elementId);
+  }
+
+  return updated;
+};
+
+export const removeLayer = (
+  session: StudioSession,
+  sceneId: SceneId,
+  layerId: ElementId,
+  ctx: CommandContext,
+): StudioResult<StudioSession> => {
+  const ready = assertInitialized(session);
+  if (!ready.ok) {
+    return ready;
+  }
+  if (!session.project) {
+    return portErr({ kind: 'no-project' });
+  }
+
+  const scene = findSceneInProject(session.project, sceneId);
+  if (!scene) {
+    return portErr({ kind: 'scene-not-found', sceneId });
+  }
+
+  const layer = findLayerInScene(scene, layerId);
+  if (!layer) {
+    return portErr({ kind: 'layer-not-found', sceneId, layerId });
+  }
+
+  if (layer.locked) {
+    return portErr({
+      kind: 'rule-violation',
+      rule: 'layer-locked',
+      message: 'Cannot remove a locked layer',
+    });
+  }
+
+  const updated = withClonedProject(
+    session,
+    (project) => {
+      const targetScene = project.scenes.find((item) => item.id === sceneId)!;
+      targetScene.elements = targetScene.elements.filter((element) => element.id !== layerId);
+      for (const group of targetScene.groups) {
+        group.elementIds = group.elementIds.filter((id) => id !== layerId);
+      }
+    },
+    ctx,
+  );
+
+  if (!updated.ok) {
+    return updated;
+  }
+
+  if (updated.value.editor.selectedElementIds.includes(layerId)) {
+    return {
+      ok: true,
+      value: {
+        ...updated.value,
+        editor: {
+          ...updated.value.editor,
+          selectedElementIds: updated.value.editor.selectedElementIds.filter((id) => id !== layerId),
+          selectedGroupIds: [],
+        },
+      },
+    };
+  }
+
+  return updated;
+};
+
+const mutateLayerWithoutLockGate = (
+  session: StudioSession,
+  sceneId: SceneId,
+  layerId: ElementId,
+  changes: LayerUpdateChanges,
+  ctx: CommandContext,
+): StudioResult<StudioSession> => {
+  if (!session.project) {
+    return portErr({ kind: 'no-project' });
+  }
+
+  const project = structuredClone(session.project);
+  const targetScene = project.scenes.find((item) => item.id === sceneId);
+  if (!targetScene) {
+    return portErr({ kind: 'scene-not-found', sceneId });
+  }
+
+  const element = targetScene.elements.find((item) => item.id === layerId);
+  if (!element) {
+    return portErr({ kind: 'layer-not-found', sceneId, layerId });
+  }
+
+  const applied = applyLayerUpdate(element, changes);
+  if (!applied.ok) {
+    return applied;
+  }
+
+  return commitProjectChange(session, project, ctx);
+};
+
+export const renameLayer = (
+  session: StudioSession,
+  sceneId: SceneId,
+  layerId: ElementId,
+  name: string,
+  ctx: CommandContext,
+): StudioResult<StudioSession> => {
+  const ready = assertInitialized(session);
+  if (!ready.ok) {
+    return ready;
+  }
+  return mutateLayerWithoutLockGate(session, sceneId, layerId, { name }, ctx);
+};
+
+export const duplicateLayer = (
+  session: StudioSession,
+  sceneId: SceneId,
+  layerId: ElementId,
+  ctx: CommandContext,
+): StudioResult<StudioSession> => {
+  const ready = assertInitialized(session);
+  if (!ready.ok) {
+    return ready;
+  }
+  if (!session.project) {
+    return portErr({ kind: 'no-project' });
+  }
+
+  const scene = findSceneInProject(session.project, sceneId);
+  if (!scene) {
+    return portErr({ kind: 'scene-not-found', sceneId });
+  }
+
+  const sourceIndex = scene.elements.findIndex((element) => element.id === layerId);
+  if (sourceIndex === -1) {
+    return portErr({ kind: 'layer-not-found', sceneId, layerId });
+  }
+
+  const copy = duplicateSceneElement(scene.elements[sourceIndex]!, ctx);
+  const copyId = copy.id;
+
+  const updated = withClonedProject(
+    session,
+    (project) => {
+      const targetScene = project.scenes.find((item) => item.id === sceneId)!;
+      const index = targetScene.elements.findIndex((element) => element.id === layerId);
+      targetScene.elements.splice(index + 1, 0, copy);
+
+      if (copy.parentGroupId) {
+        const group = targetScene.groups.find((item) => item.id === copy.parentGroupId);
+        if (group) {
+          const memberIndex = group.elementIds.indexOf(layerId);
+          if (memberIndex === -1) {
+            group.elementIds.push(copyId);
+          } else {
+            group.elementIds.splice(memberIndex + 1, 0, copyId);
+          }
+        }
+      }
+    },
+    ctx,
+  );
+
+  if (!updated.ok) {
+    return updated;
+  }
+
+  if (updated.value.editor.activeSceneId === sceneId) {
+    return selectLayer(updated.value, copyId);
+  }
+
+  return updated;
+};
+
+export const updateLayer = (
+  session: StudioSession,
+  sceneId: SceneId,
+  layerId: ElementId,
+  changes: LayerUpdateChanges,
+  ctx: CommandContext,
+): StudioResult<StudioSession> => {
+  const ready = assertInitialized(session);
+  if (!ready.ok) {
+    return ready;
+  }
+  if (!session.project) {
+    return portErr({ kind: 'no-project' });
+  }
+
+  const scene = findSceneInProject(session.project, sceneId);
+  if (!scene) {
+    return portErr({ kind: 'scene-not-found', sceneId });
+  }
+
+  const existing = findLayerInScene(scene, layerId);
+  if (!existing) {
+    return portErr({ kind: 'layer-not-found', sceneId, layerId });
+  }
+
+  if (existing.locked) {
+    const keys = Object.keys(changes);
+    if (keys.length !== 1 || keys[0] !== 'locked') {
+      return portErr({
+        kind: 'rule-violation',
+        rule: 'layer-locked',
+        message: 'Layer is locked',
+      });
+    }
+  }
+
+  const project = structuredClone(session.project);
+  const targetScene = project.scenes.find((item) => item.id === sceneId)!;
+  const element = targetScene.elements.find((item) => item.id === layerId)!;
+  const applied = applyLayerUpdate(element, changes);
+  if (!applied.ok) {
+    return applied;
+  }
+
+  return commitProjectChange(session, project, ctx);
+};
+
+/**
+ * Reorders layers within a scene. Index 0 is the bottom of the compositing stack; higher indices draw on top.
+ * `targetIndex` is the final array index after the move.
+ */
+export const moveLayer = (
+  session: StudioSession,
+  sceneId: SceneId,
+  layerId: ElementId,
+  targetIndex: number,
+  ctx: CommandContext,
+): StudioResult<StudioSession> => {
+  const ready = assertInitialized(session);
+  if (!ready.ok) {
+    return ready;
+  }
+  if (!session.project) {
+    return portErr({ kind: 'no-project' });
+  }
+
+  const scene = findSceneInProject(session.project, sceneId);
+  if (!scene) {
+    return portErr({ kind: 'scene-not-found', sceneId });
+  }
+
+  const fromIndex = scene.elements.findIndex((element) => element.id === layerId);
+  if (fromIndex === -1) {
+    return portErr({ kind: 'layer-not-found', sceneId, layerId });
+  }
+
+  if (!Number.isInteger(targetIndex) || targetIndex < 0 || targetIndex >= scene.elements.length) {
+    return portErr({
+      kind: 'invalid-argument',
+      message: `targetIndex must be an integer from 0 to ${scene.elements.length - 1}`,
+    });
+  }
+
+  if (fromIndex === targetIndex) {
+    return { ok: true, value: session };
+  }
+
+  return withClonedProject(
+    session,
+    (project) => {
+      const targetScene = project.scenes.find((item) => item.id === sceneId)!;
+      const currentIndex = targetScene.elements.findIndex((element) => element.id === layerId);
+      const [item] = targetScene.elements.splice(currentIndex, 1);
+      targetScene.elements.splice(targetIndex, 0, item!);
+    },
+    ctx,
+  );
+};
+
+export const setLayerVisibility = (
+  session: StudioSession,
+  sceneId: SceneId,
+  layerId: ElementId,
+  visible: boolean,
+  ctx: CommandContext,
+): StudioResult<StudioSession> => {
+  const ready = assertInitialized(session);
+  if (!ready.ok) {
+    return ready;
+  }
+  return mutateLayerWithoutLockGate(session, sceneId, layerId, { visibility: visible }, ctx);
+};
+
+export const setLayerLocked = (
+  session: StudioSession,
+  sceneId: SceneId,
+  layerId: ElementId,
+  locked: boolean,
+  ctx: CommandContext,
+): StudioResult<StudioSession> => {
+  const ready = assertInitialized(session);
+  if (!ready.ok) {
+    return ready;
+  }
+  return mutateLayerWithoutLockGate(session, sceneId, layerId, { locked }, ctx);
+};

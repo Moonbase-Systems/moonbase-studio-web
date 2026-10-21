@@ -163,12 +163,13 @@ const sourceSchema = z.discriminatedUnion('type', [
 
 const sceneElementBaseFields = {
   id: idSchema,
+  name: z.string().trim().min(1).max(128),
   parentGroupId: idSchema.nullable(),
   transform: transform2DSchema,
   appearance: appearanceSchema,
   effects: z.array(elementEffectSchema),
   visibility: z.boolean(),
-  zIndex: z.number().int(),
+  locked: z.boolean(),
 };
 
 const sourceBackedElementSchema = z.object({

@@ -28,3 +28,13 @@ export type Scene = {
   animations: SceneAnimations;
   metadata?: SceneMetadata;
 };
+
+export const createEmptyScene = (input: { id: SceneId; name: string }): Scene => ({
+  id: input.id,
+  name: input.name,
+  settings: { defaultTransitionId: null },
+  background: { kind: 'none' },
+  elements: [],
+  groups: [],
+  animations: { onEnter: null, onExit: null },
+});

@@ -4,7 +4,7 @@ import { createDefaultAudioMixer } from './audio.domain';
 import type { ProjectHistory } from './history.domain';
 import { createEmptyHistory } from './history.domain';
 import type { ProjectId } from './ids.domain';
-import type { Scene } from './scene.domain';
+import { createEmptyScene, type Scene } from './scene.domain';
 import type { Source } from './source.domain';
 import type { Transition } from './transition.domain';
 
@@ -90,17 +90,7 @@ export const createEmptyProject = (input: {
     name: input.name,
     type: input.type,
     settings: createDefaultProjectSettings(),
-    scenes: [
-      {
-        id: input.sceneId,
-        name: 'Scene 1',
-        settings: { defaultTransitionId: null },
-        background: { kind: 'none' },
-        elements: [],
-        groups: [],
-        animations: { onEnter: null, onExit: null },
-      },
-    ],
+    scenes: [createEmptyScene({ id: input.sceneId, name: 'Scene 1' })],
     sources: [],
     assets: [],
     audioMixer: createDefaultAudioMixer(),
