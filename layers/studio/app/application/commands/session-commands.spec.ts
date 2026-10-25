@@ -31,7 +31,7 @@ describe('session commands', () => {
   });
 
   it('creates, opens, and closes a project', () => {
-    const ctx = createTestContext(['project-1', 'scene-1']);
+    const ctx = createTestContext(['project-1']);
     let session = createInitializedSession();
 
     const created = createProject(session, { name: 'My Project' }, ctx);
@@ -39,8 +39,9 @@ describe('session commands', () => {
     if (created.ok) {
       session = created.value;
       expect(session.project?.name).toBe('My Project');
+      expect(session.project?.scenes).toEqual([]);
       expect(session.isDirty).toBe(false);
-      expect(session.editor.activeSceneId).toBe('scene-1');
+      expect(session.editor.activeSceneId).toBeNull();
     }
 
     const closed = closeProject(session);

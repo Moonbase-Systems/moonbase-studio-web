@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import { displayNameSchema } from './display-name.schema';
+
 const idSchema = z.string().min(1);
 
 const transform2DSchema = z.object({
@@ -159,11 +161,22 @@ const sourceSchema = z.discriminatedUnion('type', [
     assetId: idSchema.optional(),
     deviceId: z.string().optional(),
   }),
+  z.object({
+    ...sourceBaseFields,
+    type: z.literal('animation'),
+    mediaKind: z.enum(['gif', 'video']),
+    assetId: idSchema.optional(),
+    startFrame: z.number().int().nonnegative(),
+    startOffsetMs: z.number().int().nonnegative(),
+    durationMs: z.number().int().positive().nullable(),
+    trigger: z.enum(['manual', 'on-activate', 'interval']),
+    intervalMs: z.number().int().positive().nullable(),
+  }),
 ]);
 
 const sceneElementBaseFields = {
   id: idSchema,
-  name: z.string().trim().min(1).max(128),
+  name: displayNameSchema,
   parentGroupId: idSchema.nullable(),
   transform: transform2DSchema,
   appearance: appearanceSchema,
@@ -174,7 +187,7 @@ const sceneElementBaseFields = {
 
 const sourceBackedElementSchema = z.object({
   ...sceneElementBaseFields,
-  type: z.enum(['camera', 'screen', 'image', 'video', 'text', 'shape', 'browser', 'audioVisual']),
+  type: z.enum(['camera', 'screen', 'image', 'video', 'text', 'shape', 'browser', 'audioVisual', 'animation']),
   sourceId: idSchema,
 });
 
@@ -190,7 +203,7 @@ const sceneElementSchema = z.union([sourceBackedElementSchema, overlayElementSch
 
 const sceneGroupSchema = z.object({
   id: idSchema,
-  name: z.string().min(1).max(128),
+  name: displayNameSchema,
   type: z.string().min(1),
   elementIds: z.array(idSchema),
   transform: transform2DSchema,
@@ -312,7 +325,7 @@ const persistableProjectSchema = z.object({
   name: z.string().min(1).max(128),
   type: z.enum(['podcast', 'gaming', 'broadcast', 'general']),
   settings: projectSettingsSchema,
-  scenes: z.array(sceneSchema).min(1),
+  scenes: z.array(sceneSchema),
   sources: z.array(sourceSchema),
   assets: z.array(assetSchema),
   audioMixer: audioMixerSchema,
@@ -476,6 +489,12 @@ export const projectFileSchema = z
         });
       }
       if (source.type === 'audio' && source.assetId && !assetIds.has(source.assetId)) {
+        ctx.addIssue({
+          code: 'custom',
+          message: `studio.validation.unknownAsset:${source.assetId}`,
+        });
+      }
+      if (source.type === 'animation' && source.assetId && !assetIds.has(source.assetId)) {
         ctx.addIssue({
           code: 'custom',
           message: `studio.validation.unknownAsset:${source.assetId}`,

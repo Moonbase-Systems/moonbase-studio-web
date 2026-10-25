@@ -1,6 +1,10 @@
 import type { AssetId, SourceId } from './ids.domain';
 
-export type SourceType = 'camera' | 'screen' | 'image' | 'video' | 'text' | 'shape' | 'audio' | 'browser';
+export type SourceType = 'camera' | 'screen' | 'image' | 'video' | 'text' | 'shape' | 'audio' | 'browser' | 'animation';
+
+export type AnimationMediaKind = 'gif' | 'video';
+
+export type AnimationPlaybackTrigger = 'manual' | 'on-activate' | 'interval';
 
 export type SourceMetadata = {
   notes?: string;
@@ -68,6 +72,18 @@ export type AudioSource = SourceBase & {
   deviceId?: string;
 };
 
+/** Scene-layer media playback (GIF/video), not scene enter/exit animations. */
+export type AnimationSource = SourceBase & {
+  type: 'animation';
+  mediaKind: AnimationMediaKind;
+  assetId?: AssetId;
+  startFrame: number;
+  startOffsetMs: number;
+  durationMs: number | null;
+  trigger: AnimationPlaybackTrigger;
+  intervalMs: number | null;
+};
+
 export type Source =
   | BrowserSource
   | CameraSource
@@ -76,4 +92,5 @@ export type Source =
   | VideoSource
   | TextSource
   | ShapeSource
-  | AudioSource;
+  | AudioSource
+  | AnimationSource;

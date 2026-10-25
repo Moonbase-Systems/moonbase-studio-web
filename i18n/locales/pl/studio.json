@@ -1,0 +1,67 @@
+{
+  "studio": {
+    "addPanel": {
+      "groups": {
+        "core": "core elements",
+        "interactive": "interactive elements",
+        "layout": "layout elements"
+      },
+      "options": {
+        "animation": "animation",
+        "audio": "audio source",
+        "browser": "browser asset",
+        "image": "image",
+        "screen": "screen source",
+        "shape": "shape",
+        "text": "text"
+      }
+    },
+    "contextMenu": {
+      "deleteElement": "Usuń element",
+      "deleteSelected": "Usuń zaznaczone",
+      "dissolveGroup": "Rozgrupuj (zostaw elementy)",
+      "group": "Grupuj elementy",
+      "moveBottom": "Na dół",
+      "moveDown": "Przesuń w dół",
+      "moveTop": "Na górę",
+      "moveUp": "Przesuń w górę",
+      "rename": "Zmień nazwę",
+      "ungroup": "Wyciągnij z grupy"
+    },
+    "exitConfirm": {
+      "message": "Czy na pewno chcesz przejść na stronę główną?",
+      "no": "Nie",
+      "title": "Wyjść ze studia?",
+      "yes": "Tak"
+    },
+    "scene": {
+      "addElement": "Dodaj element",
+      "collapse": "Zwiń scenę",
+      "delete": "Usuń scenę",
+      "deleteElement": "Usuń element",
+      "dragElement": "Przeciągnij element",
+      "elementIcon": {
+        "animation": "Animacja",
+        "audioVisual": "Audio",
+        "browser": "Przeglądarka",
+        "camera": "Kamera",
+        "image": "Obraz",
+        "overlay": "Nakładka",
+        "screen": "Ekran",
+        "shape": "Kształt",
+        "text": "Tekst",
+        "video": "Wideo"
+      },
+      "expand": "Rozwiń scenę",
+      "invalidName": "Nazwa musi mieć od 1 do 128 znaków.",
+      "toggleGroup": "Rozwiń lub zwiń grupę"
+    },
+    "sceneList": {
+      "add": "Dodaj scenę",
+      "delete": "Usuń scenę",
+      "empty": "Brak scen w projekcie.",
+      "resize": "Zmień szerokość panelu scen",
+      "title": "Sceny"
+    }
+  }
+}

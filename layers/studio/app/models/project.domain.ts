@@ -82,7 +82,8 @@ export const createEmptyProject = (input: {
   id: ProjectId;
   name: string;
   type: ProjectType;
-  sceneId: string;
+  /** When set, project starts with one empty scene (tests / fixtures). */
+  sceneId?: string;
 }): Project => {
   const now = new Date().toISOString();
   return {
@@ -90,7 +91,7 @@ export const createEmptyProject = (input: {
     name: input.name,
     type: input.type,
     settings: createDefaultProjectSettings(),
-    scenes: [createEmptyScene({ id: input.sceneId, name: 'Scene 1' })],
+    scenes: input.sceneId ? [createEmptyScene({ id: input.sceneId, name: 'Scene 1' })] : [],
     sources: [],
     assets: [],
     audioMixer: createDefaultAudioMixer(),
