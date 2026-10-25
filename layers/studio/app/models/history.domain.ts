@@ -1,9 +1,17 @@
-import type { HistoryEntryId } from './ids.domain';
+import type { ElementId, HistoryEntryId, SceneId } from './ids.domain';
+import type { Project } from './project.domain';
+
+/** Document + editor selection at a point in time — no history stack inside document. */
+export type HistorySnapshot = {
+  document: Omit<Project, 'history'>;
+  activeSceneId: SceneId | null;
+  selectedElementIds: ElementId[];
+};
 
 /** Serializable patch payload — no UI/runtime references. */
 export type HistoryPatch = {
-  forward: unknown;
-  inverse: unknown;
+  forward: HistorySnapshot;
+  inverse: HistorySnapshot;
 };
 
 export type HistoryEntry = {

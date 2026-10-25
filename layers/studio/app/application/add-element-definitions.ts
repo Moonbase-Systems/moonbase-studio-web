@@ -2,7 +2,7 @@ import type { SourceDefinition } from './commands/source-commands';
 
 export type AddElementPanelKey = 'screen' | 'audio' | 'text' | 'shape' | 'image' | 'browser' | 'animation';
 
-const PLACEHOLDER_ASSET_ID = '00000000-0000-4000-8000-000000000001';
+export const PLACEHOLDER_PANEL_ASSET_ID = '00000000-0000-4000-8000-000000000001';
 
 export const createSourceDefinitionForPanelKey = (key: AddElementPanelKey, name: string): SourceDefinition => {
   switch (key) {
@@ -15,7 +15,7 @@ export const createSourceDefinitionForPanelKey = (key: AddElementPanelKey, name:
     case 'shape':
       return { type: 'shape', name, shapeKind: 'rect' };
     case 'image':
-      return { type: 'image', name, assetId: PLACEHOLDER_ASSET_ID };
+      return { type: 'image', name, assetId: PLACEHOLDER_PANEL_ASSET_ID };
     case 'browser':
       return {
         type: 'browser',

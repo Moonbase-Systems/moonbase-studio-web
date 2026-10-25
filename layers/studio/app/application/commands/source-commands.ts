@@ -1,4 +1,5 @@
-import type { SourceId } from '../../models/ids.domain';
+import type { AssetId, SourceId } from '../../models/ids.domain';
+import type { Project } from '../../models/project.domain';
 import type {
   AnimationSource,
   AudioSource,
@@ -49,6 +50,32 @@ const collectSourceReferences = (session: StudioSession, sourceId: SourceId): St
   return references;
 };
 
+const ensureAssetForSource = (project: Project, source: Source, name: string): void => {
+  let assetId: AssetId | undefined;
+  let assetType: 'image' | 'video' | undefined;
+
+  if (source.type === 'image' || source.type === 'video') {
+    assetId = source.assetId;
+    assetType = source.type;
+  }
+
+  if (!assetId || !assetType) {
+    return;
+  }
+
+  if (project.assets.some((asset) => asset.id === assetId)) {
+    return;
+  }
+
+  project.assets.push({
+    id: assetId,
+    name,
+    type: assetType,
+    location: { kind: 'storageKey', key: 'pending/image' },
+    availability: 'missing',
+  });
+};
+
 export const addSource = (
   session: StudioSession,
   definition: SourceDefinition,
@@ -72,6 +99,7 @@ export const addSource = (
   return withClonedProject(
     session,
     (project) => {
+      ensureAssetForSource(project, source, trimmed);
       project.sources.push(source);
     },
     ctx,

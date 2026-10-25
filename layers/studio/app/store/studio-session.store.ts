@@ -4,7 +4,13 @@ import { computed, shallowRef } from 'vue';
 import { STORE_KEYS } from '../../../core/app/constants/store-keys';
 import type { LayerUpdateChanges } from '../application/commands/layer-commands';
 import type { SourceDefinition } from '../application/commands/source-commands';
-import { createEmptyStudioSession, getActiveScene, getSelectedLayerId } from '../application/session';
+import type { StudioResult } from '../application/errors';
+import {
+  createEmptyStudioSession,
+  getActiveScene,
+  getSelectedLayerId,
+  type StudioSession,
+} from '../application/session';
 import { createStudioService } from '../application/studio.service';
 import type { ElementId, GroupId, SceneId, SourceId } from '../models/ids.domain';
 import type { Project, ProjectType } from '../models/project.domain';
@@ -28,6 +34,8 @@ export const useStudioSessionStore = defineStore(STORE_KEYS.STUDIO_SESSION, () =
   const selectedLayerIds = computed(() => sessionRef.value.editor.selectedElementIds);
   const isDirty = computed(() => sessionRef.value.isDirty);
   const isInitialized = computed(() => sessionRef.value.isInitialized);
+  const canUndo = computed(() => (sessionRef.value.project?.history.past.length ?? 0) > 0);
+  const canRedo = computed(() => (sessionRef.value.project?.history.future.length ?? 0) > 0);
 
   return {
     sessionRef,
@@ -38,7 +46,12 @@ export const useStudioSessionStore = defineStore(STORE_KEYS.STUDIO_SESSION, () =
     selectedLayerIds,
     isDirty,
     isInitialized,
+    canUndo,
+    canRedo,
     initialize: () => service.initialize(),
+    undo: () => service.undo(),
+    redo: () => service.redo(),
+    runTransaction: (fn: () => StudioResult<StudioSession> | undefined) => service.runTransaction(fn),
     createProject: (input?: { name?: string; type?: ProjectType }) => service.createProject(input),
     openProject: (project: Project) => service.openProject(project),
     closeProject: () => service.closeProject(),

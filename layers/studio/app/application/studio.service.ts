@@ -1,4 +1,5 @@
-import type { ElementId, GroupId, SceneId, SourceId } from '../models/ids.domain';
+import type { HistoryEntry } from '../models/history.domain';
+import type { ElementId, GroupId, HistoryEntryId, SceneId, SourceId } from '../models/ids.domain';
 import type { Project, ProjectType } from '../models/project.domain';
 import {
   addElementToGroup,
@@ -22,6 +23,8 @@ import {
   moveLayerRelative,
   moveSceneRelative,
   openProject,
+  pushHistoryEntry,
+  redo,
   removeElementsFromGroup,
   removeLayer,
   removeLayers,
@@ -35,6 +38,7 @@ import {
   setLayerLocked,
   setLayerVisibility,
   setSelectedLayers,
+  undo,
   updateLayer,
 } from './commands';
 import type { LayerUpdateChanges } from './commands/layer-commands';
@@ -42,6 +46,7 @@ import type { SourceDefinition } from './commands/source-commands';
 import type { CommandContext } from './context';
 import { createDefaultCommandContext as defaultContext } from './context';
 import type { StudioResult } from './errors';
+import { captureHistorySnapshot, historySnapshotsEqual } from './history-snapshot';
 import { createEmptyStudioSession, type StudioSession } from './session';
 
 export type StudioSessionState = {
@@ -51,43 +56,105 @@ export type StudioSessionState = {
 
 export type StudioService = ReturnType<typeof createStudioService>;
 
+export type StudioRunOptions = {
+  recordHistory?: boolean;
+};
+
+const createHistoryEntry = (
+  before: NonNullable<ReturnType<typeof captureHistorySnapshot>>,
+  after: NonNullable<ReturnType<typeof captureHistorySnapshot>>,
+  context: CommandContext,
+): HistoryEntry => ({
+  id: context.generateId() as HistoryEntryId,
+  label: 'Edit',
+  timestamp: context.now(),
+  patch: { inverse: before, forward: after },
+});
+
 export const createStudioService = (deps: { state: StudioSessionState; context?: CommandContext }) => {
   const ctx = deps.context ?? defaultContext();
+  let historySuspended = false;
 
   const run = (
     command: (session: StudioSession, context: CommandContext) => StudioResult<StudioSession>,
+    options?: StudioRunOptions,
   ): StudioResult<StudioSession> => {
+    const recordHistory = options?.recordHistory ?? true;
     const current = deps.state.get();
+    const before = recordHistory && !historySuspended && current.project ? captureHistorySnapshot(current) : null;
     const result = command(current, ctx);
-    if (result.ok) {
-      deps.state.set(result.value);
+    if (!result.ok) {
+      return result;
     }
-    return result;
+
+    let next = result.value;
+    if (before) {
+      const after = captureHistorySnapshot(next);
+      if (after && !historySnapshotsEqual(before, after)) {
+        const pushed = pushHistoryEntry(next, createHistoryEntry(before, after, ctx), ctx);
+        if (pushed.ok) {
+          next = pushed.value;
+        }
+      }
+    }
+
+    deps.state.set(next);
+    return { ok: true, value: next };
   };
 
   const query = <T>(command: (session: StudioSession) => StudioResult<T>): StudioResult<T> => command(deps.state.get());
 
+  const runTransaction = (fn: () => StudioResult<StudioSession> | undefined): StudioResult<StudioSession> => {
+    const before = captureHistorySnapshot(deps.state.get());
+    historySuspended = true;
+    const result = fn();
+    historySuspended = false;
+    if (result && !result.ok) {
+      return result;
+    }
+    if (!before) {
+      return { ok: true, value: deps.state.get() };
+    }
+    const after = captureHistorySnapshot(deps.state.get());
+    if (after && !historySnapshotsEqual(before, after)) {
+      const pushed = pushHistoryEntry(deps.state.get(), createHistoryEntry(before, after, ctx), ctx);
+      if (pushed.ok) {
+        deps.state.set(pushed.value);
+        return { ok: true, value: pushed.value };
+      }
+    }
+    return { ok: true, value: deps.state.get() };
+  };
+
   return {
     getSession: (): StudioSession => deps.state.get(),
 
-    initialize: () => run((session) => initializeSession(session)),
+    initialize: () => run((session) => initializeSession(session), { recordHistory: false }),
 
     createProject: (input?: { name?: string; type?: ProjectType }) =>
-      run((session, context) => createProject(session, input, context)),
+      run((session, context) => createProject(session, input, context), { recordHistory: false }),
 
-    openProject: (project: Project) => run((session, context) => openProject(session, project, context)),
+    openProject: (project: Project) =>
+      run((session, context) => openProject(session, project, context), { recordHistory: false }),
 
-    closeProject: () => run((session) => closeProject(session)),
+    closeProject: () => run((session) => closeProject(session), { recordHistory: false }),
 
-    markSaved: () => run((session) => markProjectSaved(session)),
+    markSaved: () => run((session) => markProjectSaved(session), { recordHistory: false }),
 
-    setActiveScene: (sceneId: SceneId) => run((session) => setActiveScene(session, sceneId)),
+    undo: () => run((session, context) => undo(session, context), { recordHistory: false }),
 
-    selectLayer: (layerId: ElementId) => run((session) => selectLayer(session, layerId)),
+    redo: () => run((session, context) => redo(session, context), { recordHistory: false }),
 
-    setSelectedLayers: (layerIds: ElementId[]) => run((session) => setSelectedLayers(session, layerIds)),
+    runTransaction,
 
-    clearSelection: () => run((session) => clearSelection(session)),
+    setActiveScene: (sceneId: SceneId) => run((session) => setActiveScene(session, sceneId), { recordHistory: false }),
+
+    selectLayer: (layerId: ElementId) => run((session) => selectLayer(session, layerId), { recordHistory: false }),
+
+    setSelectedLayers: (layerIds: ElementId[]) =>
+      run((session) => setSelectedLayers(session, layerIds), { recordHistory: false }),
+
+    clearSelection: () => run((session) => clearSelection(session), { recordHistory: false }),
 
     createScene: (name?: string) => run((session, context) => createScene(session, name, context)),
 

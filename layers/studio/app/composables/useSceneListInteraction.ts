@@ -2,6 +2,7 @@ import { buildSceneListRoots, flattenSelectableElementIds } from '../application
 import type { ElementId, GroupId, SceneId } from '../models/ids.domain';
 import type { Scene } from '../models/scene.domain';
 import { displayNameSchema } from '../schemas/display-name.schema';
+import { useShortcutStore } from '../store/shortcut.store';
 import { useStudioSessionStore } from '../store/studio-session.store';
 
 export type SceneDropZone = 'before' | 'center' | 'after';
@@ -19,6 +20,7 @@ export type SceneRenameDraft = {
 
 export function useSceneListInteraction(sceneId: SceneId, scene: () => Scene | undefined) {
   const store = useStudioSessionStore();
+  const shortcuts = useShortcutStore();
   const { t } = useI18n();
   const selectionAnchorId = ref<ElementId | null>(null);
   const dragSource = ref<SceneDragSource | null>(null);
@@ -57,7 +59,7 @@ export function useSceneListInteraction(sceneId: SceneId, scene: () => Scene | u
   function handleElementSelect(elementId: ElementId, event: MouseEvent) {
     ensureActiveScene();
 
-    if (event.shiftKey) {
+    if (shortcuts.matchesPointer(event, 'selection.range')) {
       const anchor = selectionAnchorId.value ?? (store.selectedLayerIds.length > 0 ? store.selectedLayerIds[0]! : null);
       if (anchor) {
         selectRange(anchor, elementId);
@@ -66,7 +68,7 @@ export function useSceneListInteraction(sceneId: SceneId, scene: () => Scene | u
       }
     }
 
-    if (event.metaKey || event.ctrlKey) {
+    if (shortcuts.matchesPointer(event, 'selection.toggle')) {
       toggleElementSelection(elementId);
       selectionAnchorId.value = elementId;
       return;
@@ -78,13 +80,13 @@ export function useSceneListInteraction(sceneId: SceneId, scene: () => Scene | u
 
   function handleRowContextMenu(elementId: ElementId, event: MouseEvent) {
     ensureActiveScene();
-    if (event.shiftKey) {
+    if (shortcuts.matchesPointer(event, 'selection.range')) {
       return;
     }
     if (store.selectedLayerIds.includes(elementId)) {
       return;
     }
-    if (event.metaKey || event.ctrlKey) {
+    if (shortcuts.matchesPointer(event, 'selection.toggle')) {
       toggleElementSelection(elementId);
       selectionAnchorId.value = elementId;
       return;
@@ -351,59 +353,63 @@ export function useSceneListInteraction(sceneId: SceneId, scene: () => Scene | u
       return;
     }
 
-    if (source.kind === 'group') {
-      const members = groupMemberIds(source.groupId);
-      if (target.kind === 'group' && target.groupId === source.groupId) {
-        onDragEnd();
-        return;
-      }
-      if (target.kind === 'element' && members.includes(target.elementId)) {
-        onDragEnd();
-        return;
-      }
-      const place = zone === 'after' ? 'after' : 'before';
-      const anchor = resolveAnchor(target, place);
-      if (anchor) {
-        store.moveElementBlock(sceneId, members, anchor, place);
-      }
-      onDragEnd();
-      return;
-    }
-
-    const draggedId = source.elementId;
-    if (target.kind === 'element' && target.elementId === draggedId) {
-      onDragEnd();
-      return;
-    }
-
-    if (zone === 'center') {
-      if (target.kind === 'group') {
-        if (parentGroupId(draggedId) !== target.groupId) {
-          store.groupElementsByDrop(sceneId, draggedId, { kind: 'group', groupId: target.groupId });
+    store.runTransaction(() => {
+      if (source.kind === 'group') {
+        const members = groupMemberIds(source.groupId);
+        if (target.kind === 'group' && target.groupId === source.groupId) {
+          return;
         }
-      } else {
-        store.groupElementsByDrop(sceneId, draggedId, { kind: 'element', elementId: target.elementId });
+        if (target.kind === 'element' && members.includes(target.elementId)) {
+          return;
+        }
+        const place = zone === 'after' ? 'after' : 'before';
+        const anchor = resolveAnchor(target, place);
+        if (anchor) {
+          return store.moveElementBlock(sceneId, members, anchor, place);
+        }
+        return;
       }
-      onDragEnd();
-      return;
-    }
 
-    const place = zone;
-    const draggedParent = parentGroupId(draggedId);
-    const nextGroup = destinationGroup(target);
-
-    if (draggedParent !== nextGroup) {
-      if (nextGroup) {
-        store.addElementToGroup(sceneId, draggedId, nextGroup);
-      } else if (draggedParent) {
-        store.removeElementsFromGroup(sceneId, [draggedId]);
+      const draggedId = source.elementId;
+      if (target.kind === 'element' && target.elementId === draggedId) {
+        return;
       }
-    }
 
-    const anchor = resolveAnchor(target, place);
-    if (anchor && anchor !== draggedId) {
-      store.moveElementBlock(sceneId, [draggedId], anchor, place);
-    }
+      if (zone === 'center') {
+        if (target.kind === 'group') {
+          if (parentGroupId(draggedId) !== target.groupId) {
+            return store.groupElementsByDrop(sceneId, draggedId, { kind: 'group', groupId: target.groupId });
+          }
+        } else {
+          return store.groupElementsByDrop(sceneId, draggedId, { kind: 'element', elementId: target.elementId });
+        }
+        return;
+      }
+
+      const place = zone;
+      const draggedParent = parentGroupId(draggedId);
+      const nextGroup = destinationGroup(target);
+
+      if (draggedParent !== nextGroup) {
+        if (nextGroup) {
+          const grouped = store.addElementToGroup(sceneId, draggedId, nextGroup);
+          if (!grouped.ok) {
+            return grouped;
+          }
+        } else if (draggedParent) {
+          const ungrouped = store.removeElementsFromGroup(sceneId, [draggedId]);
+          if (!ungrouped.ok) {
+            return ungrouped;
+          }
+        }
+      }
+
+      const anchor = resolveAnchor(target, place);
+      if (anchor && anchor !== draggedId) {
+        return store.moveElementBlock(sceneId, [draggedId], anchor, place);
+      }
+    });
+
     onDragEnd();
   }
 
@@ -425,21 +431,21 @@ export function useSceneListInteraction(sceneId: SceneId, scene: () => Scene | u
   }
 
   function handleKeyDown(event: KeyboardEvent) {
-    if (event.key === 'F2') {
+    if (shortcuts.matchesKey(event, 'rename')) {
       event.preventDefault();
       event.stopPropagation();
       beginRename();
       return;
     }
-    if (!event.shiftKey || store.selectedLayerIds.length === 0) {
+    if (store.selectedLayerIds.length === 0) {
       return;
     }
-    if (event.key === 'ArrowUp') {
+    if (shortcuts.matchesKey(event, 'reorder.up')) {
       event.preventDefault();
       event.stopPropagation();
       moveSelected('up');
     }
-    if (event.key === 'ArrowDown') {
+    if (shortcuts.matchesKey(event, 'reorder.down')) {
       event.preventDefault();
       event.stopPropagation();
       moveSelected('down');

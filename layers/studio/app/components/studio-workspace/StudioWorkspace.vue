@@ -1,7 +1,10 @@
 <script setup lang="ts">
+import { useHistoryShortcuts } from '../../composables/useHistoryShortcuts';
 import { useStudioSessionStore } from '../../store/studio-session.store';
 import { ScenesSidebar } from '../scenes-sidebar';
 import { StudioTopBar } from '../studio-top-bar';
+
+useHistoryShortcuts();
 
 const SIDEBAR_MIN = 220;
 const SIDEBAR_MAX = 560;

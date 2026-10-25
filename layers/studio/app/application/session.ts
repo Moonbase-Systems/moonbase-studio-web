@@ -33,6 +33,7 @@ export const getActiveScene = (session: StudioSession): Scene | null => {
 };
 
 export const validateProject = (project: Project): StudioResult<Project> => {
+  const sessionHistory = project.history;
   const result = parseProjectFile(toProjectFile(project));
   if (!result.ok) {
     return portErr({
@@ -41,7 +42,10 @@ export const validateProject = (project: Project): StudioResult<Project> => {
       issues: result.error.issues,
     });
   }
-  return portOk(result.project);
+  return portOk({
+    ...result.project,
+    history: sessionHistory,
+  });
 };
 
 /** Keeps active scene and selection consistent with the open project. */

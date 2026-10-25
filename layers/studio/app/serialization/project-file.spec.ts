@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
+import { captureHistorySnapshot } from '../application/history-snapshot';
+import type { StudioSession } from '../application/session';
+import { createEmptyEditorState } from '../models/editor.domain';
 import { createEmptyProject } from '../models/project.domain';
 import { createValidProject } from '../test-utils/project-fixtures';
 import {
@@ -35,11 +38,21 @@ describe('project file serialization', () => {
       type: 'podcast',
       sceneId: 's1',
     });
+    const session: StudioSession = {
+      project,
+      editor: { ...createEmptyEditorState(), activeSceneId: 's1' },
+      isDirty: false,
+      isInitialized: true,
+    };
+    const snapshot = captureHistorySnapshot(session);
+    if (!snapshot) {
+      throw new Error('Expected history snapshot fixture');
+    }
     project.history.past.push({
       id: 'h1',
       label: 'move',
       timestamp: new Date().toISOString(),
-      patch: { forward: {}, inverse: {} },
+      patch: { forward: snapshot, inverse: snapshot },
     });
 
     const file = toProjectFile(project);

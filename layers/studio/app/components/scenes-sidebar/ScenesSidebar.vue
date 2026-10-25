@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import type { SceneId } from '../../models/ids.domain';
 import { displayNameSchema } from '../../schemas/display-name.schema';
+import { useShortcutStore } from '../../store/shortcut.store';
 import { useStudioSessionStore } from '../../store/studio-session.store';
 import { SceneElementListScene } from '../scene-element-list';
 import SceneContextMenu from './SceneContextMenu.vue';
 
 const store = useStudioSessionStore();
+const shortcuts = useShortcutStore();
 const { t } = useI18n();
 
 const listRef = ref<HTMLElement | null>(null);
@@ -106,19 +108,16 @@ function handleKeyDown(event: KeyboardEvent) {
   if (store.selectedLayerIds.length > 0) {
     return;
   }
-  if (event.key === 'F2') {
+  if (shortcuts.matchesKey(event, 'rename')) {
     event.preventDefault();
     beginRename(activeId);
     return;
   }
-  if (!event.shiftKey) {
-    return;
-  }
-  if (event.key === 'ArrowUp') {
+  if (shortcuts.matchesKey(event, 'reorder.up')) {
     event.preventDefault();
     moveScene(activeId, 'up');
   }
-  if (event.key === 'ArrowDown') {
+  if (shortcuts.matchesKey(event, 'reorder.down')) {
     event.preventDefault();
     moveScene(activeId, 'down');
   }

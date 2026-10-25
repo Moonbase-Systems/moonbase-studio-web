@@ -3,6 +3,7 @@ export const STORE_KEYS = {
   PROJECT: 'project',
   EDITOR: 'editor',
   STUDIO_SESSION: 'studioSession',
+  SHORTCUTS: 'shortcuts',
 };
 
 export type StoreKeys = typeof STORE_KEYS;
