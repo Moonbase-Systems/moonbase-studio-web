@@ -27,7 +27,8 @@ export type SourceBackedElementType =
   | 'text'
   | 'shape'
   | 'browser'
-  | 'audioVisual';
+  | 'audioVisual'
+  | 'animation';
 
 export type SourceBackedElement = SceneElementBase & {
   type: SourceBackedElementType;
@@ -49,6 +50,9 @@ export type SceneElementType = SceneElement['type'];
 export const elementTypeForSource = (source: Source): SourceBackedElementType => {
   if (source.type === 'audio') {
     return 'audioVisual';
+  }
+  if (source.type === 'animation') {
+    return 'animation';
   }
   return source.type as SourceBackedElementType;
 };

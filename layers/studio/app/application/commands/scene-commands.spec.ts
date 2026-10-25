@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { createSessionWithProject } from '../../test-utils/studio-session-fixtures';
 import { addLayer } from './layer-commands';
-import { createScene, deleteScene, duplicateScene, renameScene } from './scene-commands';
+import { createScene, deleteScene, duplicateScene, moveSceneRelative, renameScene } from './scene-commands';
 import { selectLayer } from './session-commands';
 import { addSource } from './source-commands';
 
@@ -120,6 +120,32 @@ describe('scene commands', () => {
     if (deleted.ok) {
       expect(deleted.value.editor.selectedElementIds).toEqual([]);
       expect(deleted.value.editor.activeSceneId).not.toBe(active);
+    }
+  });
+
+  it('moves scenes up and down in the list', () => {
+    const { session: initial, ctx } = createSessionWithProject(['p1', 's1', 's2']);
+    let session = initial;
+    const firstId = session.project!.scenes[0]!.id;
+
+    const second = createScene(session, 'Second', ctx);
+    expect(second.ok).toBe(true);
+    if (second.ok) {
+      session = second.value;
+    }
+    const secondId = session.project!.scenes[1]!.id;
+
+    const movedUp = moveSceneRelative(session, secondId, 'up', ctx);
+    expect(movedUp.ok).toBe(true);
+    if (movedUp.ok) {
+      session = movedUp.value;
+      expect(session.project!.scenes.map((scene) => scene.id)).toEqual([secondId, firstId]);
+    }
+
+    const movedDown = moveSceneRelative(session, secondId, 'down', ctx);
+    expect(movedDown.ok).toBe(true);
+    if (movedDown.ok) {
+      expect(movedDown.value.project!.scenes.map((scene) => scene.id)).toEqual([firstId, secondId]);
     }
   });
 });

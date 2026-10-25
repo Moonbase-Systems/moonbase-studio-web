@@ -1,0 +1,67 @@
+{
+  "studio": {
+    "addPanel": {
+      "groups": {
+        "core": "core elements",
+        "interactive": "interactive elements",
+        "layout": "layout elements"
+      },
+      "options": {
+        "animation": "animation",
+        "audio": "audio source",
+        "browser": "browser asset",
+        "image": "image",
+        "screen": "screen source",
+        "shape": "shape",
+        "text": "text"
+      }
+    },
+    "contextMenu": {
+      "deleteElement": "Delete element",
+      "deleteSelected": "Delete selected",
+      "dissolveGroup": "Ungroup (keep elements)",
+      "group": "Group elements",
+      "moveBottom": "Move to bottom",
+      "moveDown": "Move down",
+      "moveTop": "Move to top",
+      "moveUp": "Move up",
+      "rename": "Rename",
+      "ungroup": "Remove from group"
+    },
+    "exitConfirm": {
+      "message": "Are you sure you want to go to the home page?",
+      "no": "No",
+      "title": "Leave studio?",
+      "yes": "Yes"
+    },
+    "scene": {
+      "addElement": "Add element",
+      "collapse": "Collapse scene",
+      "delete": "Delete scene",
+      "deleteElement": "Delete element",
+      "dragElement": "Drag element",
+      "elementIcon": {
+        "animation": "Animation",
+        "audioVisual": "Audio",
+        "browser": "Browser",
+        "camera": "Camera",
+        "image": "Image",
+        "overlay": "Overlay",
+        "screen": "Screen",
+        "shape": "Shape",
+        "text": "Text",
+        "video": "Video"
+      },
+      "expand": "Expand scene",
+      "invalidName": "Name must be between 1 and 128 characters.",
+      "toggleGroup": "Expand or collapse group"
+    },
+    "sceneList": {
+      "add": "Add scene",
+      "delete": "Delete scene",
+      "empty": "No scenes in the project.",
+      "resize": "Resize scenes panel",
+      "title": "Scenes"
+    }
+  }
+}

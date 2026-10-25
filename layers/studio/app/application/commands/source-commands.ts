@@ -1,5 +1,6 @@
 import type { SourceId } from '../../models/ids.domain';
 import type {
+  AnimationSource,
   AudioSource,
   BrowserSource,
   CameraSource,
@@ -24,7 +25,8 @@ export type SourceDefinition =
   | Omit<VideoSource, 'id'>
   | Omit<TextSource, 'id'>
   | Omit<ShapeSource, 'id'>
-  | Omit<AudioSource, 'id'>;
+  | Omit<AudioSource, 'id'>
+  | Omit<AnimationSource, 'id'>;
 
 const collectSourceReferences = (session: StudioSession, sourceId: SourceId): StudioReference[] => {
   const project = session.project!;

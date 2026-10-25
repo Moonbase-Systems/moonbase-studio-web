@@ -25,7 +25,6 @@ export const createProject = (
     id: ctx.generateId(),
     name: input?.name?.trim() || 'Untitled Project',
     type: input?.type ?? 'general',
-    sceneId: ctx.generateId(),
   });
 
   const validated = validateProject(project);
@@ -33,7 +32,7 @@ export const createProject = (
     return validated;
   }
 
-  const activeSceneId = validated.value.scenes[0]?.id ?? null;
+  const activeSceneId = null;
 
   return portOk({
     project: validated.value,
@@ -118,6 +117,30 @@ export const setActiveScene = (session: StudioSession, sceneId: SceneId): Studio
 };
 
 /** Selection changes do not mark the project dirty. */
+export const setSelectedLayers = (session: StudioSession, layerIds: ElementId[]): StudioResult<StudioSession> => {
+  const ready = assertInitialized(session);
+  if (!ready.ok) {
+    return ready;
+  }
+  if (!session.project || !session.editor.activeSceneId) {
+    return portErr({ kind: 'no-project' });
+  }
+
+  const scene = findSceneInProject(session.project, session.editor.activeSceneId);
+  if (!scene) {
+    return portErr({ kind: 'scene-not-found', sceneId: session.editor.activeSceneId });
+  }
+
+  const validIds = layerIds.filter((layerId) => findLayerInScene(scene, layerId));
+  const editor = {
+    ...session.editor,
+    selectedElementIds: validIds,
+    selectedGroupIds: [],
+  };
+
+  return portOk(sessionWithoutDirty(session, editor));
+};
+
 export const selectLayer = (session: StudioSession, layerId: ElementId): StudioResult<StudioSession> => {
   const ready = assertInitialized(session);
   if (!ready.ok) {
