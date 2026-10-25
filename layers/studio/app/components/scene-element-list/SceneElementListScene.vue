@@ -5,6 +5,7 @@ import { type SceneDropTarget, useSceneListInteraction } from '../../composables
 import type { ElementId, GroupId } from '../../models/ids.domain';
 import type { Scene } from '../../models/scene.domain';
 import type { SceneElementType } from '../../models/scene-element.domain';
+import { useShortcutStore } from '../../store/shortcut.store';
 import { useStudioSessionStore } from '../../store/studio-session.store';
 import { AddElementPanel } from '../add-element-panel';
 import { SceneLayerContextMenu } from '../scene-layer-context-menu';
@@ -32,6 +33,7 @@ const emit = defineEmits<{
 }>();
 
 const store = useStudioSessionStore();
+const shortcuts = useShortcutStore();
 const { addElementFromDefinition, removeElement } = useSceneElementActions();
 const { t } = useI18n();
 
@@ -110,7 +112,7 @@ function groupLineActive(elementIds: ElementId[]) {
 }
 
 function onGroupContextMenu(groupId: GroupId, event: MouseEvent) {
-  if (event.shiftKey) {
+  if (shortcuts.matchesPointer(event, 'selection.range')) {
     return;
   }
   const group = sceneState.value?.groups.find((item) => item.id === groupId);

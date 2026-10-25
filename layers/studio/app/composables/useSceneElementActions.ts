@@ -12,18 +12,24 @@ export function useSceneElementActions() {
     }
 
     const sourceIdsBefore = new Set(project.sources.map((source) => source.id));
-    const sourceResult = store.addSource(definition);
-    if (!sourceResult.ok) {
-      return false;
-    }
+    const result = store.runTransaction(() => {
+      const sourceResult = store.addSource(definition);
+      if (!sourceResult.ok) {
+        return sourceResult;
+      }
 
-    const createdSource = store.project?.sources.find((source) => !sourceIdsBefore.has(source.id));
-    if (!createdSource) {
-      return false;
-    }
+      const createdSource = store.project?.sources.find((source) => !sourceIdsBefore.has(source.id));
+      if (!createdSource) {
+        return {
+          ok: false as const,
+          error: { kind: 'invalid-state' as const, reason: 'Source was not created' },
+        };
+      }
 
-    const layerResult = store.addLayer(sceneId, createdSource.id, { name: definition.name });
-    return layerResult.ok;
+      return store.addLayer(sceneId, createdSource.id, { name: definition.name });
+    });
+
+    return result.ok;
   }
 
   function removeElement(sceneId: SceneId, layerId: ElementId): boolean {

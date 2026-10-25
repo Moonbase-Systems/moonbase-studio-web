@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { createSessionWithProject } from '../../test-utils/studio-session-fixtures';
+import { PLACEHOLDER_PANEL_ASSET_ID } from '../add-element-definitions';
 import { addLayer } from './layer-commands';
 import { addSource, findSource, removeSource, renameSource } from './source-commands';
 
@@ -33,6 +34,17 @@ describe('source commands', () => {
     expect(removed.ok).toBe(true);
     if (removed.ok) {
       expect(removed.value.project?.sources).toHaveLength(0);
+    }
+  });
+
+  it('creates a missing asset placeholder when adding an image source', () => {
+    const { session, ctx } = createSessionWithProject(['p1', 's1', 'src-img']);
+    const added = addSource(session, { type: 'image', name: 'Photo', assetId: PLACEHOLDER_PANEL_ASSET_ID }, ctx);
+    expect(added.ok).toBe(true);
+    if (added.ok) {
+      expect(added.value.project?.assets).toHaveLength(1);
+      expect(added.value.project?.assets[0]?.availability).toBe('missing');
+      expect(added.value.project?.sources).toHaveLength(1);
     }
   });
 

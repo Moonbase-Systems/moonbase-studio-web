@@ -3,8 +3,11 @@ import { useTreeLine } from '#layers/moonbase-core/app/utils/tree-line';
 import { cn } from '~/utils/index';
 
 import type { SceneDropZone } from '../../composables/useSceneListInteraction';
+import { useShortcutStore } from '../../store/shortcut.store';
 import type { SceneListRowIconKind } from './scene-element-type-icons';
 import SceneElementTypeIcon from './SceneElementTypeIcon.vue';
+
+const shortcuts = useShortcutStore();
 
 const props = withDefaults(
   defineProps<{
@@ -133,6 +136,20 @@ function onCancel() {
   ignoreBlur = true;
   emit('cancel');
 }
+
+function onRenameKeyDown(event: KeyboardEvent) {
+  if (shortcuts.matchesKey(event, 'rename.commit')) {
+    event.preventDefault();
+    event.stopPropagation();
+    onCommit();
+    return;
+  }
+  if (shortcuts.matchesKey(event, 'rename.cancel')) {
+    event.preventDefault();
+    event.stopPropagation();
+    onCancel();
+  }
+}
 </script>
 
 <template>
@@ -167,8 +184,7 @@ function onCancel() {
       :value="draft"
       class="text-body-sm py-xx-sm font-roboto text-on-surface min-w-0 flex-1 bg-transparent outline-none"
       @input="emit('update:draft', ($event.target as HTMLInputElement).value)"
-      @keydown.enter.prevent.stop="onCommit"
-      @keydown.escape.prevent.stop="onCancel"
+      @keydown="onRenameKeyDown"
       @blur="onCommit"
       @click.stop
       @keydown.stop

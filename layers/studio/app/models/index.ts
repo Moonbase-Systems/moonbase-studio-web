@@ -9,5 +9,6 @@ export * from './project.domain';
 export * from './scene.domain';
 export * from './scene-element.domain';
 export * from './scene-group.domain';
+export * from './shortcut.domain';
 export * from './source.domain';
 export * from './transition.domain';

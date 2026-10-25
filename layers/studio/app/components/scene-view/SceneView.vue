@@ -2,7 +2,10 @@
 import { useTreeLine } from '#layers/moonbase-core/app/utils/tree-line';
 import { cn } from '~/utils/index';
 
+import { useShortcutStore } from '../../store/shortcut.store';
 import type { SceneViewProps } from '.';
+
+const shortcuts = useShortcutStore();
 
 const props = withDefaults(defineProps<SceneViewProps>(), {
   open: false,
@@ -115,6 +118,20 @@ function onRenameCancel() {
   emit('renameCancel');
 }
 
+function onRenameKeyDown(event: KeyboardEvent) {
+  if (shortcuts.matchesKey(event, 'rename.commit')) {
+    event.preventDefault();
+    event.stopPropagation();
+    onRenameCommit();
+    return;
+  }
+  if (shortcuts.matchesKey(event, 'rename.cancel')) {
+    event.preventDefault();
+    event.stopPropagation();
+    onRenameCancel();
+  }
+}
+
 const expandCollapseLabel = computed(() => (props.open ? t('studio.scene.collapse') : t('studio.scene.expand')));
 </script>
 
@@ -132,8 +149,7 @@ const expandCollapseLabel = computed(() => (props.open ? t('studio.scene.collaps
             :value="renameDraft"
             class="text-body-md text-on-surface min-w-0 flex-1 bg-transparent text-left font-medium outline-none"
             @input="emit('update:renameDraft', ($event.target as HTMLInputElement).value)"
-            @keydown.enter.prevent.stop="onRenameCommit"
-            @keydown.escape.prevent.stop="onRenameCancel"
+            @keydown="onRenameKeyDown"
             @blur="onRenameCommit"
             @click.stop
             @keydown.stop
