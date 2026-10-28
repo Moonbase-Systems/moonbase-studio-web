@@ -154,5 +154,74 @@ describe('createStudioService', () => {
 
     expect(session.project!.history.past).toHaveLength(pastBefore + 1);
     expect(session.project!.scenes[0]!.elements).toHaveLength(1);
+
+    service.undo();
+    expect(session.project!.sources).toHaveLength(0);
+    expect(session.project!.scenes[0]!.elements).toHaveLength(0);
+    expect(session.project!.history.future).toHaveLength(1);
+
+    service.redo();
+    expect(session.project!.sources).toHaveLength(1);
+    expect(session.project!.scenes[0]!.elements).toHaveLength(1);
+    expect(session.project!.history.future).toHaveLength(0);
+  });
+
+  it('rolls back a transaction when a later command fails', () => {
+    let session = createEmptyStudioSession();
+    const ctx = createTestContext(['p1', 's1', 'src1', 'h1', 'h2']);
+    const service = createStudioService({
+      state: {
+        get: () => session,
+        set: (next) => {
+          session = next;
+        },
+      },
+      context: ctx,
+    });
+
+    service.initialize();
+    service.createProject({ name: 'Demo' });
+    service.createScene('Scene');
+    const pastBefore = session.project!.history.past.length;
+    const sceneId = session.project!.scenes[0]!.id;
+
+    const result = service.runTransaction(() => {
+      const source = service.addSource({ type: 'text', name: 'Label', content: 'Hi' });
+      if (!source.ok) {
+        return source;
+      }
+      return service.addLayer(sceneId, 'missing-source');
+    });
+
+    expect(result.ok).toBe(false);
+    expect(session.project!.sources).toHaveLength(0);
+    expect(session.project!.scenes[0]!.elements).toHaveLength(0);
+    expect(session.project!.history.past).toHaveLength(pastBefore);
+    expect(session.project!.history.future).toHaveLength(0);
+  });
+
+  it('keeps a no-op transaction that returns undefined', () => {
+    let session = createEmptyStudioSession();
+    const ctx = createTestContext(['p1', 's1', 'h1']);
+    const service = createStudioService({
+      state: {
+        get: () => session,
+        set: (next) => {
+          session = next;
+        },
+      },
+      context: ctx,
+    });
+
+    service.initialize();
+    service.createProject({ name: 'Demo' });
+    service.createScene('Scene');
+    const pastBefore = session.project!.history.past.length;
+
+    const result = service.runTransaction(() => undefined);
+
+    expect(result.ok).toBe(true);
+    expect(session.project!.history.past).toHaveLength(pastBefore);
+    expect(session.project!.name).toBe('Demo');
   });
 });

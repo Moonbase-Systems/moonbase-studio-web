@@ -2,8 +2,12 @@ import { defineStore } from 'pinia';
 import { computed, shallowRef } from 'vue';
 
 import { STORE_KEYS } from '../../../core/app/constants/store-keys';
+import type { AssetChanges, AssetDraft } from '../application/commands/asset-commands';
 import type { LayerUpdateChanges } from '../application/commands/layer-commands';
+import type { AudioChannelChanges, AudioChannelDraft } from '../application/commands/mixer-commands';
+import type { ProjectChanges } from '../application/commands/project-commands';
 import type { SourceDefinition } from '../application/commands/source-commands';
+import type { TransitionChanges, TransitionDraft } from '../application/commands/transition-commands';
 import type { StudioResult } from '../application/errors';
 import {
   createEmptyStudioSession,
@@ -12,8 +16,19 @@ import {
   type StudioSession,
 } from '../application/session';
 import { createStudioService } from '../application/studio.service';
-import type { ElementId, GroupId, SceneId, SourceId } from '../models/ids.domain';
+import type { AudioMaster } from '../models/audio.domain';
+import type { AssetId, ChannelId, ElementId, GroupId, SceneId, SourceId, TransitionId } from '../models/ids.domain';
 import type { Project, ProjectType } from '../models/project.domain';
+
+const deepFreeze = (value: unknown): void => {
+  if (!value || typeof value !== 'object' || Object.isFrozen(value)) {
+    return;
+  }
+  Object.freeze(value);
+  for (const nested of Object.values(value)) {
+    deepFreeze(nested);
+  }
+};
 
 export const useStudioSessionStore = defineStore(STORE_KEYS.STUDIO_SESSION, () => {
   const sessionRef = shallowRef(createEmptyStudioSession());
@@ -22,6 +37,7 @@ export const useStudioSessionStore = defineStore(STORE_KEYS.STUDIO_SESSION, () =
     state: {
       get: () => sessionRef.value,
       set: (next) => {
+        deepFreeze(next);
         sessionRef.value = next;
       },
     },
@@ -38,7 +54,6 @@ export const useStudioSessionStore = defineStore(STORE_KEYS.STUDIO_SESSION, () =
   const canRedo = computed(() => (sessionRef.value.project?.history.future.length ?? 0) > 0);
 
   return {
-    sessionRef,
     project,
     activeSceneId,
     activeScene,
@@ -108,9 +123,24 @@ export const useStudioSessionStore = defineStore(STORE_KEYS.STUDIO_SESSION, () =
       service.setLayerVisibility(sceneId, layerId, visible),
     setLayerLocked: (sceneId: SceneId, layerId: ElementId, locked: boolean) =>
       service.setLayerLocked(sceneId, layerId, locked),
+    setSceneDefaultTransition: (sceneId: SceneId, transitionId: TransitionId | null) =>
+      service.setSceneDefaultTransition(sceneId, transitionId),
     addSource: (definition: SourceDefinition) => service.addSource(definition),
     renameSource: (sourceId: SourceId, name: string) => service.renameSource(sourceId, name),
     findSource: (sourceId: SourceId) => service.findSource(sourceId),
     removeSource: (sourceId: SourceId) => service.removeSource(sourceId),
+    updateProject: (changes: ProjectChanges) => service.updateProject(changes),
+    addAsset: (draft: AssetDraft) => service.addAsset(draft),
+    updateAsset: (assetId: AssetId, changes: AssetChanges) => service.updateAsset(assetId, changes),
+    removeAsset: (assetId: AssetId) => service.removeAsset(assetId),
+    updateAudioMaster: (changes: Partial<AudioMaster>) => service.updateAudioMaster(changes),
+    addAudioChannel: (draft: AudioChannelDraft) => service.addAudioChannel(draft),
+    updateAudioChannel: (channelId: ChannelId, changes: AudioChannelChanges) =>
+      service.updateAudioChannel(channelId, changes),
+    removeAudioChannel: (channelId: ChannelId) => service.removeAudioChannel(channelId),
+    addTransition: (draft: TransitionDraft) => service.addTransition(draft),
+    updateTransition: (transitionId: TransitionId, changes: TransitionChanges) =>
+      service.updateTransition(transitionId, changes),
+    removeTransition: (transitionId: TransitionId) => service.removeTransition(transitionId),
   };
 });

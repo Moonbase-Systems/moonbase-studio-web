@@ -1,10 +1,23 @@
+import type { AudioMaster } from '../models/audio.domain';
 import type { HistoryEntry } from '../models/history.domain';
-import type { ElementId, GroupId, HistoryEntryId, SceneId, SourceId } from '../models/ids.domain';
+import type {
+  AssetId,
+  ChannelId,
+  ElementId,
+  GroupId,
+  HistoryEntryId,
+  SceneId,
+  SourceId,
+  TransitionId,
+} from '../models/ids.domain';
 import type { Project, ProjectType } from '../models/project.domain';
 import {
+  addAsset,
+  addAudioChannel,
   addElementToGroup,
   addLayer,
   addSource,
+  addTransition,
   clearSelection,
   closeProject,
   createGroupFromElements,
@@ -25,10 +38,13 @@ import {
   openProject,
   pushHistoryEntry,
   redo,
+  removeAsset,
+  removeAudioChannel,
   removeElementsFromGroup,
   removeLayer,
   removeLayers,
   removeSource,
+  removeTransition,
   renameGroup,
   renameLayer,
   renameScene,
@@ -37,12 +53,22 @@ import {
   setActiveScene,
   setLayerLocked,
   setLayerVisibility,
+  setSceneDefaultTransition,
   setSelectedLayers,
   undo,
+  updateAsset,
+  updateAudioChannel,
+  updateAudioMaster,
   updateLayer,
+  updateProject,
+  updateTransition,
 } from './commands';
+import type { AssetChanges, AssetDraft } from './commands/asset-commands';
 import type { LayerUpdateChanges } from './commands/layer-commands';
+import type { AudioChannelChanges, AudioChannelDraft } from './commands/mixer-commands';
+import type { ProjectChanges } from './commands/project-commands';
 import type { SourceDefinition } from './commands/source-commands';
+import type { TransitionChanges, TransitionDraft } from './commands/transition-commands';
 import type { CommandContext } from './context';
 import { createDefaultCommandContext as defaultContext } from './context';
 import type { StudioResult } from './errors';
@@ -105,23 +131,36 @@ export const createStudioService = (deps: { state: StudioSessionState; context?:
   const query = <T>(command: (session: StudioSession) => StudioResult<T>): StudioResult<T> => command(deps.state.get());
 
   const runTransaction = (fn: () => StudioResult<StudioSession> | undefined): StudioResult<StudioSession> => {
-    const before = captureHistorySnapshot(deps.state.get());
+    const checkpoint = structuredClone(deps.state.get());
     historySuspended = true;
-    const result = fn();
+    let result: StudioResult<StudioSession> | undefined;
+    try {
+      result = fn();
+    } catch (error) {
+      historySuspended = false;
+      deps.state.set(checkpoint);
+      throw error;
+    }
     historySuspended = false;
+
     if (result && !result.ok) {
+      deps.state.set(checkpoint);
       return result;
     }
+
+    const before = captureHistorySnapshot(checkpoint);
     if (!before) {
       return { ok: true, value: deps.state.get() };
     }
     const after = captureHistorySnapshot(deps.state.get());
     if (after && !historySnapshotsEqual(before, after)) {
       const pushed = pushHistoryEntry(deps.state.get(), createHistoryEntry(before, after, ctx), ctx);
-      if (pushed.ok) {
-        deps.state.set(pushed.value);
-        return { ok: true, value: pushed.value };
+      if (!pushed.ok) {
+        deps.state.set(checkpoint);
+        return pushed;
       }
+      deps.state.set(pushed.value);
+      return { ok: true, value: pushed.value };
     }
     return { ok: true, value: deps.state.get() };
   };
@@ -233,6 +272,9 @@ export const createStudioService = (deps: { state: StudioSessionState; context?:
     setLayerLocked: (sceneId: SceneId, layerId: ElementId, locked: boolean) =>
       run((session, context) => setLayerLocked(session, sceneId, layerId, locked, context)),
 
+    setSceneDefaultTransition: (sceneId: SceneId, transitionId: TransitionId | null) =>
+      run((session, context) => setSceneDefaultTransition(session, sceneId, transitionId, context)),
+
     addSource: (definition: SourceDefinition) => run((session, context) => addSource(session, definition, context)),
 
     renameSource: (sourceId: SourceId, name: string) =>
@@ -241,6 +283,34 @@ export const createStudioService = (deps: { state: StudioSessionState; context?:
     findSource: (sourceId: SourceId) => query((session) => findSource(session, sourceId)),
 
     removeSource: (sourceId: SourceId) => run((session, context) => removeSource(session, sourceId, context)),
+
+    updateProject: (changes: ProjectChanges) => run((session, context) => updateProject(session, changes, context)),
+
+    addAsset: (draft: AssetDraft) => run((session, context) => addAsset(session, draft, context)),
+
+    updateAsset: (assetId: AssetId, changes: AssetChanges) =>
+      run((session, context) => updateAsset(session, assetId, changes, context)),
+
+    removeAsset: (assetId: AssetId) => run((session, context) => removeAsset(session, assetId, context)),
+
+    updateAudioMaster: (changes: Partial<AudioMaster>) =>
+      run((session, context) => updateAudioMaster(session, changes, context)),
+
+    addAudioChannel: (draft: AudioChannelDraft) => run((session, context) => addAudioChannel(session, draft, context)),
+
+    updateAudioChannel: (channelId: ChannelId, changes: AudioChannelChanges) =>
+      run((session, context) => updateAudioChannel(session, channelId, changes, context)),
+
+    removeAudioChannel: (channelId: ChannelId) =>
+      run((session, context) => removeAudioChannel(session, channelId, context)),
+
+    addTransition: (draft: TransitionDraft) => run((session, context) => addTransition(session, draft, context)),
+
+    updateTransition: (transitionId: TransitionId, changes: TransitionChanges) =>
+      run((session, context) => updateTransition(session, transitionId, changes, context)),
+
+    removeTransition: (transitionId: TransitionId) =>
+      run((session, context) => removeTransition(session, transitionId, context)),
   };
 };
 

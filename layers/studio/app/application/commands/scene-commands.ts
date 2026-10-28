@@ -1,4 +1,4 @@
-import type { SceneId } from '../../models/ids.domain';
+import type { SceneId, TransitionId } from '../../models/ids.domain';
 import { createEmptyScene } from '../../models/scene.domain';
 import { portErr } from '../../ports/result';
 import { displayNameSchema } from '../../schemas/display-name.schema';
@@ -264,4 +264,36 @@ export const deleteScene = (
   }
 
   return { ok: true, value: nextSession };
+};
+
+export const setSceneDefaultTransition = (
+  session: StudioSession,
+  sceneId: SceneId,
+  transitionId: TransitionId | null,
+  ctx: CommandContext,
+): StudioResult<StudioSession> => {
+  const ready = assertInitialized(session);
+  if (!ready.ok) {
+    return ready;
+  }
+  if (!session.project) {
+    return portErr({ kind: 'no-project' });
+  }
+
+  if (!findSceneInProject(session.project, sceneId)) {
+    return portErr({ kind: 'scene-not-found', sceneId });
+  }
+
+  if (transitionId && !session.project.transitions.some((transition) => transition.id === transitionId)) {
+    return portErr({ kind: 'transition-not-found', transitionId });
+  }
+
+  return withClonedProject(
+    session,
+    (project) => {
+      const scene = project.scenes.find((item) => item.id === sceneId)!;
+      scene.settings.defaultTransitionId = transitionId;
+    },
+    ctx,
+  );
 };

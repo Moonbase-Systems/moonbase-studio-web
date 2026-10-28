@@ -1,4 +1,4 @@
-import type { ElementId, SceneId, SourceId } from '../models/ids.domain';
+import type { AssetId, ChannelId, ElementId, SceneId, SourceId, TransitionId } from '../models/ids.domain';
 import type { PortResult } from '../ports/result';
 
 export type StudioValidationIssue = { path: string; message: string };
@@ -16,8 +16,15 @@ export type StudioError =
   | { kind: 'scene-not-found'; sceneId: SceneId }
   | { kind: 'layer-not-found'; sceneId: SceneId; layerId: ElementId }
   | { kind: 'source-not-found'; sourceId: SourceId }
+  | { kind: 'asset-not-found'; assetId: AssetId }
+  | { kind: 'channel-not-found'; channelId: ChannelId }
+  | { kind: 'transition-not-found'; transitionId: TransitionId }
   | { kind: 'invalid-argument'; message: string; issues?: StudioValidationIssue[] }
   | { kind: 'reference-conflict'; sourceId: SourceId; references: StudioReference[] }
-  | { kind: 'rule-violation'; rule: 'last-scene' | 'layer-locked'; message: string };
+  | {
+      kind: 'rule-violation';
+      rule: 'last-scene' | 'layer-locked' | 'asset-in-use' | 'transition-in-use';
+      message: string;
+    };
 
 export type StudioResult<T> = PortResult<T, StudioError>;
