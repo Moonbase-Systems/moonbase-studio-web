@@ -45,6 +45,6 @@ const toneClass = computed(() => {
   <Icon
     :name="iconName"
     :aria-label="label"
-    :class="cn('h-xxx-sm w-xxx-sm shrink-0', toneClass)"
+    :class="cn('size-md shrink-0', toneClass)"
   />
 </template>
