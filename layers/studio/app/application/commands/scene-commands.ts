@@ -1,6 +1,7 @@
-import type { SceneId } from '../../models/ids.domain';
+import type { SceneId, TransitionId } from '../../models/ids.domain';
 import { createEmptyScene } from '../../models/scene.domain';
 import { portErr } from '../../ports/result';
+import { displayNameSchema } from '../../schemas/display-name.schema';
 import { assertInitialized, withClonedProject } from '../command-utils';
 import type { CommandContext } from '../context';
 import type { StudioResult } from '../errors';
@@ -83,9 +84,12 @@ export const renameScene = (
     return portErr({ kind: 'no-project' });
   }
 
-  const trimmed = name.trim();
-  if (!trimmed) {
-    return portErr({ kind: 'invalid-argument', message: 'Scene name cannot be empty' });
+  const parsed = displayNameSchema.safeParse(name);
+  if (!parsed.success) {
+    return portErr({
+      kind: 'invalid-argument',
+      message: parsed.error.issues[0]?.message ?? 'Invalid scene name',
+    });
   }
 
   if (!findSceneInProject(session.project, sceneId)) {
@@ -96,7 +100,52 @@ export const renameScene = (
     session,
     (project) => {
       const scene = project.scenes.find((item) => item.id === sceneId)!;
-      scene.name = trimmed;
+      scene.name = parsed.data;
+    },
+    ctx,
+  );
+};
+
+export const moveSceneRelative = (
+  session: StudioSession,
+  sceneId: SceneId,
+  direction: 'up' | 'down' | 'top' | 'bottom',
+  ctx: CommandContext,
+): StudioResult<StudioSession> => {
+  const ready = assertInitialized(session);
+  if (!ready.ok) {
+    return ready;
+  }
+  if (!session.project) {
+    return portErr({ kind: 'no-project' });
+  }
+
+  const fromIndex = session.project.scenes.findIndex((scene) => scene.id === sceneId);
+  if (fromIndex === -1) {
+    return portErr({ kind: 'scene-not-found', sceneId });
+  }
+
+  const lastIndex = session.project.scenes.length - 1;
+  let targetIndex = fromIndex;
+  if (direction === 'up') {
+    targetIndex = Math.max(0, fromIndex - 1);
+  } else if (direction === 'down') {
+    targetIndex = Math.min(lastIndex, fromIndex + 1);
+  } else if (direction === 'top') {
+    targetIndex = 0;
+  } else {
+    targetIndex = lastIndex;
+  }
+
+  if (fromIndex === targetIndex) {
+    return { ok: true, value: session };
+  }
+
+  return withClonedProject(
+    session,
+    (project) => {
+      const [item] = project.scenes.splice(fromIndex, 1);
+      project.scenes.splice(targetIndex, 0, item!);
     },
     ctx,
   );
@@ -215,4 +264,36 @@ export const deleteScene = (
   }
 
   return { ok: true, value: nextSession };
+};
+
+export const setSceneDefaultTransition = (
+  session: StudioSession,
+  sceneId: SceneId,
+  transitionId: TransitionId | null,
+  ctx: CommandContext,
+): StudioResult<StudioSession> => {
+  const ready = assertInitialized(session);
+  if (!ready.ok) {
+    return ready;
+  }
+  if (!session.project) {
+    return portErr({ kind: 'no-project' });
+  }
+
+  if (!findSceneInProject(session.project, sceneId)) {
+    return portErr({ kind: 'scene-not-found', sceneId });
+  }
+
+  if (transitionId && !session.project.transitions.some((transition) => transition.id === transitionId)) {
+    return portErr({ kind: 'transition-not-found', transitionId });
+  }
+
+  return withClonedProject(
+    session,
+    (project) => {
+      const scene = project.scenes.find((item) => item.id === sceneId)!;
+      scene.settings.defaultTransitionId = transitionId;
+    },
+    ctx,
+  );
 };

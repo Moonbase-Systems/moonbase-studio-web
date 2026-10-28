@@ -1,22 +1,51 @@
-import type { ElementId, SceneId, SourceId } from '../models/ids.domain';
+import type { AudioMaster } from '../models/audio.domain';
+import type { HistoryEntry } from '../models/history.domain';
+import type {
+  AssetId,
+  ChannelId,
+  ElementId,
+  GroupId,
+  HistoryEntryId,
+  SceneId,
+  SourceId,
+  TransitionId,
+} from '../models/ids.domain';
 import type { Project, ProjectType } from '../models/project.domain';
 import {
+  addAsset,
+  addAudioChannel,
+  addElementToGroup,
   addLayer,
   addSource,
+  addTransition,
   clearSelection,
   closeProject,
+  createGroupFromElements,
   createProject,
   createScene,
   deleteScene,
+  dissolveGroup,
   duplicateLayer,
   duplicateScene,
   findSource,
+  groupElementsByDrop,
   initializeSession,
   markProjectSaved,
+  moveElementBlock,
   moveLayer,
+  moveLayerRelative,
+  moveSceneRelative,
   openProject,
+  pushHistoryEntry,
+  redo,
+  removeAsset,
+  removeAudioChannel,
+  removeElementsFromGroup,
   removeLayer,
+  removeLayers,
   removeSource,
+  removeTransition,
+  renameGroup,
   renameLayer,
   renameScene,
   renameSource,
@@ -24,13 +53,26 @@ import {
   setActiveScene,
   setLayerLocked,
   setLayerVisibility,
+  setSceneDefaultTransition,
+  setSelectedLayers,
+  undo,
+  updateAsset,
+  updateAudioChannel,
+  updateAudioMaster,
   updateLayer,
+  updateProject,
+  updateTransition,
 } from './commands';
+import type { AssetChanges, AssetDraft } from './commands/asset-commands';
 import type { LayerUpdateChanges } from './commands/layer-commands';
+import type { AudioChannelChanges, AudioChannelDraft } from './commands/mixer-commands';
+import type { ProjectChanges } from './commands/project-commands';
 import type { SourceDefinition } from './commands/source-commands';
+import type { TransitionChanges, TransitionDraft } from './commands/transition-commands';
 import type { CommandContext } from './context';
 import { createDefaultCommandContext as defaultContext } from './context';
 import type { StudioResult } from './errors';
+import { captureHistorySnapshot, historySnapshotsEqual } from './history-snapshot';
 import { createEmptyStudioSession, type StudioSession } from './session';
 
 export type StudioSessionState = {
@@ -40,41 +82,118 @@ export type StudioSessionState = {
 
 export type StudioService = ReturnType<typeof createStudioService>;
 
+export type StudioRunOptions = {
+  recordHistory?: boolean;
+};
+
+const createHistoryEntry = (
+  before: NonNullable<ReturnType<typeof captureHistorySnapshot>>,
+  after: NonNullable<ReturnType<typeof captureHistorySnapshot>>,
+  context: CommandContext,
+): HistoryEntry => ({
+  id: context.generateId() as HistoryEntryId,
+  label: 'Edit',
+  timestamp: context.now(),
+  patch: { inverse: before, forward: after },
+});
+
 export const createStudioService = (deps: { state: StudioSessionState; context?: CommandContext }) => {
   const ctx = deps.context ?? defaultContext();
+  let historySuspended = false;
 
   const run = (
     command: (session: StudioSession, context: CommandContext) => StudioResult<StudioSession>,
+    options?: StudioRunOptions,
   ): StudioResult<StudioSession> => {
+    const recordHistory = options?.recordHistory ?? true;
     const current = deps.state.get();
+    const before = recordHistory && !historySuspended && current.project ? captureHistorySnapshot(current) : null;
     const result = command(current, ctx);
-    if (result.ok) {
-      deps.state.set(result.value);
+    if (!result.ok) {
+      return result;
     }
-    return result;
+
+    let next = result.value;
+    if (before) {
+      const after = captureHistorySnapshot(next);
+      if (after && !historySnapshotsEqual(before, after)) {
+        const pushed = pushHistoryEntry(next, createHistoryEntry(before, after, ctx), ctx);
+        if (pushed.ok) {
+          next = pushed.value;
+        }
+      }
+    }
+
+    deps.state.set(next);
+    return { ok: true, value: next };
   };
 
   const query = <T>(command: (session: StudioSession) => StudioResult<T>): StudioResult<T> => command(deps.state.get());
 
+  const runTransaction = (fn: () => StudioResult<StudioSession> | undefined): StudioResult<StudioSession> => {
+    const checkpoint = structuredClone(deps.state.get());
+    historySuspended = true;
+    let result: StudioResult<StudioSession> | undefined;
+    try {
+      result = fn();
+    } catch (error) {
+      historySuspended = false;
+      deps.state.set(checkpoint);
+      throw error;
+    }
+    historySuspended = false;
+
+    if (result && !result.ok) {
+      deps.state.set(checkpoint);
+      return result;
+    }
+
+    const before = captureHistorySnapshot(checkpoint);
+    if (!before) {
+      return { ok: true, value: deps.state.get() };
+    }
+    const after = captureHistorySnapshot(deps.state.get());
+    if (after && !historySnapshotsEqual(before, after)) {
+      const pushed = pushHistoryEntry(deps.state.get(), createHistoryEntry(before, after, ctx), ctx);
+      if (!pushed.ok) {
+        deps.state.set(checkpoint);
+        return pushed;
+      }
+      deps.state.set(pushed.value);
+      return { ok: true, value: pushed.value };
+    }
+    return { ok: true, value: deps.state.get() };
+  };
+
   return {
     getSession: (): StudioSession => deps.state.get(),
 
-    initialize: () => run((session) => initializeSession(session)),
+    initialize: () => run((session) => initializeSession(session), { recordHistory: false }),
 
     createProject: (input?: { name?: string; type?: ProjectType }) =>
-      run((session, context) => createProject(session, input, context)),
+      run((session, context) => createProject(session, input, context), { recordHistory: false }),
 
-    openProject: (project: Project) => run((session, context) => openProject(session, project, context)),
+    openProject: (project: Project) =>
+      run((session, context) => openProject(session, project, context), { recordHistory: false }),
 
-    closeProject: () => run((session) => closeProject(session)),
+    closeProject: () => run((session) => closeProject(session), { recordHistory: false }),
 
-    markSaved: () => run((session) => markProjectSaved(session)),
+    markSaved: () => run((session) => markProjectSaved(session), { recordHistory: false }),
 
-    setActiveScene: (sceneId: SceneId) => run((session) => setActiveScene(session, sceneId)),
+    undo: () => run((session, context) => undo(session, context), { recordHistory: false }),
 
-    selectLayer: (layerId: ElementId) => run((session) => selectLayer(session, layerId)),
+    redo: () => run((session, context) => redo(session, context), { recordHistory: false }),
 
-    clearSelection: () => run((session) => clearSelection(session)),
+    runTransaction,
+
+    setActiveScene: (sceneId: SceneId) => run((session) => setActiveScene(session, sceneId), { recordHistory: false }),
+
+    selectLayer: (layerId: ElementId) => run((session) => selectLayer(session, layerId), { recordHistory: false }),
+
+    setSelectedLayers: (layerIds: ElementId[]) =>
+      run((session) => setSelectedLayers(session, layerIds), { recordHistory: false }),
+
+    clearSelection: () => run((session) => clearSelection(session), { recordHistory: false }),
 
     createScene: (name?: string) => run((session, context) => createScene(session, name, context)),
 
@@ -84,6 +203,9 @@ export const createStudioService = (deps: { state: StudioSessionState; context?:
     duplicateScene: (sceneId: SceneId) => run((session, context) => duplicateScene(session, sceneId, context)),
 
     deleteScene: (sceneId: SceneId) => run((session, context) => deleteScene(session, sceneId, context)),
+
+    moveSceneRelative: (sceneId: SceneId, direction: 'up' | 'down' | 'top' | 'bottom') =>
+      run((session, context) => moveSceneRelative(session, sceneId, direction, context)),
 
     addLayer: (
       sceneId: SceneId,
@@ -98,6 +220,30 @@ export const createStudioService = (deps: { state: StudioSessionState; context?:
     removeLayer: (sceneId: SceneId, layerId: ElementId) =>
       run((session, context) => removeLayer(session, sceneId, layerId, context)),
 
+    removeLayers: (sceneId: SceneId, layerIds: ElementId[]) =>
+      run((session, context) => removeLayers(session, sceneId, layerIds, context)),
+
+    createGroupFromElements: (sceneId: SceneId, elementIds: ElementId[], name?: string) =>
+      run((session, context) => createGroupFromElements(session, sceneId, elementIds, context, { name })),
+
+    addElementToGroup: (sceneId: SceneId, elementId: ElementId, groupId: GroupId) =>
+      run((session, context) => addElementToGroup(session, sceneId, elementId, groupId, context)),
+
+    groupElementsByDrop: (
+      sceneId: SceneId,
+      draggedElementId: ElementId,
+      target: { kind: 'element'; elementId: ElementId } | { kind: 'group'; groupId: GroupId },
+    ) => run((session, context) => groupElementsByDrop(session, sceneId, draggedElementId, target, context)),
+
+    removeElementsFromGroup: (sceneId: SceneId, elementIds: ElementId[]) =>
+      run((session, context) => removeElementsFromGroup(session, sceneId, elementIds, context)),
+
+    dissolveGroup: (sceneId: SceneId, groupId: GroupId) =>
+      run((session, context) => dissolveGroup(session, sceneId, groupId, context)),
+
+    renameGroup: (sceneId: SceneId, groupId: GroupId, name: string) =>
+      run((session, context) => renameGroup(session, sceneId, groupId, name, context)),
+
     renameLayer: (sceneId: SceneId, layerId: ElementId, name: string) =>
       run((session, context) => renameLayer(session, sceneId, layerId, name, context)),
 
@@ -110,11 +256,24 @@ export const createStudioService = (deps: { state: StudioSessionState; context?:
     moveLayer: (sceneId: SceneId, layerId: ElementId, targetIndex: number) =>
       run((session, context) => moveLayer(session, sceneId, layerId, targetIndex, context)),
 
+    moveElementBlock: (
+      sceneId: SceneId,
+      elementIds: ElementId[],
+      anchorElementId: ElementId,
+      place: 'before' | 'after',
+    ) => run((session, context) => moveElementBlock(session, sceneId, elementIds, anchorElementId, place, context)),
+
+    moveLayerRelative: (sceneId: SceneId, layerId: ElementId, direction: 'up' | 'down' | 'top' | 'bottom') =>
+      run((session, context) => moveLayerRelative(session, sceneId, layerId, direction, context)),
+
     setLayerVisibility: (sceneId: SceneId, layerId: ElementId, visible: boolean) =>
       run((session, context) => setLayerVisibility(session, sceneId, layerId, visible, context)),
 
     setLayerLocked: (sceneId: SceneId, layerId: ElementId, locked: boolean) =>
       run((session, context) => setLayerLocked(session, sceneId, layerId, locked, context)),
+
+    setSceneDefaultTransition: (sceneId: SceneId, transitionId: TransitionId | null) =>
+      run((session, context) => setSceneDefaultTransition(session, sceneId, transitionId, context)),
 
     addSource: (definition: SourceDefinition) => run((session, context) => addSource(session, definition, context)),
 
@@ -124,6 +283,34 @@ export const createStudioService = (deps: { state: StudioSessionState; context?:
     findSource: (sourceId: SourceId) => query((session) => findSource(session, sourceId)),
 
     removeSource: (sourceId: SourceId) => run((session, context) => removeSource(session, sourceId, context)),
+
+    updateProject: (changes: ProjectChanges) => run((session, context) => updateProject(session, changes, context)),
+
+    addAsset: (draft: AssetDraft) => run((session, context) => addAsset(session, draft, context)),
+
+    updateAsset: (assetId: AssetId, changes: AssetChanges) =>
+      run((session, context) => updateAsset(session, assetId, changes, context)),
+
+    removeAsset: (assetId: AssetId) => run((session, context) => removeAsset(session, assetId, context)),
+
+    updateAudioMaster: (changes: Partial<AudioMaster>) =>
+      run((session, context) => updateAudioMaster(session, changes, context)),
+
+    addAudioChannel: (draft: AudioChannelDraft) => run((session, context) => addAudioChannel(session, draft, context)),
+
+    updateAudioChannel: (channelId: ChannelId, changes: AudioChannelChanges) =>
+      run((session, context) => updateAudioChannel(session, channelId, changes, context)),
+
+    removeAudioChannel: (channelId: ChannelId) =>
+      run((session, context) => removeAudioChannel(session, channelId, context)),
+
+    addTransition: (draft: TransitionDraft) => run((session, context) => addTransition(session, draft, context)),
+
+    updateTransition: (transitionId: TransitionId, changes: TransitionChanges) =>
+      run((session, context) => updateTransition(session, transitionId, changes, context)),
+
+    removeTransition: (transitionId: TransitionId) =>
+      run((session, context) => removeTransition(session, transitionId, context)),
   };
 };
 

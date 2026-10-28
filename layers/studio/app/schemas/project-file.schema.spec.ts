@@ -11,7 +11,7 @@ describe('projectFileSchema', () => {
 
   it('rejects an invalid project file missing required fields', () => {
     const result = projectFileSchema.safeParse({
-      formatVersion: 1,
+      formatVersion: 2,
       project: { id: 'x' },
     });
     expect(result.success).toBe(false);
@@ -121,29 +121,28 @@ describe('projectFileSchema', () => {
     expect(result.success).toBe(false);
   });
 
-  it('accepts typed element effects', () => {
+  it('accepts typed element effects and crop on element', () => {
     const file = createProjectFileWithSources();
-    file.project.scenes[0]!.elements[0]!.effects = [
-      {
-        id: 'fx-crop',
-        type: 'crop',
-        enabled: true,
-        parameters: { top: 0.1, right: 0.1, bottom: 0.1, left: 0.1 },
-      },
+    const element = file.project.scenes[0]!.elements[0]!;
+    element.crop = { top: 0.1, right: 0.1, bottom: 0.1, left: 0.1 };
+    element.effects = [
       {
         id: 'fx-chroma',
+        name: 'Chroma key',
         type: 'chroma-key',
         enabled: true,
         parameters: { keyColor: '#00ff00', similarity: 0.4, smoothness: 0.1, spill: 0.05 },
       },
       {
         id: 'fx-color',
+        name: 'Color',
         type: 'color-correction',
         enabled: false,
-        parameters: { brightness: 0.1, contrast: 0, saturation: 0.2, hue: 15 },
+        parameters: { brightness: 0.1, contrast: 0, saturation: 0.2, hue: 15, gamma: 1, temperature: 0 },
       },
       {
         id: 'fx-blur',
+        name: 'Blur',
         type: 'blur',
         enabled: true,
         parameters: { radius: 4 },
@@ -154,11 +153,12 @@ describe('projectFileSchema', () => {
     expect(result.success).toBe(true);
   });
 
-  it('rejects unsupported effect types and invalid parameters', () => {
+  it('rejects unsupported effect types and invalid crop', () => {
     const file = createProjectFileWithSources();
     file.project.scenes[0]!.elements[0]!.effects = [
       {
         id: 'fx-bad',
+        name: 'Bad',
         type: 'glow',
         enabled: true,
         parameters: {},
@@ -168,14 +168,8 @@ describe('projectFileSchema', () => {
     const unsupported = projectFileSchema.safeParse(file);
     expect(unsupported.success).toBe(false);
 
-    file.project.scenes[0]!.elements[0]!.effects = [
-      {
-        id: 'fx-crop-bad',
-        type: 'crop',
-        enabled: true,
-        parameters: { top: 2, right: 0, bottom: 0, left: 0 },
-      },
-    ];
+    file.project.scenes[0]!.elements[0]!.effects = [];
+    file.project.scenes[0]!.elements[0]!.crop = { top: 2, right: 0, bottom: 0, left: 0 };
 
     const invalidParams = projectFileSchema.safeParse(file);
     expect(invalidParams.success).toBe(false);

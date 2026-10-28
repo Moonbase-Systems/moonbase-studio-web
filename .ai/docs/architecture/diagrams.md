@@ -69,30 +69,25 @@ Sources and assets are siblings of scenes under Project — not nested under Sce
 
 ```mermaid
 flowchart LR
-  UI["UI components"] --> EditorStore
-  UI --> ProjectStore
-  EditorStore -->|"undoable commands"| ProjectStore
-  EditorStore -->|"reads graph"| ProjectStore
-  ProjectStore -->|"serialize"| ProjectFile["ProjectFile formatVersion"]
-  ProjectFile -->|"import validate"| ProjectStore
+  UI["UI components"] --> Session["studioSession store"]
+  Session -->|"actions"| Service["createStudioService"]
+  Service -->|"commands"| Project["Project + EditorState"]
+  Service -->|"toProjectFile"| ProjectFile["ProjectFile formatVersion 2"]
+  ProjectFile -->|"parseProjectFile"| Service
+  ProjectFile --> Repository["SceneRepository"]
 ```
 
 ```mermaid
 flowchart TB
-  subgraph projectStore [ProjectStore]
-    meta[projectsMeta]
-    activeId[activeProjectId]
-    active[activeProject]
-    active --> hist[history past/future]
-    active --> doc[scenes sources assets mixer transitions settings]
+  subgraph studioSession [studioSession]
+    project[project]
+    editor[editor]
+    dirty[isDirty]
+    project --> hist[history past/future]
+    project --> doc[scenes sources assets mixer transitions settings]
+    editor --> sel[selection]
+    editor --> view[viewport tool panels]
   end
-  subgraph editorStore [EditorStore]
-    sel[selection]
-    tool[tool]
-    view[viewport]
-    panels[panels]
-  end
-  editorStore -.->|"depends on"| projectStore
 ```
 
 ## 4. Scene transition flow
@@ -100,8 +95,8 @@ flowchart TB
 ```mermaid
 sequenceDiagram
   participant User
-  participant Editor as EditorStore
-  participant Project as ProjectStore
+  participant Editor as studioSession
+  participant Project as Project
   participant SceneA as Scene A
   participant Trans as Transition
   participant SceneB as Scene B

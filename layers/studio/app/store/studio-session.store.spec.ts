@@ -18,7 +18,8 @@ describe('useStudioSessionStore', () => {
     const created = store.createProject({ name: 'From Store' });
     expect(created.ok).toBe(true);
     expect(store.project?.name).toBe('From Store');
-    expect(store.activeSceneId).toBeTruthy();
+    expect(store.project?.scenes).toEqual([]);
+    expect(store.activeSceneId).toBeNull();
     expect(store.isDirty).toBe(false);
   });
 });

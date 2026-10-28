@@ -1,5 +1,7 @@
-import type { SourceId } from '../../models/ids.domain';
+import type { AssetId, SourceId } from '../../models/ids.domain';
+import type { Project } from '../../models/project.domain';
 import type {
+  AnimationSource,
   AudioSource,
   BrowserSource,
   CameraSource,
@@ -24,7 +26,8 @@ export type SourceDefinition =
   | Omit<VideoSource, 'id'>
   | Omit<TextSource, 'id'>
   | Omit<ShapeSource, 'id'>
-  | Omit<AudioSource, 'id'>;
+  | Omit<AudioSource, 'id'>
+  | Omit<AnimationSource, 'id'>;
 
 const collectSourceReferences = (session: StudioSession, sourceId: SourceId): StudioReference[] => {
   const project = session.project!;
@@ -45,6 +48,32 @@ const collectSourceReferences = (session: StudioSession, sourceId: SourceId): St
   }
 
   return references;
+};
+
+const ensureAssetForSource = (project: Project, source: Source, name: string): void => {
+  let assetId: AssetId | undefined;
+  let assetType: 'image' | 'video' | undefined;
+
+  if (source.type === 'image' || source.type === 'video') {
+    assetId = source.assetId;
+    assetType = source.type;
+  }
+
+  if (!assetId || !assetType) {
+    return;
+  }
+
+  if (project.assets.some((asset) => asset.id === assetId)) {
+    return;
+  }
+
+  project.assets.push({
+    id: assetId,
+    name,
+    type: assetType,
+    location: { kind: 'storageKey', key: 'pending/image' },
+    availability: 'missing',
+  });
 };
 
 export const addSource = (
@@ -70,6 +99,7 @@ export const addSource = (
   return withClonedProject(
     session,
     (project) => {
+      ensureAssetForSource(project, source, trimmed);
       project.sources.push(source);
     },
     ctx,

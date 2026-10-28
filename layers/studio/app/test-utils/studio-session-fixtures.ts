@@ -1,3 +1,4 @@
+import { createScene } from '../application/commands/scene-commands';
 import { createProject, initializeSession, openProject } from '../application/commands/session-commands';
 import { createTestCommandContext } from '../application/context';
 import { createEmptyStudioSession, type StudioSession } from '../application/session';
@@ -36,7 +37,12 @@ export const createSessionWithProject = (
     throw new Error('Failed to create project fixture');
   }
 
-  return { session: created.value, ctx };
+  const withScene = createScene(created.value, 'Scene 1', ctx);
+  if (!withScene.ok) {
+    throw new Error('Failed to create scene fixture');
+  }
+
+  return { session: withScene.value, ctx };
 };
 
 export const openValidProjectSession = (): StudioSession => {

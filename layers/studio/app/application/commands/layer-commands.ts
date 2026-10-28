@@ -1,10 +1,17 @@
-import type { Appearance, ElementEffect, Transform2D } from '../../models/common.domain';
+import type { Appearance, ElementCrop, ElementEffect, Transform2D } from '../../models/common.domain';
 import type { ElementId, SceneId, SourceId } from '../../models/ids.domain';
 import { createSourceBackedElement, type OverlayContent, type SceneElement } from '../../models/scene-element.domain';
 import { portErr } from '../../ports/result';
+import { displayNameSchema } from '../../schemas/display-name.schema';
+import {
+  appearanceSchema,
+  elementCropSchema,
+  transform2DSchema,
+} from '../../schemas/scene-elements/element-shared.schema';
 import { assertInitialized, commitProjectChange, withClonedProject } from '../command-utils';
 import type { CommandContext } from '../context';
 import type { StudioResult } from '../errors';
+import { mergeElementSettings } from '../merge-element-settings';
 import { duplicateSceneElement } from '../scene-clone';
 import { findLayerInScene, findSceneInProject, type StudioSession } from '../session';
 import { selectLayer } from './session-commands';
@@ -14,8 +21,10 @@ const ALLOWED_LAYER_UPDATE_KEYS = new Set([
   'visibility',
   'locked',
   'transform',
+  'crop',
   'appearance',
   'effects',
+  'settings',
   'content',
 ]);
 
@@ -24,8 +33,10 @@ export type LayerUpdateChanges = {
   visibility?: boolean;
   locked?: boolean;
   transform?: Partial<Transform2D>;
+  crop?: Partial<ElementCrop>;
   appearance?: Partial<Appearance>;
   effects?: ElementEffect[];
+  settings?: Record<string, unknown>;
   content?: OverlayContent;
 };
 
@@ -61,11 +72,14 @@ const applyLayerUpdate = (element: SceneElement, changes: LayerUpdateChanges): S
   }
 
   if (changes.name !== undefined) {
-    const trimmed = changes.name.trim();
-    if (!trimmed) {
-      return portErr({ kind: 'invalid-argument', message: 'Layer name cannot be empty' });
+    const parsed = displayNameSchema.safeParse(changes.name);
+    if (!parsed.success) {
+      return portErr({
+        kind: 'invalid-argument',
+        message: parsed.error.issues[0]?.message ?? 'Invalid layer name',
+      });
     }
-    element.name = trimmed;
+    element.name = parsed.data;
   }
 
   if (changes.visibility !== undefined) {
@@ -77,11 +91,46 @@ const applyLayerUpdate = (element: SceneElement, changes: LayerUpdateChanges): S
   }
 
   if (changes.transform) {
-    element.transform = { ...element.transform, ...changes.transform };
+    const merged = { ...element.transform, ...changes.transform };
+    const parsed = transform2DSchema.safeParse(merged);
+    if (!parsed.success) {
+      return portErr({
+        kind: 'invalid-argument',
+        message: parsed.error.issues[0]?.message ?? 'Invalid transform',
+      });
+    }
+    element.transform = parsed.data;
+  }
+
+  if (changes.crop) {
+    const merged = { ...element.crop, ...changes.crop };
+    const parsed = elementCropSchema.safeParse(merged);
+    if (!parsed.success) {
+      return portErr({
+        kind: 'invalid-argument',
+        message: parsed.error.issues[0]?.message ?? 'Invalid crop',
+      });
+    }
+    element.crop = parsed.data;
   }
 
   if (changes.appearance) {
-    element.appearance = { ...element.appearance, ...changes.appearance };
+    const merged = { ...element.appearance, ...changes.appearance };
+    const parsed = appearanceSchema.safeParse(merged);
+    if (!parsed.success) {
+      return portErr({
+        kind: 'invalid-argument',
+        message: parsed.error.issues[0]?.message ?? 'Invalid appearance',
+      });
+    }
+    element.appearance = parsed.data;
+  }
+
+  if (changes.settings) {
+    const merged = mergeElementSettings(element, changes.settings);
+    if (!merged.ok) {
+      return merged;
+    }
   }
 
   if (changes.effects) {
@@ -193,6 +242,7 @@ export const removeLayer = (
       for (const group of targetScene.groups) {
         group.elementIds = group.elementIds.filter((id) => id !== layerId);
       }
+      targetScene.groups = targetScene.groups.filter((group) => group.elementIds.length > 0);
     },
     ctx,
   );
@@ -409,16 +459,88 @@ export const moveLayer = (
     return { ok: true, value: session };
   }
 
+  return moveElementBlock(
+    session,
+    sceneId,
+    [layerId],
+    layerId === scene.elements[targetIndex]?.id ? layerId : scene.elements[targetIndex]!.id,
+    fromIndex < targetIndex ? 'after' : 'before',
+    ctx,
+  );
+};
+
+/**
+ * Moves `elementIds` as one block to sit before or after `anchorElementId`.
+ * The anchor must not be part of the block. Member order inside groups follows the scene array.
+ */
+export const moveElementBlock = (
+  session: StudioSession,
+  sceneId: SceneId,
+  elementIds: ElementId[],
+  anchorElementId: ElementId,
+  place: 'before' | 'after',
+  ctx: CommandContext,
+): StudioResult<StudioSession> => {
+  const ready = assertInitialized(session);
+  if (!ready.ok) {
+    return ready;
+  }
+  if (!session.project) {
+    return portErr({ kind: 'no-project' });
+  }
+
+  const scene = findSceneInProject(session.project, sceneId);
+  if (!scene) {
+    return portErr({ kind: 'scene-not-found', sceneId });
+  }
+
+  const uniqueIds = [...new Set(elementIds)];
+  if (uniqueIds.length === 0) {
+    return portErr({ kind: 'invalid-argument', message: 'elementIds cannot be empty' });
+  }
+
+  if (uniqueIds.includes(anchorElementId)) {
+    return { ok: true, value: session };
+  }
+
+  for (const elementId of uniqueIds) {
+    if (!findLayerInScene(scene, elementId)) {
+      return portErr({ kind: 'layer-not-found', sceneId, layerId: elementId });
+    }
+  }
+
+  if (!findLayerInScene(scene, anchorElementId)) {
+    return portErr({ kind: 'layer-not-found', sceneId, layerId: anchorElementId });
+  }
+
   return withClonedProject(
     session,
     (project) => {
       const targetScene = project.scenes.find((item) => item.id === sceneId)!;
-      const currentIndex = targetScene.elements.findIndex((element) => element.id === layerId);
-      const [item] = targetScene.elements.splice(currentIndex, 1);
-      targetScene.elements.splice(targetIndex, 0, item!);
+      const moving = new Set(uniqueIds);
+      const block = targetScene.elements.filter((element) => moving.has(element.id));
+      const rest = targetScene.elements.filter((element) => !moving.has(element.id));
+      let index = rest.findIndex((element) => element.id === anchorElementId);
+      if (place === 'after') {
+        index += 1;
+      }
+      targetScene.elements = [...rest.slice(0, index), ...block, ...rest.slice(index)];
+      syncGroupMemberOrder(targetScene);
     },
     ctx,
   );
+};
+
+const syncGroupMemberOrder = (scene: {
+  elements: { id: ElementId; parentGroupId: string | null }[];
+  groups: { id: string; elementIds: ElementId[] }[];
+}) => {
+  for (const group of scene.groups) {
+    group.elementIds = scene.elements
+      .filter((element) => element.parentGroupId === group.id)
+      .map((element) => element.id);
+  }
+  scene.groups = scene.groups.filter((group) => group.elementIds.length > 0);
 };
 
 export const setLayerVisibility = (
@@ -433,6 +555,62 @@ export const setLayerVisibility = (
     return ready;
   }
   return mutateLayerWithoutLockGate(session, sceneId, layerId, { visibility: visible }, ctx);
+};
+
+export const removeLayers = (
+  session: StudioSession,
+  sceneId: SceneId,
+  layerIds: ElementId[],
+  ctx: CommandContext,
+): StudioResult<StudioSession> => {
+  let current = session;
+  for (const layerId of layerIds) {
+    const result = removeLayer(current, sceneId, layerId, ctx);
+    if (!result.ok) {
+      return result;
+    }
+    current = result.value;
+  }
+  return { ok: true, value: current };
+};
+
+export const moveLayerRelative = (
+  session: StudioSession,
+  sceneId: SceneId,
+  layerId: ElementId,
+  direction: 'up' | 'down' | 'top' | 'bottom',
+  ctx: CommandContext,
+): StudioResult<StudioSession> => {
+  const ready = assertInitialized(session);
+  if (!ready.ok) {
+    return ready;
+  }
+  if (!session.project) {
+    return portErr({ kind: 'no-project' });
+  }
+
+  const scene = findSceneInProject(session.project, sceneId);
+  if (!scene) {
+    return portErr({ kind: 'scene-not-found', sceneId });
+  }
+
+  const fromIndex = scene.elements.findIndex((element) => element.id === layerId);
+  if (fromIndex === -1) {
+    return portErr({ kind: 'layer-not-found', sceneId, layerId });
+  }
+
+  let targetIndex = fromIndex;
+  if (direction === 'up') {
+    targetIndex = Math.min(scene.elements.length - 1, fromIndex + 1);
+  } else if (direction === 'down') {
+    targetIndex = Math.max(0, fromIndex - 1);
+  } else if (direction === 'top') {
+    targetIndex = scene.elements.length - 1;
+  } else {
+    targetIndex = 0;
+  }
+
+  return moveLayer(session, sceneId, layerId, targetIndex, ctx);
 };
 
 export const setLayerLocked = (

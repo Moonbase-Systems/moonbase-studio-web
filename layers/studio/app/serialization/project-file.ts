@@ -1,8 +1,9 @@
 import { createEmptyHistory } from '../models/history.domain';
 import type { Project, ProjectFile } from '../models/project.domain';
 import { projectFileSchema } from '../schemas/project-file.schema';
+import { migrateProjectFileV1ToV2 } from './project-file-migrate-v1-v2';
 
-export const CURRENT_PROJECT_FILE_FORMAT_VERSION = 1 as const;
+export const CURRENT_PROJECT_FILE_FORMAT_VERSION = 2 as const;
 
 export type ProjectFileParseError = {
   kind: 'validation';
@@ -14,7 +15,7 @@ export type ProjectFileParseResult =
   | { ok: false; error: ProjectFileParseError };
 
 /**
- * v1 has no migrations yet. Future versions bump formatVersion and transform here.
+ * v1 files are upgraded to v2 (crop on element, per-type settings, extended transform, effect names).
  */
 export const migrateProjectFile = (raw: unknown): unknown => {
   if (raw === null || typeof raw !== 'object' || Array.isArray(raw)) {
@@ -22,8 +23,8 @@ export const migrateProjectFile = (raw: unknown): unknown => {
   }
 
   const candidate = raw as { formatVersion?: unknown };
-  if (candidate.formatVersion === CURRENT_PROJECT_FILE_FORMAT_VERSION) {
-    return raw;
+  if (candidate.formatVersion === 1) {
+    return migrateProjectFileV1ToV2(raw);
   }
 
   return raw;

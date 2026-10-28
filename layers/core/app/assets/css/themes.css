@@ -1,6 +1,7 @@
 html.theme-dark {
   /* Background #050004 */
   --color-surface: 5 0 4;
+  --color-surface-container: 28 28 28;
 
   /* TextColor1 #ffffff */
   --color-on-surface: 255 255 255;
@@ -10,4 +11,8 @@ html.theme-dark {
 
   /* Accent #22ff86 */
   --color-accent: 34 255 134;
+
+  /* Add-element panel categories */
+  --color-category-layout: 0 229 255;
+  --color-category-interactive: 255 0 204;
 }
