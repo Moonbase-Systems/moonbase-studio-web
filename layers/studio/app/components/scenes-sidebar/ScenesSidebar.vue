@@ -126,7 +126,7 @@ function handleKeyDown(event: KeyboardEvent) {
 
 <template>
   <aside class="flex h-full min-h-0 w-full flex-col">
-    <h2 class="text-body-md text-accent shrink-0 text-center font-medium">
+    <h2 class="text-heading-md text-accent shrink-0 text-center font-medium">
       {{ t('studio.sceneList.title') }}
     </h2>
 
