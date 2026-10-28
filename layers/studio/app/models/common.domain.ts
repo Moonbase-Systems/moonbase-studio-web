@@ -1,3 +1,5 @@
+export type BlendMode = 'normal' | 'multiply' | 'screen' | 'add';
+
 export type Transform2D = {
   x: number;
   y: number;
@@ -6,63 +8,32 @@ export type Transform2D = {
   scaleX: number;
   scaleY: number;
   rotation: number;
+  anchorX: number;
+  anchorY: number;
+  flipX: boolean;
+  flipY: boolean;
+  keepAspectRatio: boolean;
 };
+
+export type ElementCrop = {
+  left: number;
+  right: number;
+  top: number;
+  bottom: number;
+};
+
+export const createDefaultElementCrop = (): ElementCrop => ({
+  left: 0,
+  right: 0,
+  top: 0,
+  bottom: 0,
+});
 
 export type Appearance = {
   opacity: number;
-  blendMode?: string;
+  blendMode?: BlendMode;
 };
 
-type ElementEffectBase = {
-  id: string;
-  enabled: boolean;
-};
+export type FitMode = 'contain' | 'cover' | 'fill' | 'none';
 
-export type CropEffectParameters = {
-  top: number;
-  right: number;
-  bottom: number;
-  left: number;
-};
-
-export type ChromaKeyEffectParameters = {
-  keyColor: string;
-  similarity: number;
-  smoothness: number;
-  spill: number;
-};
-
-export type ColorCorrectionEffectParameters = {
-  brightness: number;
-  contrast: number;
-  saturation: number;
-  hue: number;
-};
-
-export type BlurEffectParameters = {
-  radius: number;
-};
-
-export type CropEffect = ElementEffectBase & {
-  type: 'crop';
-  parameters: CropEffectParameters;
-};
-
-export type ChromaKeyEffect = ElementEffectBase & {
-  type: 'chroma-key';
-  parameters: ChromaKeyEffectParameters;
-};
-
-export type ColorCorrectionEffect = ElementEffectBase & {
-  type: 'color-correction';
-  parameters: ColorCorrectionEffectParameters;
-};
-
-export type BlurEffect = ElementEffectBase & {
-  type: 'blur';
-  parameters: BlurEffectParameters;
-};
-
-export type ElementEffect = CropEffect | ChromaKeyEffect | ColorCorrectionEffect | BlurEffect;
-
-export type ElementEffectType = ElementEffect['type'];
+export { type ElementEffect, type ElementEffectType } from './effects';

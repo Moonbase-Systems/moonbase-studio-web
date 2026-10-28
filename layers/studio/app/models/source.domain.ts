@@ -1,4 +1,9 @@
 import type { AssetId, SourceId } from './ids.domain';
+import type { CameraSource } from './sources/camera-source.domain';
+import type { ScreenSource } from './sources/screen-source.domain';
+
+export type { CameraSource, CameraSourceSettings } from './sources/camera-source.domain';
+export type { ScreenCaptureTarget, ScreenSource, ScreenSourceSettings } from './sources/screen-source.domain';
 
 export type SourceType = 'camera' | 'screen' | 'image' | 'video' | 'text' | 'shape' | 'audio' | 'browser' | 'animation';
 
@@ -28,18 +33,6 @@ export type BrowserSource = SourceBase & {
   width: number;
   height: number;
   refreshSettings: BrowserRefreshSettings;
-};
-
-export type CameraSource = SourceBase & {
-  type: 'camera';
-  deviceId?: string;
-  settings?: Record<string, unknown>;
-};
-
-export type ScreenSource = SourceBase & {
-  type: 'screen';
-  displayId?: string;
-  settings?: Record<string, unknown>;
 };
 
 export type ImageSource = SourceBase & {
