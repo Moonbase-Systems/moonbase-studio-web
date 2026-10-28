@@ -10,7 +10,7 @@ moonbase-core  (external, shared UI primitives + design system)
 layers/core           (app-level infrastructure: $api plugin, proxy, store keys)
     ↓  used by
 layers/auth           (auth logic: store, middleware, services — no UI yet)
-layers/studio         (studio domain models + Zod; ProjectStore/EditorStore TBD)
+layers/studio         (studio domain, commands, studioSession store)
     ↓  used by
 app/                  (global layouts, root composables, shared constants)
 ```
