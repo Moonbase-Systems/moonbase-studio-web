@@ -37,11 +37,13 @@
       "discardTitle": "Odrzucić niezapisane zmiany?",
       "emptyCatalog": "Brak zapisanych projektów.",
       "invalidFile": "Plik projektu jest niepoprawny albo ma nieobsługiwaną wersję.",
+      "invalidProjectName": "Nazwa musi mieć od 1 do 128 znaków.",
       "new": "Nowy",
       "notFound": "Nie znaleziono zapisanego projektu.",
       "open": "Otwórz",
       "openFailed": "Nie udało się otworzyć projektu.",
       "openTitle": "Otwórz projekt",
+      "renameProject": "Zmień nazwę projektu",
       "save": "Zapisz",
       "saveFailed": "Nie udało się zapisać projektu.",
       "saved": "Zapisano"

@@ -37,11 +37,13 @@
       "discardTitle": "Discard unsaved changes?",
       "emptyCatalog": "No saved projects.",
       "invalidFile": "This project file is invalid or uses an unsupported format.",
+      "invalidProjectName": "Name must be between 1 and 128 characters.",
       "new": "New",
       "notFound": "Saved project was not found.",
       "open": "Open",
       "openFailed": "Could not open the project.",
       "openTitle": "Open project",
+      "renameProject": "Rename project",
       "save": "Save",
       "saveFailed": "Could not save the project.",
       "saved": "Saved"
