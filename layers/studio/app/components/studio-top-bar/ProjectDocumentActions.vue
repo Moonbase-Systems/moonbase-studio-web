@@ -26,22 +26,114 @@ const {
   saveProject,
   openProject,
 } = useProjectDocument();
+
+const renaming = ref(false);
+const nameDraft = ref('');
+const nameError = ref<string | null>(null);
+const nameInputRef = ref<HTMLInputElement | null>(null);
+
+watch(
+  () => store.project?.name,
+  (name) => {
+    if (!renaming.value && name) {
+      nameDraft.value = name;
+    }
+  },
+  { immediate: true },
+);
+
+function startRename() {
+  if (!store.project || renaming.value) {
+    return;
+  }
+  nameDraft.value = store.project.name;
+  nameError.value = null;
+  renaming.value = true;
+  void nextTick(() => {
+    nameInputRef.value?.focus();
+    nameInputRef.value?.select();
+  });
+}
+
+function cancelRename() {
+  renaming.value = false;
+  nameError.value = null;
+  nameDraft.value = store.project?.name ?? '';
+}
+
+function commitRename() {
+  if (!renaming.value || !store.project) {
+    return;
+  }
+  const trimmed = nameDraft.value.trim();
+  if (trimmed === store.project.name) {
+    cancelRename();
+    return;
+  }
+  const result = store.updateProject({ name: trimmed });
+  if (!result.ok) {
+    nameError.value = t('studio.document.invalidProjectName');
+    void nextTick(() => {
+      nameInputRef.value?.focus();
+    });
+    return;
+  }
+  nameError.value = null;
+  renaming.value = false;
+}
+
+function onRenameKeydown(event: KeyboardEvent) {
+  if (event.key === 'Enter') {
+    event.preventDefault();
+    commitRename();
+  }
+  if (event.key === 'Escape') {
+    event.preventDefault();
+    cancelRename();
+  }
+}
 </script>
 
 <template>
   <div class="gap-sm ml-auto flex min-w-0 items-center">
-    <p
+    <div
       v-if="store.project"
-      class="text-body-sm font-roboto text-on-surface truncate"
+      class="min-w-0 max-w-[14rem]"
     >
-      {{ store.project.name }}
-      <span
-        v-if="store.isDirty"
-        class="text-accent"
+      <input
+        v-if="renaming"
+        ref="nameInputRef"
+        v-model="nameDraft"
+        type="text"
+        maxlength="128"
+        class="text-body-sm font-roboto text-on-surface border-on-surface-dim/40 bg-surface-container rounded-x-sm px-xx-sm focus:border-accent h-7 w-full min-w-0 border outline-none"
+        :aria-label="t('studio.document.renameProject')"
+        :aria-invalid="nameError ? true : undefined"
+        @keydown="onRenameKeydown"
+        @blur="commitRename"
+      />
+      <button
+        v-else
+        type="button"
+        class="text-body-sm font-roboto text-on-surface hover:text-accent focus-visible:ring-accent rounded-x-sm max-w-full truncate text-left outline-none focus-visible:ring-2"
+        :title="t('studio.document.renameProject')"
+        @click="startRename"
       >
-        •
-      </span>
-    </p>
+        {{ store.project.name }}
+        <span
+          v-if="store.isDirty"
+          class="text-accent"
+        >
+          •
+        </span>
+      </button>
+      <p
+        v-if="nameError"
+        class="text-body-x-sm text-error mt-x-tiny truncate"
+      >
+        {{ nameError }}
+      </p>
+    </div>
 
     <BaseTextButton
       :text="t('studio.document.new')"
