@@ -57,7 +57,28 @@ const contextMenuListeners = {
   delete: () => interaction.deleteSelected(),
   group: () => interaction.groupSelected(),
   rename: () => interaction.beginRename(),
+  duplicate: () => interaction.duplicateSelected(),
+  moveUp: () => interaction.moveSelected('up'),
+  moveDown: () => interaction.moveSelected('down'),
+  moveTop: () => interaction.moveSelected('top'),
+  moveBottom: () => interaction.moveSelected('bottom'),
 };
+
+function toggleElementVisibility(elementId: ElementId) {
+  const element = elementById(elementId);
+  if (!element) {
+    return;
+  }
+  store.setLayerVisibility(props.scene.id, elementId, !element.visibility);
+}
+
+function toggleElementLocked(elementId: ElementId) {
+  const element = elementById(elementId);
+  if (!element) {
+    return;
+  }
+  store.setLayerLocked(props.scene.id, elementId, !element.locked);
+}
 
 function isGroupOpen(groupId: GroupId) {
   return openGroups[groupId] ?? true;
@@ -187,6 +208,11 @@ function groupMemberIconKinds(elementIds: ElementId[]): SceneElementType[] {
               :label="root.element.name"
               :icon-kind="root.element.type"
               :selected="interaction.isElementSelected(root.element.id)"
+              :visible="root.element.visibility"
+              :locked="root.element.locked"
+              show-layer-controls
+              :visibility-label="t('studio.properties.fields.visible')"
+              :lock-label="t('studio.properties.fields.locked')"
               :zone="interaction.dropZoneFor(elementTarget(root.element.id))"
               :editing="isEditing('element', root.element.id)"
               :draft="draftValue()"
@@ -196,6 +222,8 @@ function groupMemberIconKinds(elementIds: ElementId[]): SceneElementType[] {
               @commit="interaction.commitRename()"
               @cancel="interaction.cancelRename()"
               @delete="removeElement(scene.id, root.element.id)"
+              @toggle-visibility="toggleElementVisibility(root.element.id)"
+              @toggle-locked="toggleElementLocked(root.element.id)"
             />
           </div>
         </SceneLayerContextMenu>
@@ -267,6 +295,11 @@ function groupMemberIconKinds(elementIds: ElementId[]): SceneElementType[] {
                   :label="elementById(elementId)!.name"
                   :icon-kind="elementById(elementId)!.type"
                   :selected="interaction.isElementSelected(elementId)"
+                  :visible="elementById(elementId)!.visibility"
+                  :locked="elementById(elementId)!.locked"
+                  show-layer-controls
+                  :visibility-label="t('studio.properties.fields.visible')"
+                  :lock-label="t('studio.properties.fields.locked')"
                   :zone="interaction.dropZoneFor(elementTarget(elementId))"
                   :editing="isEditing('element', elementId)"
                   :draft="draftValue()"
@@ -276,6 +309,8 @@ function groupMemberIconKinds(elementIds: ElementId[]): SceneElementType[] {
                   @commit="interaction.commitRename()"
                   @cancel="interaction.cancelRename()"
                   @delete="removeElement(scene.id, elementId)"
+                  @toggle-visibility="toggleElementVisibility(elementId)"
+                  @toggle-locked="toggleElementLocked(elementId)"
                 />
               </div>
             </SceneLayerContextMenu>

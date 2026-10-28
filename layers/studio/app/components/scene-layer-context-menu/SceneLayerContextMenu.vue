@@ -14,6 +14,11 @@ const emit = defineEmits<{
   delete: [];
   group: [];
   rename: [];
+  duplicate: [];
+  moveUp: [];
+  moveDown: [];
+  moveTop: [];
+  moveBottom: [];
 }>();
 
 const store = useStudioSessionStore();
@@ -22,6 +27,8 @@ const { t } = useI18n();
 const scene = computed(() => store.project?.scenes.find((item) => item.id === props.sceneId));
 
 const canDelete = computed(() => store.selectedLayerIds.length > 0);
+
+const canDuplicate = computed(() => store.selectedLayerIds.length === 1);
 
 const canGroup = computed(() => {
   const current = scene.value;
@@ -48,6 +55,8 @@ const canRename = computed(() => {
     (group) => group.elementIds.length === selected.length && group.elementIds.every((id) => selected.includes(id)),
   );
 });
+
+const canReorder = computed(() => store.selectedLayerIds.length > 0);
 
 const itemClass =
   'cursor-pointer rounded-x-sm px-sm py-xx-sm font-roboto text-body-sm text-on-surface outline-none data-[highlighted]:bg-surface-inverted/10 data-[disabled]:pointer-events-none data-[disabled]:opacity-40';
@@ -76,6 +85,13 @@ const itemClass =
         </ContextMenuItem>
         <ContextMenuItem
           :class="itemClass"
+          :disabled="!canDuplicate"
+          @select="emit('duplicate')"
+        >
+          {{ t('studio.contextMenu.duplicate') }}
+        </ContextMenuItem>
+        <ContextMenuItem
+          :class="itemClass"
           :disabled="!canGroup"
           @select="emit('group')"
         >
@@ -87,6 +103,34 @@ const itemClass =
           @select="emit('rename')"
         >
           {{ t('studio.contextMenu.rename') }}
+        </ContextMenuItem>
+        <ContextMenuItem
+          :class="itemClass"
+          :disabled="!canReorder"
+          @select="emit('moveUp')"
+        >
+          {{ t('studio.contextMenu.moveUp') }}
+        </ContextMenuItem>
+        <ContextMenuItem
+          :class="itemClass"
+          :disabled="!canReorder"
+          @select="emit('moveDown')"
+        >
+          {{ t('studio.contextMenu.moveDown') }}
+        </ContextMenuItem>
+        <ContextMenuItem
+          :class="itemClass"
+          :disabled="!canReorder"
+          @select="emit('moveTop')"
+        >
+          {{ t('studio.contextMenu.moveTop') }}
+        </ContextMenuItem>
+        <ContextMenuItem
+          :class="itemClass"
+          :disabled="!canReorder"
+          @select="emit('moveBottom')"
+        >
+          {{ t('studio.contextMenu.moveBottom') }}
         </ContextMenuItem>
       </ContextMenuContent>
     </ContextMenuPortal>
