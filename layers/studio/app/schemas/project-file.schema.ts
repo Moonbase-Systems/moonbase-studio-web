@@ -1,68 +1,10 @@
 import { z } from 'zod';
 
-import { displayNameSchema } from './display-name.schema';
+import { sceneAnimationSchema } from './scene-animation.schema';
+import { appearanceSchema, transform2DSchema } from './scene-elements/element-shared.schema';
+import { overlayElementSchema, sourceBackedElementSchema } from './scene-elements/scene-element.schema';
 
 const idSchema = z.string().min(1);
-
-const transform2DSchema = z.object({
-  x: z.number(),
-  y: z.number(),
-  width: z.number().positive(),
-  height: z.number().positive(),
-  scaleX: z.number(),
-  scaleY: z.number(),
-  rotation: z.number(),
-});
-
-const appearanceSchema = z.object({
-  opacity: z.number().min(0).max(1),
-  blendMode: z.string().optional(),
-});
-
-const elementEffectBaseFields = {
-  id: idSchema,
-  enabled: z.boolean(),
-};
-
-const elementEffectSchema = z.discriminatedUnion('type', [
-  z.object({
-    ...elementEffectBaseFields,
-    type: z.literal('crop'),
-    parameters: z.object({
-      top: z.number().min(0).max(1),
-      right: z.number().min(0).max(1),
-      bottom: z.number().min(0).max(1),
-      left: z.number().min(0).max(1),
-    }),
-  }),
-  z.object({
-    ...elementEffectBaseFields,
-    type: z.literal('chroma-key'),
-    parameters: z.object({
-      keyColor: z.string().min(1),
-      similarity: z.number().min(0).max(1),
-      smoothness: z.number().min(0).max(1),
-      spill: z.number().min(0).max(1),
-    }),
-  }),
-  z.object({
-    ...elementEffectBaseFields,
-    type: z.literal('color-correction'),
-    parameters: z.object({
-      brightness: z.number().min(-1).max(1),
-      contrast: z.number().min(-1).max(1),
-      saturation: z.number().min(-1).max(1),
-      hue: z.number().min(-180).max(180),
-    }),
-  }),
-  z.object({
-    ...elementEffectBaseFields,
-    type: z.literal('blur'),
-    parameters: z.object({
-      radius: z.number().min(0),
-    }),
-  }),
-]);
 
 const assetLocationSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('storageKey'), key: z.string().min(1) }),
@@ -86,18 +28,6 @@ const assetSchema = z.object({
     .optional(),
 });
 
-const sceneAnimationSchema = z.object({
-  id: idSchema,
-  assetId: idSchema,
-  mediaKind: z.enum(['gif', 'video']),
-  durationMs: z.number().positive().optional(),
-  settings: z.object({
-    loop: z.boolean().optional(),
-    playbackRate: z.number().positive().optional(),
-    fit: z.string().optional(),
-  }),
-});
-
 const browserRefreshSettingsSchema = z.object({
   intervalMs: z.number().positive().nullable(),
   refreshOnActivate: z.boolean(),
@@ -109,6 +39,17 @@ const sourceBaseFields = {
   name: z.string().min(1).max(128),
   metadata: z.object({ notes: z.string().optional() }).optional(),
 };
+
+const cameraSourceSettingsSchema = z.object({
+  width: z.number().positive().optional(),
+  height: z.number().positive().optional(),
+  frameRate: z.number().positive().optional(),
+  audioInputDeviceId: z.string().optional(),
+});
+
+const screenSourceSettingsSchema = z.object({
+  captureTarget: z.enum(['display', 'window']).optional(),
+});
 
 const sourceSchema = z.discriminatedUnion('type', [
   z.object({
@@ -123,13 +64,13 @@ const sourceSchema = z.discriminatedUnion('type', [
     ...sourceBaseFields,
     type: z.literal('camera'),
     deviceId: z.string().optional(),
-    settings: z.record(z.string(), z.unknown()).optional(),
+    settings: cameraSourceSettingsSchema.optional(),
   }),
   z.object({
     ...sourceBaseFields,
     type: z.literal('screen'),
     displayId: z.string().optional(),
-    settings: z.record(z.string(), z.unknown()).optional(),
+    settings: screenSourceSettingsSchema.optional(),
   }),
   z.object({
     ...sourceBaseFields,
@@ -174,36 +115,11 @@ const sourceSchema = z.discriminatedUnion('type', [
   }),
 ]);
 
-const sceneElementBaseFields = {
-  id: idSchema,
-  name: displayNameSchema,
-  parentGroupId: idSchema.nullable(),
-  transform: transform2DSchema,
-  appearance: appearanceSchema,
-  effects: z.array(elementEffectSchema),
-  visibility: z.boolean(),
-  locked: z.boolean(),
-};
-
-const sourceBackedElementSchema = z.object({
-  ...sceneElementBaseFields,
-  type: z.enum(['camera', 'screen', 'image', 'video', 'text', 'shape', 'browser', 'audioVisual', 'animation']),
-  sourceId: idSchema,
-});
-
-const overlayElementSchema = z.object({
-  ...sceneElementBaseFields,
-  type: z.literal('overlay'),
-  overlayKind: z.string().min(1),
-  content: z.record(z.string(), z.unknown()),
-  animations: z.array(sceneAnimationSchema),
-});
-
 const sceneElementSchema = z.union([sourceBackedElementSchema, overlayElementSchema]);
 
 const sceneGroupSchema = z.object({
   id: idSchema,
-  name: displayNameSchema,
+  name: z.string().min(1).max(128),
   type: z.string().min(1),
   elementIds: z.array(idSchema),
   transform: transform2DSchema,
@@ -394,7 +310,7 @@ const assertGroupMembershipInvariant = (scene: z.infer<typeof sceneSchema>, ctx:
 
 export const projectFileSchema = z
   .object({
-    formatVersion: z.literal(1),
+    formatVersion: z.literal(2),
     project: persistableProjectSchema,
   })
   .superRefine((file, ctx) => {
@@ -476,6 +392,30 @@ export const projectFileSchema = z
                 message: `studio.validation.unknownAsset:${anim.assetId}`,
               });
             }
+          }
+        }
+
+        if (
+          element.type === 'image' ||
+          element.type === 'video' ||
+          element.type === 'camera' ||
+          element.type === 'screen'
+        ) {
+          const maskId = element.settings.maskSourceId;
+          if (maskId && !sourceIds.has(maskId)) {
+            ctx.addIssue({
+              code: 'custom',
+              message: `studio.validation.unknownSource:${maskId}`,
+            });
+          }
+        }
+
+        for (const effect of element.effects) {
+          if (effect.type === 'mask' && !sourceIds.has(effect.parameters.sourceId)) {
+            ctx.addIssue({
+              code: 'custom',
+              message: `studio.validation.unknownSource:${effect.parameters.sourceId}`,
+            });
           }
         }
       }
