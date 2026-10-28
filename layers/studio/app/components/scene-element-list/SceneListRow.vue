@@ -24,6 +24,11 @@ const props = withDefaults(
     iconKind?: SceneListRowIconKind;
     /** Unique member types for a group row (shown instead of a folder icon). */
     iconKinds?: SceneListRowIconKind[];
+    visible?: boolean;
+    locked?: boolean;
+    showLayerControls?: boolean;
+    visibilityLabel?: string;
+    lockLabel?: string;
   }>(),
   {
     selected: false,
@@ -36,6 +41,11 @@ const props = withDefaults(
     expandable: false,
     open: false,
     toggleLabel: '',
+    visible: true,
+    locked: false,
+    showLayerControls: false,
+    visibilityLabel: '',
+    lockLabel: '',
   },
 );
 
@@ -43,6 +53,8 @@ const emit = defineEmits<{
   select: [event: MouseEvent];
   delete: [];
   toggle: [];
+  toggleVisibility: [];
+  toggleLocked: [];
   'update:draft': [value: string];
   commit: [];
   cancel: [];
@@ -116,9 +128,13 @@ const shellClass = computed(() =>
 const labelClass = computed(() =>
   cn(
     'min-w-0 flex-1 truncate py-xx-sm text-left font-roboto text-body-sm font-medium',
-    props.selected ? 'text-accent' : 'text-on-surface',
-    props.expandable ? 'pr-xx-lg' : 'group-hover/row:pr-lg',
+    props.selected ? 'text-accent' : props.visible === false ? 'text-on-surface-dim line-through' : 'text-on-surface',
+    props.expandable ? 'pr-xx-lg' : props.showLayerControls ? 'pr-xx-xl' : 'group-hover/row:pr-lg',
   ),
+);
+
+const layerControlsVisible = computed(
+  () => props.showLayerControls && (!props.visible || props.locked || props.selected),
 );
 
 function onCommit() {
@@ -201,9 +217,35 @@ function onRenameKeyDown(event: KeyboardEvent) {
       :class="
         expandable
           ? ''
-          : 'pointer-events-none opacity-0 group-hover/row:pointer-events-auto group-hover/row:opacity-100'
+          : layerControlsVisible
+            ? 'pointer-events-auto opacity-100'
+            : 'pointer-events-none opacity-0 group-hover/row:pointer-events-auto group-hover/row:opacity-100'
       "
     >
+      <template v-if="showLayerControls">
+        <BaseIconButton
+          :label="visibilityLabel"
+          :class="visible ? '' : 'opacity-100'"
+          @mousedown.stop
+          @click.stop="emit('toggleVisibility')"
+        >
+          <Icon
+            :name="visible ? 'mdi:eye-outline' : 'mdi:eye-off-outline'"
+            class="size-4"
+          />
+        </BaseIconButton>
+        <BaseIconButton
+          :label="lockLabel"
+          :class="locked ? 'opacity-100' : ''"
+          @mousedown.stop
+          @click.stop="emit('toggleLocked')"
+        >
+          <Icon
+            :name="locked ? 'mdi:lock' : 'mdi:lock-open-variant-outline'"
+            class="size-4"
+          />
+        </BaseIconButton>
+      </template>
       <BaseIconButton
         :label="deleteLabel"
         class="opacity-0 focus-visible:opacity-100 group-hover/row:opacity-100"
