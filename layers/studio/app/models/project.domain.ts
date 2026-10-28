@@ -67,7 +67,7 @@ export type ProjectMeta = {
 
 /** Persistable document — history always stripped. */
 export type ProjectFile = {
-  formatVersion: 1;
+  formatVersion: 2;
   project: Omit<Project, 'history'>;
 };
 
