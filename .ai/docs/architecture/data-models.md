@@ -47,7 +47,7 @@ All models are TypeScript `type`s in `layers/studio/app/models/` and validated b
 | `output`      | `ProjectOutputSettings` | yes      | intended output profile (not stream transport) |
 | `preferences` | `ProjectPreferences`    | yes      | editor defaults for this project               |
 
-Do not mix with `EditorStore` UI state (selection, open panels).
+Do not mix with editor state on `studioSession` (selection, open panels).
 
 ---
 
@@ -80,10 +80,10 @@ Do not mix with `EditorStore` UI state (selection, open panels).
 
 ## SceneSettings
 
-| Field                 | Type                   | Required | Notes                                                               |
-| --------------------- | ---------------------- | -------- | ------------------------------------------------------------------- |
-| `defaultTransitionId` | `TransitionId \| null` | yes      | project transition library                                          |
-| `active`              | `boolean`              | no       | optional hint; editor may track active scene in EditorStore instead |
+| Field                 | Type                   | Required | Notes                                                                       |
+| --------------------- | ---------------------- | -------- | --------------------------------------------------------------------------- |
+| `defaultTransitionId` | `TransitionId \| null` | yes      | project transition library                                                  |
+| `active`              | `boolean`              | no       | optional hint; the editor tracks the active scene on `studioSession.editor` |
 
 ---
 
@@ -330,12 +330,12 @@ Configuration only — no Web Audio nodes in the model.
 
 ```ts
 type ProjectFile = {
-  formatVersion: 1;
+  formatVersion: 2;
   project: Omit<Project, 'history'>;
 };
 ```
 
-On load: validate with Zod, attach empty `history: { past: [], future: [], limit }`.
+On load: migrate `formatVersion: 1` to v2, validate with Zod, attach empty `history: { past: [], future: [], limit }`. Unknown versions fail validation.
 
 ---
 

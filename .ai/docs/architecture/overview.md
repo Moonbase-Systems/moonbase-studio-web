@@ -4,7 +4,7 @@
 
 MoonBase Studio is a video scene composition application. Users manage multiple projects, build scenes from elements and groups, reuse image/audio sources, configure an audio mixer, and define enter/exit media plus transitions between scenes.
 
-This document describes the **domain data architecture** that later implementation will follow. It does not implement the editor UI or render/audio runtimes.
+This document describes the domain data architecture implemented in `layers/studio`. It does not describe a render or audio runtime.
 
 ## Layer placement
 
@@ -14,31 +14,30 @@ Studio domain code belongs in the Nuxt feature layer:
 moonbase-core          → shared UI / tokens
 layers/core            → app infrastructure ($api, STORE_KEYS)
 layers/auth            → authentication
-layers/studio          → studio domain models, schemas, (future stores/services)
+layers/studio          → studio domain models, schemas, commands, session store
 app/                   → global shell
 ```
 
-Domain models live under `layers/studio/app/models/`. Zod validation under `layers/studio/app/schemas/`. Documentation under `.ai/docs/architecture/` and `.ai/docs/requirements/`.
+Domain models live under `layers/studio/app/models/`. Zod validation under `layers/studio/app/schemas/`. The open document and editor state live in `useStudioSessionStore`. Documentation under `.ai/docs/architecture/` and `.ai/docs/requirements/`.
 
 ## Canonical ownership tree
 
 ```
-ProjectStore
+studioSession
 │
-├── projectsMeta[]          # catalog entries (id, name, type, updatedAt, …)
-├── activeProjectId
-└── activeProject → Project
-    ├── settings            → ProjectSettings
-    ├── scenes[]            → Scene
-    │   ├── elements[]      → SceneElement (incl. overlay, browser, …)
-    │   ├── groups[]        → SceneGroup
-    │   └── animations      → onEnter / onExit SceneAnimation
-    ├── sources[]           → Source (incl. browser)
-    ├── assets[]            → Asset (files only)
-    ├── audioMixer          → AudioMixer
-    ├── transitions[]       → Transition
-    ├── history             → session only (stripped on save)
-    └── metadata
+├── project → Project | null
+│   ├── settings            → ProjectSettings
+│   ├── scenes[]            → Scene
+│   │   ├── elements[]      → SceneElement (incl. overlay, browser, …)
+│   │   ├── groups[]        → SceneGroup
+│   │   └── animations      → onEnter / onExit SceneAnimation
+│   ├── sources[]           → Source (incl. browser)
+│   ├── assets[]            → Asset (files only)
+│   ├── audioMixer          → AudioMixer
+│   ├── transitions[]       → Transition
+│   ├── history             → session only (stripped on save)
+│   └── metadata
+└── editor → EditorState    # selection, viewport, tool; not in ProjectFile
 ```
 
 **Ownership vs references**
@@ -65,7 +64,7 @@ Sources and assets are **not** children of a scene. Elements and animations only
 ## Related docs
 
 - [data-models.md](./data-models.md) — field-level model spec
-- [stores.md](./stores.md) — ProjectStore / EditorStore
+- [stores.md](./stores.md) — `studioSession`
 - [diagrams.md](./diagrams.md) — Mermaid diagrams
 - [decisions.md](./decisions.md) — ADRs
 - [../requirements/user-stories.md](../requirements/user-stories.md) — user stories
