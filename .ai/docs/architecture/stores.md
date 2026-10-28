@@ -4,91 +4,80 @@ Pinia setup stores only. Keys registered in `layers/core/app/constants/store-key
 
 Domain types stay in `*.domain.ts`. Stores hold state and expose actions; they do not redefine the domain shape.
 
+The live editor store is `useStudioSessionStore` (`STORE_KEYS.STUDIO_SESSION`). It keeps one `StudioSession`: the open `Project` (including session-only `history`) and ephemeral `EditorState`. `STORE_KEYS.PROJECT` and `STORE_KEYS.EDITOR` are reserved and have no stores. Do not add a second project or editor store beside `studioSession`.
+
 ---
 
 ## Store map
 
-| Store key | Constant             | Persistable?                                  | Responsibility                                                   |
-| --------- | -------------------- | --------------------------------------------- | ---------------------------------------------------------------- |
-| `project` | `STORE_KEYS.PROJECT` | Document via `ProjectFile` (not cookie Pinia) | Catalog + active `Project` aggregate including session `history` |
-| `editor`  | `STORE_KEYS.EDITOR`  | No                                            | Selection, tools, viewport, panels                               |
+| Store key       | Constant                    | Persistable?                                                             | Responsibility                                                          |
+| --------------- | --------------------------- | ------------------------------------------------------------------------ | ----------------------------------------------------------------------- |
+| `studioSession` | `STORE_KEYS.STUDIO_SESSION` | No. The document is saved as `ProjectFile` v2 through `SceneRepository`. | Open project, editor selection and viewport, dirty flag, initialization |
+| `userSession`   | `STORE_KEYS.USER_SESSION`   | Cookie Pinia                                                             | Auth only                                                               |
+| `shortcuts`     | `STORE_KEYS.SHORTCUTS`      | No                                                                       | Keyboard bindings                                                       |
 
-**Not separate stores:** Scene, Source, Asset, AudioMixer, Transition, History — all fields of `Project` inside `ProjectStore`.
+`Project`, scenes, sources, assets, the mixer, transitions, and `history` are fields of the open project. They are not separate stores.
 
-Cookie persistence (`pinia-plugin-persistedstate`) remains appropriate for auth session only. Large project graphs must use explicit save/load (`ProjectFile`), not cookies.
+Cookie persistence stays limited to the auth session. Project graphs use explicit save/load (`ProjectFile`), not cookies.
 
 ---
 
-## ProjectStore
+## Studio session
 
 ### State
 
-| Field             | Type                | Notes                                                   |
-| ----------------- | ------------------- | ------------------------------------------------------- |
-| `projectsMeta`    | `ProjectMeta[]`     | Lightweight catalog (`id`, `name`, `type`, `updatedAt`) |
-| `activeProjectId` | `ProjectId \| null` |                                                         |
-| `activeProject`   | `Project \| null`   | Full aggregate when a project is open                   |
+| Field           | Type              | Notes                                                                       |
+| --------------- | ----------------- | --------------------------------------------------------------------------- |
+| `project`       | `Project \| null` | Aggregate including `history`. History is omitted from `ProjectFile`.       |
+| `editor`        | `EditorState`     | Selection, active scene, tool, viewport, panels. Not part of `ProjectFile`. |
+| `isDirty`       | `boolean`         | Cleared by `markSaved` and by `openProject` / `createProject`.              |
+| `isInitialized` | `boolean`         | Set by `initialize`.                                                        |
 
-### Intended operations (spec — not implemented yet)
-
-- `createProject(input)` → new Project + meta entry + set active
-- `openProject(id | ProjectFile)` → load, `history` empty, clear editor selection
-- `closeProject()` → clear active + history context
-- `renameProject` / `updateSettings`
-- Scene CRUD, element/group CRUD, source/asset CRUD
-- Mixer channel CRUD and level updates
-- Transition library CRUD
-- `pushHistory(entry)` / `undo` / `redo`
-- `serializeActiveProject(): ProjectFile` (omit history)
-- `importProjectFile(file)` (Zod validate)
-
-### Isolation rule
-
-Switching `activeProjectId` replaces `activeProject` entirely. Editor selection and any project-scoped UI reset. History belongs to the loaded project instance and does not leak across projects.
-
-### Persistence
-
-| Data                        | Where                                               |
-| --------------------------- | --------------------------------------------------- |
-| `Project` without `history` | `ProjectFile` (API / download / future local draft) |
-| `projectsMeta`              | May sync with backend list API later                |
-| `history`                   | Memory only                                         |
-
----
-
-## EditorStore
-
-### State (all ephemeral)
-
-| Field                | Type                    | Notes                               |
-| -------------------- | ----------------------- | ----------------------------------- |
-| `selectedElementIds` | `ElementId[]`           |                                     |
-| `selectedGroupIds`   | `GroupId[]`             |                                     |
-| `activeSceneId`      | `SceneId \| null`       | mirrors which scene is being edited |
-| `tool`               | `EditorTool`            | e.g. select, pan                    |
-| `viewport`           | `{ zoom, panX, panY }`  |                                     |
-| `panels`             | panel open/closed flags |                                     |
+The store does not export the session ref. Actions delegate to `createStudioService`. The committed session is frozen so UI code reads it and changes it only through those actions.
 
 ### Operations
 
-- selection setters, tool/viewport updates, panel toggles
-- `reset()` on project switch
+Implemented on the service and the store:
 
-Must not duplicate scene graph data that already lives on `activeProject`.
+- `initialize`, `createProject`, `openProject`, `closeProject`, `markSaved`
+- `updateProject` for name, type, description, and settings
+- scene CRUD, including `setSceneDefaultTransition`
+- element, group, and source CRUD
+- `addAsset` / `updateAsset` / `removeAsset`
+- mixer master and channel CRUD
+- transition library CRUD
+- `undo` / `redo`, `runTransaction`
+- selection and active scene (`recordHistory: false`)
+
+Save and load go through `createSceneRepository`. The browser adapter stores `ProjectFile` v2 in IndexedDB. `openProject` validates the file, drops history, and resets editor selection.
+
+### Isolation
+
+`createProject` and `openProject` replace the open project and start with an empty history. Editor selection is normalized against the loaded scenes. History does not leak across projects.
+
+### Persistence
+
+| Data                        | Where                                                    |
+| --------------------------- | -------------------------------------------------------- |
+| `Project` without `history` | `ProjectFile` (`formatVersion: 2`) via `SceneRepository` |
+| `history`                   | Memory only                                              |
+| catalog                     | `listProjects()` over saved files                        |
 
 ---
 
-## Collaboration between stores
+## Editor state
 
-```
-EditorStore  --commands / intents-->  ProjectStore (mutates Project + history)
-EditorStore  --reads-->               ProjectStore.activeProject
-```
+`EditorState` lives on the session, not in its own store.
 
-UI components call store actions (or thin composables). They never patch domain objects ad hoc without going through history when the change is undoable.
+| Field                | Type                   | Notes                                   |
+| -------------------- | ---------------------- | --------------------------------------- |
+| `selectedElementIds` | `ElementId[]`          |                                         |
+| `selectedGroupIds`   | `GroupId[]`            | Cleared when the document is normalized |
+| `activeSceneId`      | `SceneId \| null`      |                                         |
+| `tool`               | `EditorTool`           |                                         |
+| `viewport`           | `{ zoom, panX, panY }` |                                         |
+| `panels`             | panel flags            |                                         |
 
----
+Selection changes do not mark the project dirty and are not undo steps, except that an undo snapshot also restores the active scene and selection from the moment of the edit.
 
-## Future note
-
-When Pinia store files are added (`project.store.ts`, `editor.store.ts`), they will use `defineStore(STORE_KEYS.*, () => { ... })` setup style, matching `user-session.store.ts`. This architecture phase only registers keys and documents responsibilities.
+UI components call store actions or thin composables. They do not patch domain objects in place.

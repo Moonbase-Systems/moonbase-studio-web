@@ -1,10 +1,10 @@
 # Architectural Decisions — MoonBase Studio Domain
 
-## ADR-001: Single ProjectStore + EditorStore
+## ADR-001: Single studio session
 
-**Decision:** Persistable project state lives in one Pinia `ProjectStore`. Ephemeral UI state lives in `EditorStore`. No separate stores for scenes, sources, mixer, or history.
+**Decision:** Persistable project state and ephemeral editor state live in one Pinia store, `useStudioSessionStore` (`studioSession`). The document is `session.project`. Selection, tool, viewport, and panels are `session.editor`. There are no separate stores for scenes, sources, the mixer, or history. `STORE_KEYS.PROJECT` and `STORE_KEYS.EDITOR` stay unused.
 
-**Why:** Avoids duplicating the same project graph across stores and keeps project isolation simple (swap `activeProject`, reset editor + history).
+**Why:** One session avoids a second copy of the project graph. Replacing `project` on open or create also resets history. Editor state stays out of `ProjectFile`.
 
 ---
 
@@ -66,14 +66,14 @@
 
 ```ts
 type ProjectFile = {
-  formatVersion: 1;
+  formatVersion: 2;
   project: Omit<Project, 'history'>;
 };
 ```
 
-Validated with Zod on import. v1 has no migrations yet.
+Validated with Zod on import and on every committed document change. A `formatVersion: 1` file is migrated to v2 by `migrateProjectFile` before validation. Unknown versions fail validation.
 
-**Why:** Cookie Pinia is unsuitable for large scene graphs. Explicit versioning enables safe future schema changes.
+**Why:** Cookie Pinia is unsuitable for large scene graphs. Explicit versioning enables safe schema changes. The browser `SceneRepository` stores this file in IndexedDB; it is also the document a future runtime can load without editor state or history.
 
 ---
 

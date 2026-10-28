@@ -32,7 +32,7 @@ Priorities: **Must** / **Should** / **Could**.
 - When otwieram B
 - Then `activeProject` to B, historia B jest pusta (lub własna sesja B), zaznaczenie edytora zresetowane; stan A nie przenika do B
 
-**Models:** `Project`, `ProjectHistory`, EditorStore  
+**Models:** `Project`, `ProjectHistory`, `studioSession.editor`  
 **Priority:** Must  
 **Depends on:** US-PROJ-001
 
@@ -415,7 +415,7 @@ Priorities: **Must** / **Should** / **Could**.
 
 - Given aktywny projekt (nawet z historią sesji)
 - When serializuję
-- Then powstaje `ProjectFile` z `formatVersion: 1` i projektem **bez** `history`
+- Then powstaje `ProjectFile` z `formatVersion: 2` i projektem **bez** `history`
 
 **Models:** `ProjectFile`, `Project`  
 **Priority:** Must  
@@ -446,7 +446,7 @@ Priorities: **Must** / **Should** / **Could**.
 - When zapisuję
 - Then plik zawiera settings; nie zawiera selection/viewport/panels
 
-**Models:** `ProjectSettings`, EditorStore  
+**Models:** `ProjectSettings`, `studioSession.editor`  
 **Priority:** Must  
 **Depends on:** US-SAVE-001
 
