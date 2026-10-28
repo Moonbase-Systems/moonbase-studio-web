@@ -55,6 +55,7 @@ describe('layer commands', () => {
         effects: [
           {
             id: 'fx1',
+            name: 'Blur',
             type: 'blur',
             enabled: true,
             parameters: { radius: 2 },

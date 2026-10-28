@@ -1,11 +1,17 @@
-import type { Appearance, ElementEffect, Transform2D } from '../../models/common.domain';
+import type { Appearance, ElementCrop, ElementEffect, Transform2D } from '../../models/common.domain';
 import type { ElementId, SceneId, SourceId } from '../../models/ids.domain';
 import { createSourceBackedElement, type OverlayContent, type SceneElement } from '../../models/scene-element.domain';
 import { portErr } from '../../ports/result';
 import { displayNameSchema } from '../../schemas/display-name.schema';
+import {
+  appearanceSchema,
+  elementCropSchema,
+  transform2DSchema,
+} from '../../schemas/scene-elements/element-shared.schema';
 import { assertInitialized, commitProjectChange, withClonedProject } from '../command-utils';
 import type { CommandContext } from '../context';
 import type { StudioResult } from '../errors';
+import { mergeElementSettings } from '../merge-element-settings';
 import { duplicateSceneElement } from '../scene-clone';
 import { findLayerInScene, findSceneInProject, type StudioSession } from '../session';
 import { selectLayer } from './session-commands';
@@ -15,8 +21,10 @@ const ALLOWED_LAYER_UPDATE_KEYS = new Set([
   'visibility',
   'locked',
   'transform',
+  'crop',
   'appearance',
   'effects',
+  'settings',
   'content',
 ]);
 
@@ -25,8 +33,10 @@ export type LayerUpdateChanges = {
   visibility?: boolean;
   locked?: boolean;
   transform?: Partial<Transform2D>;
+  crop?: Partial<ElementCrop>;
   appearance?: Partial<Appearance>;
   effects?: ElementEffect[];
+  settings?: Record<string, unknown>;
   content?: OverlayContent;
 };
 
@@ -81,11 +91,46 @@ const applyLayerUpdate = (element: SceneElement, changes: LayerUpdateChanges): S
   }
 
   if (changes.transform) {
-    element.transform = { ...element.transform, ...changes.transform };
+    const merged = { ...element.transform, ...changes.transform };
+    const parsed = transform2DSchema.safeParse(merged);
+    if (!parsed.success) {
+      return portErr({
+        kind: 'invalid-argument',
+        message: parsed.error.issues[0]?.message ?? 'Invalid transform',
+      });
+    }
+    element.transform = parsed.data;
+  }
+
+  if (changes.crop) {
+    const merged = { ...element.crop, ...changes.crop };
+    const parsed = elementCropSchema.safeParse(merged);
+    if (!parsed.success) {
+      return portErr({
+        kind: 'invalid-argument',
+        message: parsed.error.issues[0]?.message ?? 'Invalid crop',
+      });
+    }
+    element.crop = parsed.data;
   }
 
   if (changes.appearance) {
-    element.appearance = { ...element.appearance, ...changes.appearance };
+    const merged = { ...element.appearance, ...changes.appearance };
+    const parsed = appearanceSchema.safeParse(merged);
+    if (!parsed.success) {
+      return portErr({
+        kind: 'invalid-argument',
+        message: parsed.error.issues[0]?.message ?? 'Invalid appearance',
+      });
+    }
+    element.appearance = parsed.data;
+  }
+
+  if (changes.settings) {
+    const merged = mergeElementSettings(element, changes.settings);
+    if (!merged.ok) {
+      return merged;
+    }
   }
 
   if (changes.effects) {
