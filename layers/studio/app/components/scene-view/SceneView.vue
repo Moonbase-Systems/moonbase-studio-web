@@ -71,23 +71,7 @@ watch(
   { flush: 'post' },
 );
 
-function onDocumentPointerDown(event: PointerEvent) {
-  const target = event.target;
-  if (!(target instanceof Element)) {
-    return;
-  }
-  if (target.closest('[data-scene-view], [data-scene-context-menu]')) {
-    return;
-  }
-  emit('deselect');
-}
-
-onMounted(() => {
-  document.addEventListener('pointerdown', onDocumentPointerDown);
-});
-
 onUnmounted(() => {
-  document.removeEventListener('pointerdown', onDocumentPointerDown);
   window.clearInterval(focusTimer);
 });
 

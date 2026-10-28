@@ -252,6 +252,14 @@ export function useSceneListInteraction(sceneId: SceneId, scene: () => Scene | u
     }
   }
 
+  function duplicateSelected() {
+    if (store.selectedLayerIds.length !== 1) {
+      return;
+    }
+    const elementId = store.selectedLayerIds[0]!;
+    store.duplicateLayer(sceneId, elementId);
+  }
+
   function groupMemberIds(groupId: GroupId) {
     const current = scene();
     const group = current?.groups.find((item) => item.id === groupId);
@@ -471,6 +479,7 @@ export function useSceneListInteraction(sceneId: SceneId, scene: () => Scene | u
     cancelRename,
     commitRename,
     moveSelected,
+    duplicateSelected,
     onDragStartElement,
     onDragStartGroup,
     onDragEnd,
