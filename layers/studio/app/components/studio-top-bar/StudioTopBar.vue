@@ -11,6 +11,8 @@ import {
   AlertDialogTrigger,
 } from 'reka-ui';
 
+import ProjectDocumentActions from './ProjectDocumentActions.vue';
+
 const { t } = useI18n();
 const localePath = useLocalePath();
 
@@ -60,5 +62,6 @@ async function leaveToHome() {
         </AlertDialogContent>
       </AlertDialogPortal>
     </AlertDialogRoot>
+    <ProjectDocumentActions />
   </header>
 </template>
