@@ -12,8 +12,8 @@ const SIDEBAR_MIN = 220;
 const SIDEBAR_MAX = 560;
 const SIDEBAR_DEFAULT = 256;
 const PREVIEW_MIN = 180;
-const PROPERTIES_MIN = 96;
-const PROPERTIES_DEFAULT = 148;
+const PROPERTIES_MIN = 160;
+const PROPERTIES_DEFAULT = 220;
 
 const store = useStudioSessionStore();
 const { t } = useI18n();

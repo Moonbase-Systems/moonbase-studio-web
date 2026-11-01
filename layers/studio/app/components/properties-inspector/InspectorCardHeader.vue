@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { cn } from '~/utils/index';
+import { cn, inspectorTypography } from '~/utils/index';
 
 import { useElementInspectorUpdate } from '../../composables/useElementInspectorUpdate';
 import type { SceneId } from '../../models/ids.domain';
@@ -11,17 +11,15 @@ import {
   sceneElementTypeTone,
 } from '../scene-element-list/scene-element-type-icons';
 
-const props = withDefaults(
-  defineProps<{
-    sceneId: SceneId;
-    element: SceneElement;
-    showName?: boolean;
-  }>(),
-  { showName: true },
-);
+const props = defineProps<{
+  sceneId: SceneId;
+  element: SceneElement;
+}>();
 
 const { t } = useI18n();
 const { applyUpdate } = useElementInspectorUpdate();
+
+const isText = computed(() => props.element.type === 'text');
 
 const nameDraft = ref(props.element.name);
 const nameError = ref<string | null>(null);
@@ -72,52 +70,91 @@ const iconToneClass = computed(() => {
       return 'text-on-surface';
   }
 });
+
+const fieldClass = cn(
+  inspectorTypography.standardSmall,
+  'h-[36px] border-0 bg-[color-mix(in_srgb,white_5%,#050004)] text-white outline-none',
+);
 </script>
 
 <template>
-  <div class="gap-sm flex min-w-0 items-center">
-    <Icon
-      :name="iconName"
+  <div
+    class="flex h-full min-w-0 flex-[460] flex-col items-center justify-center gap-[clamp(12px,4vh,41px)] overflow-hidden px-[54px] py-[9px]"
+  >
+    <span
+      class="size-[46.5px]"
+      :class="iconToneClass"
       :aria-label="iconLabel"
-      :class="cn('size-8 shrink-0', iconToneClass)"
-    />
-    <div
-      v-if="showName"
-      class="min-w-0 flex-1"
     >
+      <InspectorMaskIcon
+        v-if="isText || element.type === 'screen'"
+        :name="isText ? 'type-text' : 'type-screen'"
+      />
+      <Icon
+        v-else
+        :name="iconName"
+        class="size-full"
+      />
+    </span>
+    <div class="flex w-full max-w-[352px] flex-col">
       <input
         v-model="nameDraft"
-        class="font-roboto text-on-surface border-on-surface-dim/40 bg-surface-container h-6 w-full truncate rounded-sm border px-1.5 text-xs outline-none"
+        :class="cn(fieldClass, 'w-full px-[14px] text-left')"
         :aria-invalid="nameError ? true : undefined"
         @change="commitName"
         @keydown.enter="($event.target as HTMLInputElement).blur()"
       />
       <p
         v-if="nameError"
-        class="text-body-sm text-on-surface-dim"
+        class="text-on-surface-dim mt-tiny text-[10px] leading-none"
       >
         {{ nameError }}
       </p>
     </div>
-    <div class="gap-x-tiny flex shrink-0 items-center">
-      <BaseIconButton
-        :label="t('studio.properties.fields.visible')"
+    <div class="flex items-center gap-[17px] text-white">
+      <button
+        type="button"
+        class="size-[27px]"
+        :aria-label="t('studio.properties.fields.visible')"
+        :aria-pressed="element.visibility"
         @click="toggleVisibility"
       >
-        <Icon
-          :name="element.visibility ? 'mdi:eye-outline' : 'mdi:eye-off-outline'"
-          class="size-5"
+        <InspectorMaskIcon
+          :key="`eye-${element.visibility}`"
+          :name="element.visibility ? 'eye' : 'eye-hidden'"
+          class="inspector-state-icon"
         />
-      </BaseIconButton>
-      <BaseIconButton
-        :label="t('studio.properties.fields.locked')"
+      </button>
+      <button
+        type="button"
+        class="size-[27px]"
+        :aria-label="t('studio.properties.fields.locked')"
+        :aria-pressed="element.locked"
         @click="toggleLocked"
       >
-        <Icon
-          :name="element.locked ? 'mdi:lock' : 'mdi:lock-open-variant-outline'"
-          class="size-5"
+        <InspectorMaskIcon
+          :key="`lock-${element.locked}`"
+          :name="element.locked ? 'lock-closed' : 'lock-open'"
+          class="inspector-state-icon"
         />
-      </BaseIconButton>
+      </button>
     </div>
   </div>
 </template>
+
+<style scoped>
+.inspector-state-icon {
+  animation: inspector-state-in 180ms ease-out;
+}
+
+@keyframes inspector-state-in {
+  from {
+    opacity: 0.35;
+    transform: scale(0.82);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+</style>
