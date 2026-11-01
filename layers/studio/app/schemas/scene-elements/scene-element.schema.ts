@@ -66,6 +66,8 @@ export const textSettingsSchema = z
     strokeColor: z.string().nullable(),
     strokeWidth: z.number().min(0),
     shadow: textShadowSchema.nullable(),
+    underline: z.boolean().default(false),
+    strikethrough: z.boolean().default(false),
   })
   .strict();
 
