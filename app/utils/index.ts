@@ -1,1 +1,1 @@
-export { cn } from '#layers/moonbase-core/app/utils/index';
+export { cn, inspectorFieldTypography, inspectorTypography } from '#layers/moonbase-core/app/utils/index';

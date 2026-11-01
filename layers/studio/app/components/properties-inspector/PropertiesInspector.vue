@@ -1,10 +1,15 @@
 <script setup lang="ts">
-import { inspectorTabsForElementType } from '../../application/inspector-sections';
-import { useElementInspectorUpdate } from '../../composables/useElementInspectorUpdate';
 import { useStudioSessionStore } from '../../store/studio-session.store';
-import InspectorCardHeader from './InspectorCardHeader.vue';
-import InspectorCardPanelContent from './InspectorCardPanelContent.vue';
-import InspectorTabs from './InspectorTabs.vue';
+import AnimationLayerInspector from './inspectors/AnimationLayerInspector.vue';
+import AudioLayerInspector from './inspectors/AudioLayerInspector.vue';
+import BrowserLayerInspector from './inspectors/BrowserLayerInspector.vue';
+import CameraLayerInspector from './inspectors/CameraLayerInspector.vue';
+import ImageLayerInspector from './inspectors/ImageLayerInspector.vue';
+import OverlayLayerInspector from './inspectors/OverlayLayerInspector.vue';
+import ScreenLayerInspector from './inspectors/ScreenLayerInspector.vue';
+import ShapeLayerInspector from './inspectors/ShapeLayerInspector.vue';
+import TextLayerInspector from './inspectors/TextLayerInspector.vue';
+import VideoLayerInspector from './inspectors/VideoLayerInspector.vue';
 
 const store = useStudioSessionStore();
 
@@ -17,32 +22,6 @@ const selectedElement = computed(() => {
   return scene.elements.find((element) => element.id === id) ?? null;
 });
 
-const tabs = computed(() => {
-  const element = selectedElement.value;
-  if (!element) {
-    return [];
-  }
-  return inspectorTabsForElementType(element.type);
-});
-
-const activeTabId = ref('');
-
-watch(
-  () => selectedElement.value?.type,
-  () => {
-    activeTabId.value = tabs.value[0]?.id ?? '';
-  },
-  { immediate: true },
-);
-
-watch(tabs, (next) => {
-  if (!next.some((tab) => tab.id === activeTabId.value)) {
-    activeTabId.value = next[0]?.id ?? '';
-  }
-});
-
-const activeTab = computed(() => tabs.value.find((tab) => tab.id === activeTabId.value));
-
 const linkedSource = computed(() => {
   const element = selectedElement.value;
   if (!element || element.type === 'overlay') {
@@ -51,88 +30,66 @@ const linkedSource = computed(() => {
   const result = store.findSource(element.sourceId);
   return result.ok ? result.value : undefined;
 });
-
-const { updateSettings } = useElementInspectorUpdate();
-const textDraft = ref('');
-
-watch(
-  () => (selectedElement.value?.type === 'text' ? selectedElement.value.settings.text : ''),
-  (value) => {
-    textDraft.value = value;
-  },
-  { immediate: true },
-);
-
-function commitText() {
-  const element = selectedElement.value;
-  const sceneId = store.activeSceneId;
-  if (!element || element.type !== 'text' || !sceneId) {
-    return;
-  }
-  updateSettings(sceneId, element, { text: textDraft.value });
-}
-
-const centerPreview = computed(() => {
-  const element = selectedElement.value;
-  if (!element) {
-    return '';
-  }
-  if (element.type === 'text') {
-    return element.settings.text;
-  }
-  return element.name;
-});
 </script>
 
 <template>
   <div
-    class="bg-surface px-md flex h-full min-h-0 flex-col justify-center overflow-hidden"
+    class="flex h-full min-h-0 items-center justify-center gap-[10px] overflow-hidden bg-[#050004] p-[10px]"
     data-properties-inspector
     @pointerdown.stop
   >
-    <div
-      v-if="selectedElement && store.activeSceneId && activeTab"
-      class="gap-md flex items-center"
-    >
-      <div class="gap-x-sm flex w-[14rem] shrink-0 items-center">
-        <InspectorCardHeader
-          :scene-id="store.activeSceneId"
-          :element="selectedElement"
-          :show-name="selectedElement.type !== 'text'"
-        />
-        <input
-          v-if="selectedElement.type === 'text'"
-          v-model="textDraft"
-          type="text"
-          class="font-roboto text-on-surface border-on-surface-dim/40 bg-surface-container h-6 min-w-0 flex-1 rounded-sm border px-1.5 text-xs outline-none"
-          @change="commitText"
-        />
-      </div>
-
-      <p class="text-on-surface-dim px-md min-w-0 flex-1 truncate text-center text-[11px] leading-none">
-        {{ centerPreview }}
-      </p>
-
-      <div class="flex w-[22rem] shrink-0 flex-col items-end gap-0.5">
-        <InspectorTabs
-          v-if="tabs.length > 1"
-          v-model="activeTabId"
-          :tabs="tabs"
-        />
-        <div
-          class="grid w-full grid-cols-2 justify-items-end gap-x-3 gap-y-0.5"
-          role="tabpanel"
-        >
-          <InspectorCardPanelContent
-            v-for="panel in activeTab.panels"
-            :key="panel"
-            :scene-id="store.activeSceneId"
-            :element="selectedElement"
-            :panel="panel"
-            :linked-source="linkedSource"
-          />
-        </div>
-      </div>
-    </div>
+    <template v-if="selectedElement && store.activeSceneId">
+      <TextLayerInspector
+        v-if="selectedElement.type === 'text'"
+        :scene-id="store.activeSceneId"
+        :element="selectedElement"
+      />
+      <ScreenLayerInspector
+        v-else-if="selectedElement.type === 'screen'"
+        :scene-id="store.activeSceneId"
+        :element="selectedElement"
+        :linked-source="linkedSource"
+      />
+      <ImageLayerInspector
+        v-else-if="selectedElement.type === 'image'"
+        :scene-id="store.activeSceneId"
+        :element="selectedElement"
+      />
+      <CameraLayerInspector
+        v-else-if="selectedElement.type === 'camera'"
+        :scene-id="store.activeSceneId"
+        :element="selectedElement"
+      />
+      <VideoLayerInspector
+        v-else-if="selectedElement.type === 'video'"
+        :scene-id="store.activeSceneId"
+        :element="selectedElement"
+      />
+      <ShapeLayerInspector
+        v-else-if="selectedElement.type === 'shape'"
+        :scene-id="store.activeSceneId"
+        :element="selectedElement"
+      />
+      <AudioLayerInspector
+        v-else-if="selectedElement.type === 'audioVisual'"
+        :scene-id="store.activeSceneId"
+        :element="selectedElement"
+      />
+      <BrowserLayerInspector
+        v-else-if="selectedElement.type === 'browser'"
+        :scene-id="store.activeSceneId"
+        :element="selectedElement"
+      />
+      <AnimationLayerInspector
+        v-else-if="selectedElement.type === 'animation'"
+        :scene-id="store.activeSceneId"
+        :element="selectedElement"
+      />
+      <OverlayLayerInspector
+        v-else-if="selectedElement.type === 'overlay'"
+        :scene-id="store.activeSceneId"
+        :element="selectedElement"
+      />
+    </template>
   </div>
 </template>

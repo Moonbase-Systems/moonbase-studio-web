@@ -1,6 +1,6 @@
 import type { SceneElementType } from '../models/scene-element.domain';
 
-/** Content blocks rendered inside a property card tab. */
+/** Content blocks rendered inside a property card. */
 export type InspectorPanelId =
   | 'textPrimary'
   | 'textLayout'
@@ -16,149 +16,72 @@ export type InspectorPanelId =
   | 'effects'
   | 'sourceReadonly';
 
-export type InspectorTabId = string;
+export type InspectorRailId = 'source' | 'transform' | 'effects';
 
-export type InspectorTabDefinition = {
-  id: InspectorTabId;
+export type InspectorRailDefinition = {
+  id: InspectorRailId;
   labelKey: string;
-  panels: InspectorPanelId[];
 };
 
-const standardVisualTabs = (): InspectorTabDefinition[] => [
+const visualRails = (): InspectorRailDefinition[] => [
   {
-    id: 'visual',
-    labelKey: 'studio.properties.tabs.visual',
-    panels: ['visualFit'],
-  },
-  {
-    id: 'crop',
-    labelKey: 'studio.properties.tabs.crop',
-    panels: ['crop'],
+    id: 'source',
+    labelKey: 'studio.properties.rails.source',
   },
   {
     id: 'transform',
-    labelKey: 'studio.properties.tabs.transform',
-    panels: ['transform', 'appearance'],
+    labelKey: 'studio.properties.rails.transform',
   },
   {
     id: 'effects',
-    labelKey: 'studio.properties.tabs.effects',
-    panels: ['effects'],
+    labelKey: 'studio.properties.rails.effects',
   },
 ];
 
-export const inspectorTabsForElementType = (type: SceneElementType): InspectorTabDefinition[] => {
+export const inspectorRailsForElementType = (type: SceneElementType): InspectorRailDefinition[] => {
   switch (type) {
-    case 'text':
-      return [
-        {
-          id: 'text',
-          labelKey: 'studio.properties.tabs.text',
-          panels: ['textPrimary'],
-        },
-        {
-          id: 'layout',
-          labelKey: 'studio.properties.tabs.layout',
-          panels: ['textLayout'],
-        },
-        {
-          id: 'transformCrop',
-          labelKey: 'studio.properties.tabs.transformCrop',
-          panels: ['transform', 'crop', 'appearance'],
-        },
-        {
-          id: 'strokeFill',
-          labelKey: 'studio.properties.tabs.strokeFill',
-          panels: ['textStrokeFill'],
-        },
-      ];
-    case 'video':
-      return [
-        {
-          id: 'playback',
-          labelKey: 'studio.properties.tabs.playback',
-          panels: ['videoPlayback'],
-        },
-        {
-          id: 'visual',
-          labelKey: 'studio.properties.tabs.visual',
-          panels: ['visualFit', 'crop'],
-        },
-        {
-          id: 'transform',
-          labelKey: 'studio.properties.tabs.transform',
-          panels: ['transform', 'appearance'],
-        },
-        {
-          id: 'effects',
-          labelKey: 'studio.properties.tabs.effects',
-          panels: ['effects'],
-        },
-      ];
-    case 'image':
-      return standardVisualTabs();
-    case 'camera':
-      return standardVisualTabs();
-    case 'screen':
-      return standardVisualTabs();
-    case 'shape':
-      return [
-        {
-          id: 'shape',
-          labelKey: 'studio.properties.tabs.shape',
-          panels: ['shapePrimary'],
-        },
-        {
-          id: 'transform',
-          labelKey: 'studio.properties.tabs.transform',
-          panels: ['transform', 'appearance', 'crop'],
-        },
-      ];
     case 'audioVisual':
       return [
         {
-          id: 'mix',
-          labelKey: 'studio.properties.tabs.mix',
-          panels: ['audioMix'],
-        },
-        {
-          id: 'sync',
-          labelKey: 'studio.properties.tabs.sync',
-          panels: ['audioSync'],
+          id: 'source',
+          labelKey: 'studio.properties.rails.source',
         },
       ];
+    case 'text':
+      return visualRails().filter((rail) => rail.id !== 'effects');
+    case 'overlay':
+      return visualRails().filter((rail) => rail.id !== 'source');
+    default:
+      return visualRails();
+  }
+};
+
+export const inspectorPanelsForRail = (type: SceneElementType, railId: InspectorRailId): InspectorPanelId[] => {
+  if (railId === 'transform') {
+    return ['transform'];
+  }
+  if (railId === 'effects') {
+    return ['effects'];
+  }
+
+  switch (type) {
+    case 'text':
+      return ['textPrimary'];
+    case 'screen':
+    case 'image':
+    case 'camera':
+      return ['visualFit'];
+    case 'video':
+      return ['videoPlayback'];
+    case 'shape':
+      return ['shapePrimary'];
+    case 'audioVisual':
+      return ['audioMix'];
     case 'browser':
     case 'animation':
-      return [
-        {
-          id: 'source',
-          labelKey: 'studio.properties.tabs.source',
-          panels: ['sourceReadonly'],
-        },
-        {
-          id: 'transform',
-          labelKey: 'studio.properties.tabs.transform',
-          panels: ['transform', 'appearance', 'crop'],
-        },
-        {
-          id: 'effects',
-          labelKey: 'studio.properties.tabs.effects',
-          panels: ['effects'],
-        },
-      ];
+      return ['sourceReadonly'];
     case 'overlay':
-      return [
-        {
-          id: 'transform',
-          labelKey: 'studio.properties.tabs.transform',
-          panels: ['transform', 'appearance', 'crop'],
-        },
-        {
-          id: 'effects',
-          labelKey: 'studio.properties.tabs.effects',
-          panels: ['effects'],
-        },
-      ];
+      return [];
     default: {
       const exhaustive: never = type;
       return exhaustive;
@@ -166,4 +89,32 @@ export const inspectorTabsForElementType = (type: SceneElementType): InspectorTa
   }
 };
 
-export const inspectorShowsVisualSections = (type: SceneElementType): boolean => type !== 'audioVisual';
+export const inspectorCardTitleForRail = (railId: InspectorRailId, type: SceneElementType): string => {
+  if (railId === 'transform') {
+    return 'studio.properties.cardTitles.transformation';
+  }
+  if (railId === 'effects') {
+    return 'studio.properties.cardTitles.effects';
+  }
+  switch (type) {
+    case 'text':
+      return 'studio.properties.cardTitles.text';
+    case 'screen':
+      return 'studio.properties.cardTitles.screen';
+    case 'camera':
+      return 'studio.properties.cardTitles.camera';
+    case 'image':
+      return 'studio.properties.cardTitles.image';
+    case 'video':
+      return 'studio.properties.cardTitles.video';
+    case 'shape':
+      return 'studio.properties.cardTitles.shape';
+    case 'audioVisual':
+      return 'studio.properties.cardTitles.audio';
+    case 'browser':
+    case 'animation':
+      return 'studio.properties.cardTitles.source';
+    default:
+      return 'studio.properties.cardTitles.screen';
+  }
+};

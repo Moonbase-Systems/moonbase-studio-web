@@ -59,6 +59,18 @@
       "resize": "Resize preview"
     },
     "properties": {
+      "cardTitles": {
+        "audio": "Audio",
+        "camera": "Camera",
+        "effects": "Effects",
+        "image": "Image",
+        "screen": "Screen",
+        "shape": "Shape",
+        "source": "Source",
+        "text": "Text",
+        "transformation": "Transformation",
+        "video": "Video"
+      },
       "effectsEmpty": "No effects on this element.",
       "effectsHint": "Supported effect types: {types}",
       "emptySelection": "Select a scene element to edit its properties.",
@@ -116,8 +128,41 @@
         "x": "X",
         "y": "Y"
       },
+      "labels": {
+        "audio": "Audio",
+        "camera": "Camera",
+        "cursor": "Cursor",
+        "effects": "Effects",
+        "font": "Font",
+        "height": "Height",
+        "image": "Image",
+        "italic": "Italic",
+        "letters": "Letters",
+        "lines": "Lines",
+        "rotation": "Rotation",
+        "screen": "Screen",
+        "shape": "Shape",
+        "size": "Size",
+        "source": "Source",
+        "space": "Space",
+        "strike": "Strikethrough",
+        "style": "Style",
+        "text": "Text",
+        "transformation": "Transformation",
+        "underline": "Underline",
+        "video": "Video",
+        "weight": "Weight",
+        "width": "Width"
+      },
       "monitoringUnavailable": "Audio monitoring requires a playback engine (not available yet).",
       "multiSelection": "Multiple elements selected. Edit one element at a time.",
+      "noScreens": "No screens",
+      "previewUnavailable": "No preview",
+      "rails": {
+        "effects": "Effects",
+        "source": "Source",
+        "transform": "Transform"
+      },
       "resize": "Resize properties",
       "sections": {
         "appearance": "Appearance",

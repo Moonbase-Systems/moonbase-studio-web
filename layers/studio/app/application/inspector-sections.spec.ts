@@ -1,28 +1,31 @@
 import { describe, expect, it } from 'vitest';
 
-import { inspectorShowsVisualSections, inspectorTabsForElementType } from './inspector-sections';
+import { inspectorPanelsForRail, inspectorRailsForElementType } from './inspector-sections';
 
-describe('inspectorTabsForElementType', () => {
-  it('uses mix and sync tabs for audio elements without transform', () => {
-    const tabs = inspectorTabsForElementType('audioVisual');
-    expect(tabs.map((tab) => tab.id)).toEqual(['mix', 'sync']);
-    expect(inspectorShowsVisualSections('audioVisual')).toBe(false);
+describe('inspectorRailsForElementType', () => {
+  it('uses source rail only for audio elements', () => {
+    const rails = inspectorRailsForElementType('audioVisual');
+    expect(rails.map((rail) => rail.id)).toEqual(['source']);
   });
 
-  it('starts text elements with a primary text tab', () => {
-    const tabs = inspectorTabsForElementType('text');
-    expect(tabs[0]?.id).toBe('text');
-    expect(tabs[0]?.panels).toContain('textPrimary');
+  it('uses source and transform for text', () => {
+    expect(inspectorRailsForElementType('text').map((rail) => rail.id)).toEqual(['source', 'transform']);
   });
 
-  it('groups crop with visual settings on video elements', () => {
-    const visual = inspectorTabsForElementType('video').find((tab) => tab.id === 'visual');
-    expect(visual?.panels).toEqual(['visualFit', 'crop']);
+  it('uses three rails for visual elements without a separate crop rail', () => {
+    const rails = inspectorRailsForElementType('image').map((rail) => rail.id);
+    expect(rails).toEqual(['source', 'transform', 'effects']);
+    expect(rails).not.toContain('crop');
   });
 
-  it('includes separate crop tab for image elements', () => {
-    const tabs = inspectorTabsForElementType('image').map((tab) => tab.id);
-    expect(tabs).toContain('crop');
-    expect(tabs).toContain('visual');
+  it('maps transform rail to a single transform panel', () => {
+    expect(inspectorPanelsForRail('text', 'transform')).toEqual(['transform']);
+    expect(inspectorPanelsForRail('image', 'transform')).toEqual(['transform']);
+  });
+
+  it('maps source rail to the primary card for each type', () => {
+    expect(inspectorPanelsForRail('text', 'source')).toEqual(['textPrimary']);
+    expect(inspectorPanelsForRail('screen', 'source')).toEqual(['visualFit']);
+    expect(inspectorPanelsForRail('video', 'source')).toEqual(['videoPlayback']);
   });
 });

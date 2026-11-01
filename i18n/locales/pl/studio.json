@@ -59,6 +59,18 @@
       "resize": "Zmień wysokość podglądu"
     },
     "properties": {
+      "cardTitles": {
+        "audio": "Audio",
+        "camera": "Kamera",
+        "effects": "Efekty",
+        "image": "Obraz",
+        "screen": "Ekran",
+        "shape": "Kształt",
+        "source": "Źródło",
+        "text": "Tekst",
+        "transformation": "Transformacja",
+        "video": "Wideo"
+      },
       "effectsEmpty": "Brak efektów na tym elemencie.",
       "effectsHint": "Obsługiwane typy efektów: {types}",
       "emptySelection": "Wybierz element sceny, aby edytować właściwości.",
@@ -116,8 +128,41 @@
         "x": "X",
         "y": "Y"
       },
+      "labels": {
+        "audio": "Audio",
+        "camera": "Kamera",
+        "cursor": "Kursor",
+        "effects": "Efekty",
+        "font": "Krój",
+        "height": "Wysokość",
+        "image": "Obraz",
+        "italic": "Kursywa",
+        "letters": "Litery",
+        "lines": "Linie",
+        "rotation": "Obrót",
+        "screen": "Ekran",
+        "shape": "Kształt",
+        "size": "Rozmiar",
+        "source": "Źródło",
+        "space": "Odstęp",
+        "strike": "Skreślenie",
+        "style": "Styl",
+        "text": "Tekst",
+        "transformation": "Transformacja",
+        "underline": "Podkreślenie",
+        "video": "Wideo",
+        "weight": "Grubość",
+        "width": "Szerokość"
+      },
       "monitoringUnavailable": "Monitorowanie audio wymaga silnika odtwarzania (niedostępne w tej wersji).",
       "multiSelection": "Zaznaczono wiele elementów. Edycja dotyczy pojedynczego wyboru.",
+      "noScreens": "Brak ekranów",
+      "previewUnavailable": "Brak podglądu",
+      "rails": {
+        "effects": "Efekty",
+        "source": "Źródło",
+        "transform": "Transformacja"
+      },
       "resize": "Zmień wysokość właściwości",
       "sections": {
         "appearance": "Wygląd",
