@@ -34,6 +34,8 @@ export type TextElementSettings = {
   strokeColor: string | null;
   strokeWidth: number;
   shadow: TextShadowSettings | null;
+  underline: boolean;
+  strikethrough: boolean;
 };
 
 export type TextElement = SceneElementBase & {
@@ -62,4 +64,6 @@ export const createDefaultTextElementSettings = (initialText = ''): TextElementS
   strokeColor: null,
   strokeWidth: 0,
   shadow: null,
+  underline: false,
+  strikethrough: false,
 });
