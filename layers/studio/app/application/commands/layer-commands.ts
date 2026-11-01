@@ -1,6 +1,11 @@
 import type { Appearance, ElementCrop, ElementEffect, Transform2D } from '../../models/common.domain';
 import type { ElementId, SceneId, SourceId } from '../../models/ids.domain';
-import { createSourceBackedElement, type OverlayContent, type SceneElement } from '../../models/scene-element.domain';
+import {
+  createSourceBackedElement,
+  elementTypeForSource,
+  type OverlayContent,
+  type SceneElement,
+} from '../../models/scene-element.domain';
 import { portErr } from '../../ports/result';
 import { displayNameSchema } from '../../schemas/display-name.schema';
 import {
@@ -26,6 +31,7 @@ const ALLOWED_LAYER_UPDATE_KEYS = new Set([
   'effects',
   'settings',
   'content',
+  'sourceId',
 ]);
 
 export type LayerUpdateChanges = {
@@ -38,6 +44,7 @@ export type LayerUpdateChanges = {
   effects?: ElementEffect[];
   settings?: Record<string, unknown>;
   content?: OverlayContent;
+  sourceId?: SourceId;
 };
 
 const assertUniqueEffectIds = (effects: ElementEffect[]): StudioResult<void> => {
@@ -143,6 +150,16 @@ const applyLayerUpdate = (element: SceneElement, changes: LayerUpdateChanges): S
 
   if (changes.content !== undefined && element.type === 'overlay') {
     element.content = structuredClone(changes.content);
+  }
+
+  if (changes.sourceId !== undefined) {
+    if (element.type === 'overlay') {
+      return portErr({
+        kind: 'invalid-argument',
+        message: 'overlay layers have no source',
+      });
+    }
+    element.sourceId = changes.sourceId;
   }
 
   return { ok: true, value: undefined };
@@ -404,6 +421,25 @@ export const updateLayer = (
         kind: 'rule-violation',
         rule: 'layer-locked',
         message: 'Layer is locked',
+      });
+    }
+  }
+
+  if (changes.sourceId !== undefined) {
+    if (existing.type === 'overlay') {
+      return portErr({
+        kind: 'invalid-argument',
+        message: 'overlay layers have no source',
+      });
+    }
+    const nextSource = session.project.sources.find((item) => item.id === changes.sourceId);
+    if (!nextSource) {
+      return portErr({ kind: 'source-not-found', sourceId: changes.sourceId });
+    }
+    if (elementTypeForSource(nextSource) !== existing.type) {
+      return portErr({
+        kind: 'invalid-argument',
+        message: 'Source type does not match the layer',
       });
     }
   }
