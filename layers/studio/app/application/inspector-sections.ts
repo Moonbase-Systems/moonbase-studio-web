@@ -44,7 +44,11 @@ export const inspectorRailsForElementType = (type: SceneElementType): InspectorR
       return [
         {
           id: 'source',
-          labelKey: 'studio.properties.rails.source',
+          labelKey: 'studio.properties.rails.audio',
+        },
+        {
+          id: 'effects',
+          labelKey: 'studio.properties.rails.filters',
         },
       ];
     case 'text':
@@ -94,7 +98,7 @@ export const inspectorCardTitleForRail = (railId: InspectorRailId, type: SceneEl
     return 'studio.properties.cardTitles.transformation';
   }
   if (railId === 'effects') {
-    return 'studio.properties.cardTitles.effects';
+    return type === 'audioVisual' ? 'studio.properties.cardTitles.filters' : 'studio.properties.cardTitles.effects';
   }
   switch (type) {
     case 'text':

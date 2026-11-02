@@ -3,9 +3,9 @@ import { describe, expect, it } from 'vitest';
 import { inspectorPanelsForRail, inspectorRailsForElementType } from './inspector-sections';
 
 describe('inspectorRailsForElementType', () => {
-  it('uses source rail only for audio elements', () => {
+  it('uses audio and filters rails for audio elements', () => {
     const rails = inspectorRailsForElementType('audioVisual');
-    expect(rails.map((rail) => rail.id)).toEqual(['source']);
+    expect(rails.map((rail) => rail.id)).toEqual(['source', 'effects']);
   });
 
   it('uses source and transform for text', () => {
