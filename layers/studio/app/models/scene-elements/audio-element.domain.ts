@@ -6,6 +6,8 @@ export type AudioMonitoringMode = 'off' | 'monitor' | 'monitor-and-output';
 export type AudioElementSettings = {
   volume: number;
   muted: boolean;
+  solo: boolean;
+  gainDb: number;
   pan: number;
   syncOffsetMs: number;
   monitoring: AudioMonitoringMode;
@@ -20,6 +22,8 @@ export type AudioVisualElement = SceneElementBase & {
 export const createDefaultAudioElementSettings = (): AudioElementSettings => ({
   volume: 1,
   muted: false,
+  solo: false,
+  gainDb: 0,
   pan: 0,
   syncOffsetMs: 0,
   monitoring: 'off',
