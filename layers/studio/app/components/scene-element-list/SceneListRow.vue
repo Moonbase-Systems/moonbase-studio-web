@@ -29,6 +29,8 @@ const props = withDefaults(
     showLayerControls?: boolean;
     visibilityLabel?: string;
     lockLabel?: string;
+    /** Input level in dB (−60…0) for an audio layer. Draws a left-to-right gradient mask. */
+    levelDb?: number;
   }>(),
   {
     selected: false,
@@ -46,6 +48,7 @@ const props = withDefaults(
     showLayerControls: false,
     visibilityLabel: '',
     lockLabel: '',
+    levelDb: undefined,
   },
 );
 
@@ -137,6 +140,52 @@ const layerControlsVisible = computed(
   () => props.showLayerControls && (!props.visible || props.locked || props.selected),
 );
 
+const LEVEL_GRADIENT = 'linear-gradient(90deg,#22FF86 0%,#7adf4a 42%,#e6c84a 68%,#ff8a2a 82%,#ff3b3b 100%)';
+
+const textRef = ref<HTMLElement | null>(null);
+const textWidth = ref(0);
+
+const levelPercent = computed(() => {
+  if (props.levelDb === undefined) {
+    return 0;
+  }
+  const clamped = Math.min(0, Math.max(-60, props.levelDb));
+  return ((clamped + 60) / 60) * 100;
+});
+
+const maskWidth = computed(() => (textWidth.value * levelPercent.value) / 100);
+
+let labelObserver: ResizeObserver | undefined;
+
+function measureLabel() {
+  textWidth.value = textRef.value?.offsetWidth ?? 0;
+}
+
+function setTextEl(el: Element | ComponentPublicInstance | null) {
+  const node = el instanceof HTMLElement ? el : null;
+  textRef.value = node;
+  labelObserver?.disconnect();
+  labelObserver = undefined;
+  if (!node) {
+    textWidth.value = 0;
+    return;
+  }
+  measureLabel();
+  labelObserver = new ResizeObserver(measureLabel);
+  labelObserver.observe(node);
+}
+
+watch(
+  () => props.label,
+  () => {
+    void nextTick(measureLabel);
+  },
+);
+
+onBeforeUnmount(() => {
+  labelObserver?.disconnect();
+});
+
 function onCommit() {
   if (ignoreBlur) {
     ignoreBlur = false;
@@ -207,9 +256,27 @@ function onRenameKeyDown(event: KeyboardEvent) {
     />
     <span
       v-if="!editing"
-      :class="labelClass"
+      :class="cn(labelClass, levelDb !== undefined && 'relative')"
     >
-      {{ label }}
+      <span
+        :ref="setTextEl"
+        class="inline-block max-w-full truncate"
+      >
+        {{ label }}
+      </span>
+      <span
+        v-if="levelDb !== undefined && maskWidth > 0"
+        class="pointer-events-none absolute inset-y-0 left-0 overflow-hidden"
+        :style="{ width: `${maskWidth}px` }"
+        aria-hidden="true"
+      >
+        <span
+          class="py-xx-sm block whitespace-nowrap bg-clip-text text-transparent"
+          :style="{ width: `${textWidth}px`, backgroundImage: LEVEL_GRADIENT }"
+        >
+          {{ label }}
+        </span>
+      </span>
     </span>
 
     <div
