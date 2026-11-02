@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { buildSceneListRoots } from '../../application/scene-list-tree';
+import { useSceneAudioLevel } from '../../composables/useSceneAudioLevel';
 import { useSceneElementActions } from '../../composables/useSceneElementActions';
 import { type SceneDropTarget, useSceneListInteraction } from '../../composables/useSceneListInteraction';
 import type { ElementId, GroupId } from '../../models/ids.domain';
@@ -41,6 +42,22 @@ const openGroups = reactive<Record<string, boolean>>({});
 const listRef = ref<HTMLElement | null>(null);
 
 const sceneState = computed(() => store.project?.scenes.find((item) => item.id === props.scene.id));
+const { levels } = useSceneAudioLevel(sceneState);
+
+const audioLevels = computed(() => {
+  const next: Record<string, number> = {};
+  for (const [id, value] of Object.entries(levels)) {
+    next[id] = value;
+  }
+  return next;
+});
+
+function audioLevel(element: { id: string; type: string }) {
+  if (element.type !== 'audioVisual') {
+    return undefined;
+  }
+  return audioLevels.value[element.id];
+}
 
 const interaction = useSceneListInteraction(props.scene.id, () => sceneState.value);
 
@@ -207,6 +224,7 @@ function groupMemberIconKinds(elementIds: ElementId[]): SceneElementType[] {
             <SceneListRow
               :label="root.element.name"
               :icon-kind="root.element.type"
+              :level-db="audioLevel(root.element)"
               :selected="interaction.isElementSelected(root.element.id)"
               :visible="root.element.visibility"
               :locked="root.element.locked"
@@ -294,6 +312,7 @@ function groupMemberIconKinds(elementIds: ElementId[]): SceneElementType[] {
                 <SceneListRow
                   :label="elementById(elementId)!.name"
                   :icon-kind="elementById(elementId)!.type"
+                  :level-db="audioLevel(elementById(elementId)!)"
                   :selected="interaction.isElementSelected(elementId)"
                   :visible="elementById(elementId)!.visibility"
                   :locked="elementById(elementId)!.locked"
