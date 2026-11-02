@@ -98,6 +98,8 @@ export const audioSettingsSchema = z
   .object({
     volume: z.number().min(0).max(1),
     muted: z.boolean(),
+    solo: z.boolean().default(false),
+    gainDb: z.number().min(-24).max(24).default(0),
     pan: z.number().min(-1).max(1),
     syncOffsetMs: z.number(),
     monitoring: z.enum(['off', 'monitor', 'monitor-and-output']),
