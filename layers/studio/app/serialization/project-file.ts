@@ -1,5 +1,6 @@
 import { createEmptyHistory } from '../models/history.domain';
 import type { Project, ProjectFile } from '../models/project.domain';
+import { defaultAnimationFormat } from '../models/source.domain';
 import { projectFileSchema } from '../schemas/project-file.schema';
 import { migrateProjectFileV1ToV2 } from './project-file-migrate-v1-v2';
 
@@ -60,6 +61,11 @@ export const parseProjectFile = (input: unknown): ProjectFileParseResult => {
   }
 
   const file = parsed.data as ProjectFile;
+  for (const source of file.project.sources) {
+    if (source.type === 'animation' && !source.format) {
+      source.format = defaultAnimationFormat(source.mediaKind);
+    }
+  }
   const project: Project = {
     ...file.project,
     history: createEmptyHistory(),

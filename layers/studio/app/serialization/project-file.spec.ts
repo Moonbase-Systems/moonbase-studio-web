@@ -4,7 +4,7 @@ import { captureHistorySnapshot } from '../application/history-snapshot';
 import type { StudioSession } from '../application/session';
 import { createEmptyEditorState } from '../models/editor.domain';
 import { createEmptyProject } from '../models/project.domain';
-import { createValidProject } from '../test-utils/project-fixtures';
+import { createValidProject, createValidProjectFile } from '../test-utils/project-fixtures';
 import {
   CURRENT_PROJECT_FILE_FORMAT_VERSION,
   parseProjectFile,
@@ -63,6 +63,33 @@ describe('project file serialization', () => {
     if (parsed.ok) {
       expect(parsed.project.history.past).toEqual([]);
     }
+  });
+
+  it('fills format and playback defaults for an older animation source', () => {
+    const file = structuredClone(createValidProjectFile());
+    file.project.sources = [
+      {
+        id: 'anim-1',
+        name: 'Clip',
+        type: 'animation',
+        mediaKind: 'video',
+        startFrame: 0,
+        startOffsetMs: 0,
+        durationMs: null,
+        trigger: 'manual',
+        intervalMs: null,
+      } as (typeof file.project.sources)[number],
+    ];
+
+    const parsed = parseProjectFile(file);
+    expect(parsed.ok).toBe(true);
+    if (!parsed.ok) {
+      return;
+    }
+    const source = parsed.project.sources[0];
+    expect(source?.type === 'animation' && source.format).toBe('mp4');
+    expect(source?.type === 'animation' && source.playbackMode).toBe('once');
+    expect(source?.type === 'animation' && source.volume).toBe(1);
   });
 
   it('returns validation errors for invalid JSON payload', () => {

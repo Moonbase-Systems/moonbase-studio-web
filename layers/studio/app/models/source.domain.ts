@@ -9,7 +9,20 @@ export type SourceType = 'camera' | 'screen' | 'image' | 'video' | 'text' | 'sha
 
 export type AnimationMediaKind = 'gif' | 'video';
 
-export type AnimationPlaybackTrigger = 'manual' | 'on-activate' | 'interval';
+export type AnimationFormat = 'gif' | 'webp' | 'apng' | 'webm' | 'mp4';
+
+export type AnimationPlaybackMode = 'once' | 'loop';
+
+export type AnimationEndBehavior = 'hold' | 'reset' | 'hide' | 'stop';
+
+export type AnimationPlaybackTrigger =
+  | 'manual'
+  | 'on-activate'
+  | 'on-scene-start'
+  | 'on-appear'
+  | 'on-click'
+  | 'after-delay'
+  | 'interval';
 
 export type SourceMetadata = {
   notes?: string;
@@ -69,13 +82,45 @@ export type AudioSource = SourceBase & {
 export type AnimationSource = SourceBase & {
   type: 'animation';
   mediaKind: AnimationMediaKind;
+  format: AnimationFormat;
   assetId?: AssetId;
   startFrame: number;
   startOffsetMs: number;
+  startPositionMs: number;
   durationMs: number | null;
   trigger: AnimationPlaybackTrigger;
   intervalMs: number | null;
+  playbackMode: AnimationPlaybackMode;
+  repeatCount: number | null;
+  playbackRate: number;
+  pauseOnHide: boolean;
+  resetOnSceneStart: boolean;
+  endBehavior: AnimationEndBehavior;
+  volume: number;
 };
+
+export const defaultAnimationFormat = (mediaKind: AnimationMediaKind): AnimationFormat =>
+  mediaKind === 'video' ? 'mp4' : 'gif';
+
+export const createDefaultAnimationSourceFields = (
+  mediaKind: AnimationMediaKind = 'gif',
+): Omit<AnimationSource, 'id' | 'name' | 'type' | 'metadata'> => ({
+  mediaKind,
+  format: defaultAnimationFormat(mediaKind),
+  startFrame: 0,
+  startOffsetMs: 0,
+  startPositionMs: 0,
+  durationMs: null,
+  trigger: 'manual',
+  intervalMs: null,
+  playbackMode: 'once',
+  repeatCount: 1,
+  playbackRate: 1,
+  pauseOnHide: true,
+  resetOnSceneStart: false,
+  endBehavior: 'hold',
+  volume: 1,
+});
 
 export type Source =
   | BrowserSource

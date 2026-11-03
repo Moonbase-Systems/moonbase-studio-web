@@ -6,7 +6,11 @@ import type { AssetChanges, AssetDraft } from '../application/commands/asset-com
 import type { LayerUpdateChanges } from '../application/commands/layer-commands';
 import type { AudioChannelChanges, AudioChannelDraft } from '../application/commands/mixer-commands';
 import type { ProjectChanges } from '../application/commands/project-commands';
-import type { SourceDefinition } from '../application/commands/source-commands';
+import type {
+  AnimationSourceChanges,
+  BrowserSourceChanges,
+  SourceDefinition,
+} from '../application/commands/source-commands';
 import type { TransitionChanges, TransitionDraft } from '../application/commands/transition-commands';
 import type { StudioResult } from '../application/errors';
 import {
@@ -127,6 +131,10 @@ export const useStudioSessionStore = defineStore(STORE_KEYS.STUDIO_SESSION, () =
       service.setSceneDefaultTransition(sceneId, transitionId),
     addSource: (definition: SourceDefinition) => service.addSource(definition),
     renameSource: (sourceId: SourceId, name: string) => service.renameSource(sourceId, name),
+    updateBrowserSource: (sourceId: SourceId, changes: BrowserSourceChanges) =>
+      service.updateBrowserSource(sourceId, changes),
+    updateAnimationSource: (sourceId: SourceId, changes: AnimationSourceChanges) =>
+      service.updateAnimationSource(sourceId, changes),
     findSource: (sourceId: SourceId) => service.findSource(sourceId),
     removeSource: (sourceId: SourceId) => service.removeSource(sourceId),
     updateProject: (changes: ProjectChanges) => service.updateProject(changes),

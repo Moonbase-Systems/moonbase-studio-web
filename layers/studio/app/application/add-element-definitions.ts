@@ -1,3 +1,4 @@
+import { createDefaultAnimationSourceFields } from '../models/source.domain';
 import type { SourceDefinition } from './commands/source-commands';
 
 export type AddElementPanelKey = 'screen' | 'audio' | 'text' | 'shape' | 'image' | 'browser' | 'animation';
@@ -33,12 +34,7 @@ export const createSourceDefinitionForPanelKey = (key: AddElementPanelKey, name:
       return {
         type: 'animation',
         name,
-        mediaKind: 'gif',
-        startFrame: 0,
-        startOffsetMs: 0,
-        durationMs: null,
-        trigger: 'manual',
-        intervalMs: null,
+        ...createDefaultAnimationSourceFields('gif'),
       };
     default: {
       const exhaustive: never = key;
