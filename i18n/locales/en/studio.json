@@ -59,8 +59,49 @@
       "resize": "Resize preview"
     },
     "properties": {
+      "animation": {
+        "after": "After playback",
+        "delay": "Delay",
+        "delayHint": "Waits this many milliseconds after the trigger before the file starts. Play and Restart start immediately.",
+        "ends": {
+          "hide": "Hide",
+          "hold": "Hold last frame",
+          "reset": "First frame",
+          "stop": "Stop"
+        },
+        "interval": "Interval",
+        "loop": "Loop",
+        "noFile": "No file selected",
+        "once": "Once",
+        "pause": "Pause",
+        "pauseOnHide": "Pause when hidden",
+        "play": "Play",
+        "playback": "Playback",
+        "repeats": "Repeats",
+        "resetOnScene": "Reset on scene",
+        "restart": "Restart",
+        "speed": "Speed",
+        "start": "Position",
+        "startHint": "Where video playback starts, in milliseconds. 0 is the beginning.",
+        "static": "This file is not animated.",
+        "stop": "Stop",
+        "trigger": "Trigger",
+        "triggers": {
+          "after-delay": "After delay",
+          "interval": "Interval",
+          "manual": "Manual",
+          "on-appear": "On appear",
+          "on-click": "On click",
+          "on-scene-start": "Scene start"
+        },
+        "unreadable": "The file could not be read.",
+        "unsupported": "Unsupported format."
+      },
+      "assetMissing": "Missing asset",
       "cardTitles": {
+        "animation": "Animation",
         "audio": "Audio",
+        "browser": "Browser",
         "camera": "Camera",
         "effects": "Effects",
         "filters": "Filters",
@@ -129,10 +170,18 @@
         "x": "X",
         "y": "Y"
       },
+      "fitModes": {
+        "contain": "Contain",
+        "cover": "Cover",
+        "fill": "Stretch",
+        "none": "Original"
+      },
       "labels": {
         "advanced": "Advanced",
         "audio": "Audio",
         "balance": "Stereo balance",
+        "browserUrl": "URL",
+        "bypassCache": "Bypass cache",
         "camera": "Camera",
         "cursor": "Cursor",
         "effects": "Effects",
@@ -148,6 +197,8 @@
         "monitor": "Monitor",
         "mute": "Mute",
         "offset": "Offset",
+        "refreshInterval": "Refresh",
+        "refreshOnActivate": "On activate",
         "rotation": "Rotation",
         "screen": "Screen",
         "shape": "Shape",
@@ -168,12 +219,15 @@
       "monitoringUnavailable": "Audio monitoring requires a playback engine (not available yet).",
       "multiSelection": "Multiple elements selected. Edit one element at a time.",
       "noAudioSources": "No audio sources",
+      "noImages": "No images",
       "noScreens": "No screens",
       "previewUnavailable": "No preview",
       "rails": {
+        "animation": "Animation",
         "audio": "Audio",
         "effects": "Effects",
         "filters": "Filters",
+        "shape": "Shape",
         "source": "Source",
         "transform": "Transform"
       },
@@ -194,6 +248,11 @@
         "transform": "Transform",
         "video": "Video",
         "videoPlayback": "Playback"
+      },
+      "shapeTypes": {
+        "ellipse": "Ellipse",
+        "line": "Line",
+        "rectangle": "Rectangle"
       },
       "tabs": {
         "crop": "Crop",

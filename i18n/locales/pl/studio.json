@@ -59,8 +59,49 @@
       "resize": "Zmień wysokość podglądu"
     },
     "properties": {
+      "animation": {
+        "after": "Po zakończeniu",
+        "delay": "Opóźnienie",
+        "delayHint": "Czeka tyle milisekund po wyzwalaczu, zanim plik ruszy. Odtwórz i Od nowa startują od razu.",
+        "ends": {
+          "hide": "Ukryj",
+          "hold": "Zostaw klatkę",
+          "reset": "Pierwsza klatka",
+          "stop": "Stop"
+        },
+        "interval": "Interwał",
+        "loop": "Pętla",
+        "noFile": "Nie wybrano pliku",
+        "once": "Raz",
+        "pause": "Pauza",
+        "pauseOnHide": "Pauza po ukryciu",
+        "play": "Odtwórz",
+        "playback": "Odtwarzanie",
+        "repeats": "Powtórzenia",
+        "resetOnScene": "Reset przy scenie",
+        "restart": "Od nowa",
+        "speed": "Prędkość",
+        "start": "Pozycja",
+        "startHint": "Miejsce w pliku, od którego startuje wideo, w milisekundach. 0 to początek.",
+        "static": "To nie jest animacja.",
+        "stop": "Stop",
+        "trigger": "Wyzwalacz",
+        "triggers": {
+          "after-delay": "Po czasie",
+          "interval": "Interwał",
+          "manual": "Ręcznie",
+          "on-appear": "Pojawienie",
+          "on-click": "Klik",
+          "on-scene-start": "Start sceny"
+        },
+        "unreadable": "Nie udało się odczytać pliku.",
+        "unsupported": "Nieobsługiwany format."
+      },
+      "assetMissing": "Brak assetu",
       "cardTitles": {
+        "animation": "Animacja",
         "audio": "Audio",
+        "browser": "Przeglądarka",
         "camera": "Kamera",
         "effects": "Efekty",
         "filters": "Filtry",
@@ -129,10 +170,18 @@
         "x": "X",
         "y": "Y"
       },
+      "fitModes": {
+        "contain": "Zawieraj",
+        "cover": "Przytnij",
+        "fill": "Rozciągnij",
+        "none": "Oryginał"
+      },
       "labels": {
         "advanced": "Zaawansowane",
         "audio": "Audio",
         "balance": "Balans stereo",
+        "browserUrl": "Adres",
+        "bypassCache": "Pomiń cache",
         "camera": "Kamera",
         "cursor": "Kursor",
         "effects": "Efekty",
@@ -148,6 +197,8 @@
         "monitor": "Odsłuch",
         "mute": "Wyciszenie",
         "offset": "Przesunięcie",
+        "refreshInterval": "Odświeżanie",
+        "refreshOnActivate": "Przy aktywacji",
         "rotation": "Obrót",
         "screen": "Ekran",
         "shape": "Kształt",
@@ -168,12 +219,15 @@
       "monitoringUnavailable": "Monitorowanie audio wymaga silnika odtwarzania (niedostępne w tej wersji).",
       "multiSelection": "Zaznaczono wiele elementów. Edycja dotyczy pojedynczego wyboru.",
       "noAudioSources": "Brak źródeł audio",
+      "noImages": "Brak obrazów",
       "noScreens": "Brak ekranów",
       "previewUnavailable": "Brak podglądu",
       "rails": {
+        "animation": "Animacja",
         "audio": "Audio",
         "effects": "Efekty",
         "filters": "Filtry",
+        "shape": "Kształt",
         "source": "Źródło",
         "transform": "Transformacja"
       },
@@ -194,6 +248,11 @@
         "transform": "Transformacja",
         "video": "Wideo",
         "videoPlayback": "Odtwarzanie"
+      },
+      "shapeTypes": {
+        "ellipse": "Elipsa",
+        "line": "Linia",
+        "rectangle": "Prostokąt"
       },
       "tabs": {
         "crop": "Kadr",
