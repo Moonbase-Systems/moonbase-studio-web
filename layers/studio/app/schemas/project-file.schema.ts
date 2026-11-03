@@ -1,5 +1,6 @@
 import { z } from 'zod';
 
+import { animationSourceSettingsSchema } from './animation-source.schema';
 import { sceneAnimationSchema } from './scene-animation.schema';
 import { appearanceSchema, transform2DSchema } from './scene-elements/element-shared.schema';
 import { overlayElementSchema, sourceBackedElementSchema } from './scene-elements/scene-element.schema';
@@ -105,13 +106,7 @@ const sourceSchema = z.discriminatedUnion('type', [
   z.object({
     ...sourceBaseFields,
     type: z.literal('animation'),
-    mediaKind: z.enum(['gif', 'video']),
-    assetId: idSchema.optional(),
-    startFrame: z.number().int().nonnegative(),
-    startOffsetMs: z.number().int().nonnegative(),
-    durationMs: z.number().int().positive().nullable(),
-    trigger: z.enum(['manual', 'on-activate', 'interval']),
-    intervalMs: z.number().int().positive().nullable(),
+    ...animationSourceSettingsSchema.shape,
   }),
 ]);
 

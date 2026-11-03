@@ -56,9 +56,11 @@ import {
   setSceneDefaultTransition,
   setSelectedLayers,
   undo,
+  updateAnimationSource,
   updateAsset,
   updateAudioChannel,
   updateAudioMaster,
+  updateBrowserSource,
   updateLayer,
   updateProject,
   updateTransition,
@@ -67,7 +69,7 @@ import type { AssetChanges, AssetDraft } from './commands/asset-commands';
 import type { LayerUpdateChanges } from './commands/layer-commands';
 import type { AudioChannelChanges, AudioChannelDraft } from './commands/mixer-commands';
 import type { ProjectChanges } from './commands/project-commands';
-import type { SourceDefinition } from './commands/source-commands';
+import type { AnimationSourceChanges, BrowserSourceChanges, SourceDefinition } from './commands/source-commands';
 import type { TransitionChanges, TransitionDraft } from './commands/transition-commands';
 import type { CommandContext } from './context';
 import { createDefaultCommandContext as defaultContext } from './context';
@@ -279,6 +281,12 @@ export const createStudioService = (deps: { state: StudioSessionState; context?:
 
     renameSource: (sourceId: SourceId, name: string) =>
       run((session, context) => renameSource(session, sourceId, name, context)),
+
+    updateBrowserSource: (sourceId: SourceId, changes: BrowserSourceChanges) =>
+      run((session, context) => updateBrowserSource(session, sourceId, changes, context)),
+
+    updateAnimationSource: (sourceId: SourceId, changes: AnimationSourceChanges) =>
+      run((session, context) => updateAnimationSource(session, sourceId, changes, context)),
 
     findSource: (sourceId: SourceId) => query((session) => findSource(session, sourceId)),
 
