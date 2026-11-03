@@ -5,7 +5,7 @@ import { sceneElementTypeIconName } from '../scene-element-list/scene-element-ty
 export function inspectorRailIcon(
   type: SceneElementType,
   railId: InspectorRailId,
-): { maskUrl?: string; icon?: string } {
+): { maskUrl?: string; icon?: string; iconClass?: string } {
   if (railId === 'transform') {
     return { maskUrl: '/inspector-icons/rail-transform.svg' };
   }
@@ -17,6 +17,9 @@ export function inspectorRailIcon(
   }
   if (type === 'screen') {
     return { maskUrl: '/inspector-icons/type-screen.svg' };
+  }
+  if (type === 'shape' || type === 'image' || type === 'browser' || type === 'animation') {
+    return { icon: sceneElementTypeIconName(type), iconClass: 'size-[2.4rem]' };
   }
   return { icon: sceneElementTypeIconName(type) };
 }

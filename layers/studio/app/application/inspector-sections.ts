@@ -53,6 +53,28 @@ export const inspectorRailsForElementType = (type: SceneElementType): InspectorR
       ];
     case 'text':
       return visualRails().filter((rail) => rail.id !== 'effects');
+    case 'shape':
+      return [
+        {
+          id: 'source',
+          labelKey: 'studio.properties.rails.shape',
+        },
+        {
+          id: 'transform',
+          labelKey: 'studio.properties.rails.transform',
+        },
+      ];
+    case 'animation':
+      return [
+        {
+          id: 'source',
+          labelKey: 'studio.properties.rails.animation',
+        },
+        {
+          id: 'transform',
+          labelKey: 'studio.properties.rails.transform',
+        },
+      ];
     case 'overlay':
       return visualRails().filter((rail) => rail.id !== 'source');
     default:
@@ -116,8 +138,9 @@ export const inspectorCardTitleForRail = (railId: InspectorRailId, type: SceneEl
     case 'audioVisual':
       return 'studio.properties.cardTitles.audio';
     case 'browser':
+      return 'studio.properties.cardTitles.browser';
     case 'animation':
-      return 'studio.properties.cardTitles.source';
+      return 'studio.properties.cardTitles.animation';
     default:
       return 'studio.properties.cardTitles.screen';
   }
