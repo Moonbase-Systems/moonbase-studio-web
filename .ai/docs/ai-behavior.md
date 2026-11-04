@@ -4,6 +4,15 @@ This document defines how an AI assistant should behave when working on the `moo
 
 ---
 
+## Platform boundary
+
+`moonbase-studio-web` edits and saves the project. It does not render Program Output, publish the stream, or score cameras.
+
+- Program Output, devices, the program mix, and RTMP belong in MoonBase Bridge. The publish protocol is RTMP through FFmpeg, not WebRTC. FR-02 in `docs/requirements.md` still names WebRTC; follow ADR-010 instead of that sentence.
+- Shot scoring belongs in MoonBase AI. The module must not write `ProjectFile` or open devices.
+- Edit, undo, and save must keep working when Bridge is absent (Standalone). Connected mode turns on the program frame, monitoring, transport, and the director only while a Bridge session is ready.
+- Do not put `MediaStream`, sockets, FFmpeg progress, or AI scores in domain types. A future RTMP address is serializable document data. The open connection is not.
+
 ## General Principles
 
 - Always respect the **existing patterns** — do not introduce new patterns without explicit request.
