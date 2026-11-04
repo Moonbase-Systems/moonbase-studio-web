@@ -135,8 +135,8 @@ Priorities: **Must** / **Should** / **Could**.
 **Acceptance**
 
 - Given ≥2 elementy
-- When zmieniam `zIndex` / kolejność
-- Then render order wynika z zaktualizowanych wartości
+- When zmieniam kolejność w `scene.elements`
+- Then indeks 0 jest na spodzie, a podgląd i Program Output czytają tę samą tablicę
 
 **Models:** `SceneElement`  
 **Priority:** Must  
