@@ -40,12 +40,12 @@ All models are TypeScript `type`s in `layers/studio/app/models/` and validated b
 
 ## ProjectSettings
 
-| Field         | Type                    | Required | Notes                                          |
-| ------------- | ----------------------- | -------- | ---------------------------------------------- |
-| `video`       | `ProjectVideoSettings`  | yes      | resolution, fps, colorSpace                    |
-| `audio`       | `ProjectAudioSettings`  | yes      | sampleRate, channels                           |
-| `output`      | `ProjectOutputSettings` | yes      | intended output profile (not stream transport) |
-| `preferences` | `ProjectPreferences`    | yes      | editor defaults for this project               |
+| Field         | Type                    | Required | Notes                                       |
+| ------------- | ----------------------- | -------- | ------------------------------------------- |
+| `video`       | `ProjectVideoSettings`  | yes      | resolution, fps, colorSpace                 |
+| `audio`       | `ProjectAudioSettings`  | yes      | sampleRate, channels                        |
+| `output`      | `ProjectOutputSettings` | yes      | output profile; not an open RTMP connection |
+| `preferences` | `ProjectPreferences`    | yes      | editor defaults for this project            |
 
 Do not mix with editor state on `studioSession` (selection, open panels).
 
@@ -110,7 +110,9 @@ Discriminated union on `type`. Shared fields:
 | `appearance`    | `Appearance`       | yes      | opacity, blendMode, …           |
 | `effects`       | `ElementEffect[]`  | yes      | extensible; may be empty        |
 | `visibility`    | `boolean`          | yes      |                                 |
-| `zIndex`        | `number`           | yes      | order among siblings / root     |
+| `locked`        | `boolean`          | yes      |                                 |
+
+Layer order is the index in `scene.elements`. Index 0 is the back. There is no `zIndex` field.
 
 ### Source-backed variants
 
