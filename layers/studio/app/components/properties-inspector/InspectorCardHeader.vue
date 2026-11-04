@@ -152,6 +152,7 @@ const fieldClass = cn(
     opacity: 0.35;
     transform: scale(0.82);
   }
+
   to {
     opacity: 1;
     transform: scale(1);

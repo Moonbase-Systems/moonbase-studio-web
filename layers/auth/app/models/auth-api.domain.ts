@@ -44,8 +44,6 @@ export interface ForceChangePasswordResponse {
   user: Pick<AuthenticatedUser, 'id' | 'email' | 'role' | 'isPasswordChangeRequired'>;
 }
 
-export function isPasswordChangeRequiredResponse(
-  response: LoginResponse,
-): response is PasswordChangeRequiredResponse {
+export function isPasswordChangeRequiredResponse(response: LoginResponse): response is PasswordChangeRequiredResponse {
   return 'message' in response && response.message === 'PASSWORD_CHANGE_REQUIRED';
 }
