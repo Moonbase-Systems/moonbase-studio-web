@@ -73,7 +73,7 @@ type ProjectFile = {
 
 Validated with Zod on import and on every committed document change. A `formatVersion: 1` file is migrated to v2 by `migrateProjectFile` before validation. Unknown versions fail validation.
 
-**Why:** Cookie Pinia is unsuitable for large scene graphs. Explicit versioning enables safe schema changes. The browser `SceneRepository` stores this file in IndexedDB; it is also the document a future runtime can load without editor state or history.
+**Why:** Cookie Pinia is unsuitable for large scene graphs. Explicit versioning enables safe schema changes. The browser `SceneRepository` stores this file in IndexedDB. Bridge loads the same document without editor state or history.
 
 ---
 
@@ -85,6 +85,16 @@ Validated with Zod on import and on every committed document change. A `formatVe
 
 ---
 
-## Out of scope (confirmed)
+## ADR-010: Studio edits, Bridge executes, AI recommends
 
-Virtual Studio, 3D / Three.js, AI features, full streaming transport, multi-user sync.
+**Decision:** `moonbase-studio-web` is the editor of the project document.
+
+- **Standalone.** Edit, undo, and save work with Bridge stopped. The editor preview draws the active scene in the browser. It is not Program Output.
+- **Connected.** A downloaded Windows process, MoonBase Bridge (Rust, no operator window), loads the whole project and renders one Program Output. FFmpeg publishes that same picture and the program mix over RTMP. The transport is not WebRTC. `docs/requirements.md` FR-02 still says WebRTC; treat that sentence as stale.
+- **AI.** A separate module, MoonBase AI, reads camera frames, including cameras that are not on Program, and returns a score with a camera id and a reason. It does not write the project and does not open devices. A recommendation reaches Bridge as a command. Failure of the module does not stop RTMP.
+
+Serializable RTMP settings (target, address, key, resolution, frame rate, bitrate) belong in the document. Connection state, FFmpeg progress, device sessions, and AI scores do not. Losing Studio does not stop a running program. Losing Bridge does not block edit or save. Losing one source does not stop the program.
+
+A studio floor plan and a `deviceId` on a camera position are document data. Three.js, a second render path for the stream, and multi-user sync stay out of this repository.
+
+**Why:** The December 2026 scope splits the product across `moonbase-studio-web`, `moonbase-bridge`, and `moonbase-ai`. Putting the runtime in the Nuxt layer would make the document depend on a process the editor must survive without.

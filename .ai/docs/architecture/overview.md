@@ -4,7 +4,9 @@
 
 MoonBase Studio is a video scene composition application. Users manage multiple projects, build scenes from elements and groups, reuse image/audio sources, configure an audio mixer, and define enter/exit media plus transitions between scenes.
 
-This document describes the domain data architecture implemented in `layers/studio`. It does not describe a render or audio runtime.
+`moonbase-studio-web` edits that document. MoonBase Bridge renders Program Output and publishes RTMP. MoonBase AI scores cameras and does not write the project. See [ADR-010](./decisions.md).
+
+This document describes the domain data architecture implemented in `layers/studio`. It does not describe the Bridge render or audio runtime.
 
 ## Layer placement
 
@@ -59,7 +61,7 @@ Sources and assets are **not** children of a scene. Elements and animations only
 7. New source/element/effect kinds extend via discriminated unions.
 8. Relations are explicit IDs, validated on import.
 9. Save/load uses `ProjectFile.formatVersion`.
-10. No premature multi-user / cloud sync / Virtual Studio models.
+10. The document stores authored data only. RTMP settings, a floor plan, and a camera `deviceId` may live here. Connection state, device sessions, AI scores, and multi-user sync do not.
 
 ## Related docs
 
