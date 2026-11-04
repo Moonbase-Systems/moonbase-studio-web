@@ -90,7 +90,7 @@ Validated with Zod on import and on every committed document change. A `formatVe
 **Decision:** `moonbase-studio-web` is the editor of the project document.
 
 - **Standalone.** Edit, undo, and save work with Bridge stopped. The editor preview draws the active scene in the browser. It is not Program Output.
-- **Connected.** A downloaded Windows process, MoonBase Bridge (Rust, no operator window), loads the whole project and renders one Program Output. FFmpeg publishes that same picture and the program mix over RTMP. The transport is not WebRTC. `docs/requirements.md` FR-02 still says WebRTC; treat that sentence as stale.
+- **Connected.** A downloaded Windows process, MoonBase Bridge (Rust, no operator window), loads the whole project and renders one Program Output. FFmpeg publishes that same picture and the program mix over RTMP. The transport is not WebRTC.
 - **AI.** A separate module, MoonBase AI, reads camera frames, including cameras that are not on Program, and returns a score with a camera id and a reason. It does not write the project and does not open devices. A recommendation reaches Bridge as a command. Failure of the module does not stop RTMP.
 
 Serializable RTMP settings (target, address, key, resolution, frame rate, bitrate) belong in the document. Connection state, FFmpeg progress, device sessions, and AI scores do not. Losing Studio does not stop a running program. Losing Bridge does not block edit or save. Losing one source does not stop the program.
