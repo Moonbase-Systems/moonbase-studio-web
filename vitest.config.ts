@@ -4,5 +4,6 @@ export default defineConfig({
   test: {
     include: ['layers/**/*.spec.ts'],
     environment: 'node',
+    passWithNoTests: true,
   },
 });

@@ -3,3 +3,11 @@ node_modules
 .DS_Store
 *.md
 *.log
+
+# Env files (build-time env comes from build args, not the context)
+.env
+.env.*
+
+# Local build artifacts
+.nuxt
+.output

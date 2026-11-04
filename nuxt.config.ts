@@ -69,6 +69,7 @@ export default defineNuxtConfig({
     [
       CORE_LAYER_PATH,
       {
+        auth: process.env.NUXT_LAYER_GITHUB_TOKEN,
         install: true,
       },
     ],

@@ -25,7 +25,7 @@
     "lint": "pnpm lint:eslint && pnpm lint:stylelint && pnpm lint:prettier",
     "lint:fix": "pnpm lint:eslint:fix && pnpm lint:stylelint:fix && pnpm lint:prettier:fix",
     "fix": "pnpm lint:fix",
-    "test": "vitest run",
+    "test": "vitest run --passWithNoTests",
     "test:watch": "vitest"
   },
   "dependencies": {

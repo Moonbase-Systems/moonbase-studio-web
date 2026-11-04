@@ -3,9 +3,20 @@ services:
     image: moonbase/moonbase-studio-web:prod
     build:
       target: prod
+      args:
+        ENVIRONMENT: production
+      secrets:
+        - NUXT_LAYER_GITHUB_TOKEN
     environment:
       - ENVIRONMENT=production
       - PORT=3000
-      - HOST=127.0.0.1
+      - HOST=0.0.0.0
+    ports:
+      # Loopback-only on the host; the reverse proxy fronts the app.
+      - '127.0.0.1:3000:3000'
     env_file:
       - .env.prod
+
+secrets:
+  NUXT_LAYER_GITHUB_TOKEN:
+    environment: NUXT_LAYER_GITHUB_TOKEN
