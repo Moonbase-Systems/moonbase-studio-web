@@ -1,0 +1,62 @@
+@property --boot-light {
+  syntax: '<number>';
+  inherits: true;
+  initial-value: 0;
+}
+
+.boot-label-glass {
+  position: relative;
+  display: inline-block;
+  max-width: 100%;
+}
+
+.boot-label-text {
+  display: inline-block;
+
+  --boot-light-x: 50%;
+  --boot-light-y: -35%;
+  --boot-light-angle: 0deg;
+
+  background-image:
+    radial-gradient(
+      ellipse 130% 95% at var(--boot-light-x) var(--boot-light-y),
+      rgb(34 255 134 / calc(var(--boot-light) * 72%)) 0%,
+      rgb(255 255 255 / calc(var(--boot-light) * 48%)) 22%,
+      rgb(255 255 255 / calc(var(--boot-light) * 12%)) 42%,
+      transparent 62%
+    ),
+    linear-gradient(
+      var(--boot-light-angle),
+      rgb(255 255 255 / calc(10% + var(--boot-light) * 38%)) 0%,
+      rgb(255 255 255 / calc(6% + var(--boot-light) * 14%)) 38%,
+      rgb(34 255 134 / calc(var(--boot-light) * 42%)) 72%,
+      rgb(255 255 255 / calc(4% + var(--boot-light) * 20%)) 100%
+    );
+  background-size: 100% 100%;
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 1px 0 rgb(255 255 255 / calc(8% + var(--boot-light) * 10%)))
+    drop-shadow(0 0 calc(14px * var(--boot-light)) rgb(34 255 134 / calc(var(--boot-light) * 38%)));
+}
+
+.boot-label-glass-snappy,
+.boot-label-glass-snappy .boot-label-text {
+  transition: none;
+}
+
+.boot-label-glass-damped {
+  transition: --boot-light 0.45s ease-out;
+}
+
+.boot-label-glass-damped .boot-label-text {
+  transition: filter 0.45s ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .boot-label-glass-damped,
+  .boot-label-glass-damped .boot-label-text {
+    transition: none;
+  }
+}

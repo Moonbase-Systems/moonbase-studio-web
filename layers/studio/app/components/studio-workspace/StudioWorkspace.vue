@@ -1,12 +1,15 @@
 <script setup lang="ts">
 import { useHistoryShortcuts } from '../../composables/useHistoryShortcuts';
-import { useStudioSessionStore } from '../../store/studio-session.store';
+import { AppBootScreen } from '../app-boot';
+import { STUDIO_BOOT_REVEAL_KEY } from '../app-boot/studio-boot-chrome';
 import { PropertiesInspector } from '../properties-inspector';
 import { ScenesSidebar } from '../scenes-sidebar';
 import { StudioTopBar } from '../studio-top-bar';
 import ScenePreviewFrame from './ScenePreviewFrame.vue';
 
 useHistoryShortcuts();
+
+const studioReveal = useState(STUDIO_BOOT_REVEAL_KEY, () => false);
 
 const SIDEBAR_MIN = 220;
 const SIDEBAR_MAX = 560;
@@ -15,20 +18,10 @@ const PREVIEW_MIN = 180;
 const PROPERTIES_MIN = 160;
 const PROPERTIES_DEFAULT = 220;
 
-const store = useStudioSessionStore();
 const { t } = useI18n();
 const sidebarWidth = ref(SIDEBAR_DEFAULT);
 const propertiesHeight = ref(PROPERTIES_DEFAULT);
 const resizeTarget = ref<'sidebar' | 'properties' | null>(null);
-
-onMounted(() => {
-  if (!store.isInitialized) {
-    store.initialize();
-  }
-  if (!store.project) {
-    store.createProject({ name: 'MoonBase' });
-  }
-});
 
 function onResizePointerDown(target: 'sidebar' | 'properties', event: PointerEvent) {
   const handle = event.currentTarget;
@@ -69,7 +62,11 @@ function onResizePointerUp(event: PointerEvent) {
 </script>
 
 <template>
-  <div class="bg-surface text-on-surface font-roboto flex h-[100dvh] min-h-0 w-full flex-col overflow-hidden">
+  <AppBootScreen />
+  <div
+    class="studio-workspace-shell bg-surface text-on-surface font-roboto flex h-[100dvh] min-h-0 w-full flex-col overflow-hidden"
+    :class="{ 'studio-workspace-shell-reveal': studioReveal }"
+  >
     <StudioTopBar />
 
     <div class="flex min-h-0 flex-1 overflow-hidden">
@@ -136,3 +133,33 @@ function onResizePointerUp(event: PointerEvent) {
     </div>
   </div>
 </template>
+
+<style scoped>
+.studio-workspace-shell {
+  opacity: 0;
+  transform: scale(0.985);
+  filter: blur(6px);
+}
+
+.studio-workspace-shell-reveal {
+  opacity: 1;
+  transform: scale(1);
+  filter: blur(0);
+  transition:
+    opacity 0.78s ease-out,
+    transform 0.85s cubic-bezier(0.22, 1, 0.36, 1),
+    filter 0.7s ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .studio-workspace-shell {
+    opacity: 1;
+    filter: none;
+    transform: none;
+  }
+
+  .studio-workspace-shell-reveal {
+    transition: none;
+  }
+}
+</style>
