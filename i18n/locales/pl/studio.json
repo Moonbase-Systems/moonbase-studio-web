@@ -16,6 +16,12 @@
         "text": "text"
       }
     },
+    "boot": {
+      "failed": "Nie udało się uruchomić studia. Odśwież stronę, aby spróbować ponownie.",
+      "opening": "Otwieranie studia",
+      "project": "Tworzenie projektu",
+      "session": "Inicjalizacja sesji"
+    },
     "contextMenu": {
       "deleteElement": "Usuń element",
       "deleteSelected": "Usuń zaznaczone",
