@@ -16,6 +16,12 @@
         "text": "text"
       }
     },
+    "boot": {
+      "failed": "Studio failed to start. Refresh the page to try again.",
+      "opening": "Opening studio",
+      "project": "Creating project",
+      "session": "Initializing session"
+    },
     "contextMenu": {
       "deleteElement": "Delete element",
       "deleteSelected": "Delete selected",
