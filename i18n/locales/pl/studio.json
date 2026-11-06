@@ -17,6 +17,7 @@
       }
     },
     "boot": {
+      "engine": "Uruchamianie podglądu",
       "failed": "Nie udało się uruchomić studia. Odśwież stronę, aby spróbować ponownie.",
       "opening": "Otwieranie studia",
       "project": "Tworzenie projektu",
@@ -62,6 +63,7 @@
     },
     "preview": {
       "placeholder": "Podgląd sceny",
+      "renderFailed": "Nie udało się narysować sceny.",
       "resize": "Zmień wysokość podglądu"
     },
     "properties": {

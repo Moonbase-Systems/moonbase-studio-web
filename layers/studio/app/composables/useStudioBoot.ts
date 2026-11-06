@@ -6,6 +6,7 @@ import {
   type StudioBootExitPhase,
 } from '../components/app-boot/studio-boot-chrome';
 import { useStudioSessionStore } from '../store/studio-session.store';
+import { useStudioCompositionEngine } from './useCompositionEngine';
 
 export type StudioBootStepHooks = {
   beforeStepLabel?: () => void | Promise<void>;
@@ -16,6 +17,21 @@ export type StudioBootStepHooks = {
 
 export function useStudioBoot(hooks?: StudioBootStepHooks) {
   const store = useStudioSessionStore();
+  const compositionEngine = useStudioCompositionEngine();
+
+  async function initializeEngine(): Promise<{ ok: boolean }> {
+    // Boot starts in AppBootScreen's onMounted; the preview host is a later sibling.
+    await nextTick();
+    const started = await compositionEngine.initialize();
+    if (!started.ok) {
+      return started;
+    }
+    const scene = store.activeScene;
+    if (scene) {
+      await compositionEngine.render(scene);
+    }
+    return started;
+  }
 
   const exitPhase = useState<StudioBootExitPhase>(STUDIO_BOOT_EXIT_PHASE_KEY, () => 'none');
   const studioReveal = useState(STUDIO_BOOT_REVEAL_KEY, () => false);
@@ -37,6 +53,7 @@ export function useStudioBoot(hooks?: StudioBootStepHooks) {
       isStudioBootSatisfied(
         () => store.isInitialized,
         () => store.project != null,
+        () => compositionEngine.isReady.value,
       )
     ) {
       studioReveal.value = true;
@@ -52,6 +69,8 @@ export function useStudioBoot(hooks?: StudioBootStepHooks) {
       hasProject: () => store.project != null,
       initialize: () => store.initialize(),
       createProject: (input) => store.createProject(input),
+      isEngineReady: () => compositionEngine.isReady.value,
+      initializeEngine,
       stepPauseMs: bootTiming.stepPauseMs,
       onStep: async (key) => {
         if (stepKey.value !== null) {

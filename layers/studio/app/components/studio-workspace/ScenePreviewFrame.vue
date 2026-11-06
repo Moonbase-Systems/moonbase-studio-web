@@ -1,8 +1,11 @@
 <script setup lang="ts">
+import { useStudioCompositionEngine } from '../../composables/useCompositionEngine';
 import { useStudioSessionStore } from '../../store/studio-session.store';
 
 const store = useStudioSessionStore();
 const { t } = useI18n();
+const compositionEngine = useStudioCompositionEngine();
+const { host, isReady, lastError } = compositionEngine;
 
 function onEmptyPreviewPointerDown(event: PointerEvent) {
   const target = event.target;
@@ -23,6 +26,15 @@ const aspectRatio = computed(() => {
   }
   return `${v.width} / ${v.height}`;
 });
+
+const showPlaceholder = computed(() => !isReady.value || !store.activeScene);
+const renderFailed = computed(() => lastError.value?.kind === 'render-failed');
+
+watch([() => store.activeScene, isReady], ([scene, ready]) => {
+  if (scene && ready) {
+    void compositionEngine.render(scene);
+  }
+});
 </script>
 
 <template>
@@ -36,8 +48,24 @@ const aspectRatio = computed(() => {
         class="bg-surface-container-high border-on-surface-dim/30 relative max-h-full w-full max-w-full overflow-hidden rounded-sm border"
         :style="{ aspectRatio }"
       >
-        <span class="text-body-sm font-roboto text-on-surface-dim absolute inset-0 flex items-center justify-center">
+        <div
+          ref="host"
+          class="absolute inset-0"
+          :class="{ invisible: !store.activeScene }"
+          data-composition-host
+        />
+        <span
+          v-if="showPlaceholder"
+          class="text-body-sm font-roboto text-on-surface-dim pointer-events-none absolute inset-0 flex items-center justify-center"
+        >
           {{ t('studio.preview.placeholder') }}
+        </span>
+        <span
+          v-if="renderFailed"
+          class="text-body-x-sm font-roboto text-on-surface-dim absolute inset-x-0 bottom-0 px-2 py-1"
+          :title="lastError?.kind === 'render-failed' ? lastError.message : undefined"
+        >
+          {{ t('studio.preview.renderFailed') }}
         </span>
       </div>
     </div>

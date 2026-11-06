@@ -1,7 +1,11 @@
-export type BootStepI18nKey = 'studio.boot.session' | 'studio.boot.project';
+export type BootStepI18nKey = 'studio.boot.session' | 'studio.boot.project' | 'studio.boot.engine';
 
-export function isStudioBootSatisfied(isInitialized: () => boolean, hasProject: () => boolean): boolean {
-  return isInitialized() && hasProject();
+export function isStudioBootSatisfied(
+  isInitialized: () => boolean,
+  hasProject: () => boolean,
+  isEngineReady: () => boolean,
+): boolean {
+  return isInitialized() && hasProject() && isEngineReady();
 }
 
 export type RunStudioBootOptions = {
@@ -9,6 +13,9 @@ export type RunStudioBootOptions = {
   hasProject: () => boolean;
   initialize: () => { ok: boolean };
   createProject: (input: { name: string }) => { ok: boolean };
+  isEngineReady: () => boolean;
+  /** Starts the composition engine; resolves after its first frame. */
+  initializeEngine: () => Promise<{ ok: boolean }>;
   onStep: (key: BootStepI18nKey) => void | Promise<void>;
   delay?: (ms: number) => Promise<void>;
   stepPauseMs?: number;
@@ -36,6 +43,15 @@ export async function runStudioBoot(options: RunStudioBootOptions): Promise<{ ok
     await options.onStep('studio.boot.project');
     const created = options.createProject({ name: 'MoonBase' });
     if (!created.ok) {
+      return { ok: false };
+    }
+    await delay(pause);
+  }
+
+  if (!options.isEngineReady()) {
+    await options.onStep('studio.boot.engine');
+    const started = await options.initializeEngine();
+    if (!started.ok) {
       return { ok: false };
     }
     await delay(pause);
