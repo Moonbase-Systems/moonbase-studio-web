@@ -17,6 +17,7 @@
       }
     },
     "boot": {
+      "engine": "Starting preview",
       "failed": "Studio failed to start. Refresh the page to try again.",
       "opening": "Opening studio",
       "project": "Creating project",
@@ -62,6 +63,7 @@
     },
     "preview": {
       "placeholder": "Scene preview",
+      "renderFailed": "The scene could not be drawn.",
       "resize": "Resize preview"
     },
     "properties": {
