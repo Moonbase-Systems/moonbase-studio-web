@@ -16,7 +16,7 @@ import {
   Ticker,
 } from 'pixi.js';
 
-import type { Appearance, BlendMode, Transform2D } from '../../models/common.domain';
+import type { Appearance, BlendMode, ElementCrop, Transform2D } from '../../models/common.domain';
 import type { AssetId, ElementId, GroupId, SceneId, SourceId } from '../../models/ids.domain';
 import type { Scene, SceneBackground } from '../../models/scene.domain';
 import type {
@@ -37,6 +37,7 @@ import {
   letterboxComposition,
   linearGradientPoints,
   placementForTransform,
+  type Rect,
   type Size,
   toFontWeight,
 } from './composition-geometry';
@@ -55,6 +56,10 @@ export type PixiCompositionEngineOptions = {
   resolveScreenStream: (sourceId: SourceId) => MediaStream | null;
   /** Highest rate the preview redraws captures at; null or omitted redraws on every new capture frame. */
   getCapturePreviewFrameRate?: () => number | null;
+  /** Fill inside the project frame when the scene has no background; preview-only by default. */
+  compositionFillWhenBackgroundNone?: number;
+  /** Capture size when its first frame shows and whenever the captured window changes size afterwards. */
+  onCapturePicture?: (sourceId: SourceId, picture: Size, change: 'shown' | 'resized') => void;
   /** Non-fatal problems: failed texture loads, broken references inside a scene. */
   onDiagnostic?: (error: CompositionEngineError) => void;
 };
@@ -68,7 +73,8 @@ type ImageBinding = {
 };
 
 type CaptureBinding = {
-  streamId: string;
+  sourceId: SourceId;
+  stream: MediaStream;
   element: HTMLVideoElement;
   texture: Texture | null;
   /** Re-fits the sprite when the capture changes resolution. */
@@ -79,11 +85,46 @@ type CaptureBinding = {
   frameCallback: number | null;
   /** Next slot on the capped preview's frame grid; ignored while the preview is uncapped. */
   nextDrawAt: number;
+  /** Paused on purpose because its scene is off screen. */
+  suspended: boolean;
+  /** When the element last reported a new frame, uploaded or not. */
+  lastCallbackAt: number;
+  /** Last `presentedFrames` from `requestVideoFrameCallback`; advances only when the browser paints a new frame. */
+  lastPresentedFrames: number;
+  /** When `srcObject` was last set again to unstick the element. */
+  reattachedAt: number;
+  /**
+   * Until this time, muted frames are still uploaded. After a minimised window returns Chrome can leave
+   * `track.muted` true while already delivering a real picture; skipping those would keep the freeze.
+   */
+  forcePresentUntil: number;
+  /** Last capture-surface size from `track.getSettings()`; a jump up from a stub means the window returned. */
+  lastSurfaceWidth: number;
+  lastSurfaceHeight: number;
+  /** Removes the listeners and timer that bring the capture back after it stalls. */
+  stopWatching: (() => void) | null;
 };
+
+type ContentLayout = Size & { crop: ElementCrop };
+
+const sameLayout = (a: ContentLayout | null, b: ContentLayout): boolean =>
+  a !== null &&
+  a.width === b.width &&
+  a.height === b.height &&
+  a.crop.left === b.crop.left &&
+  a.crop.right === b.crop.right &&
+  a.crop.top === b.crop.top &&
+  a.crop.bottom === b.crop.bottom;
 
 type ContentHolder = {
   content: Container;
   contentKey: string | null;
+  /** Box and crop the content was last laid out for. */
+  contentLayout: ContentLayout | null;
+  /** Fits loaded media to a new box and crop in place; null while content must be rebuilt for them. */
+  relayout: ((layout: ContentLayout) => void) | null;
+  /** The whole uncropped picture, shown faintly while its crop is being dragged. */
+  cropGhost: Container | null;
   image: ImageBinding | null;
   capture: CaptureBinding | null;
   disposables: { destroy(): void }[];
@@ -179,6 +220,9 @@ const createTransformNode = (): TransformNode => {
 const createContentHolder = (): ContentHolder => ({
   content: new Container(),
   contentKey: null,
+  contentLayout: null,
+  relayout: null,
+  cropGhost: null,
   image: null,
   capture: null,
   disposables: [],
@@ -223,16 +267,62 @@ const drawPlaceholder = (parent: Container, size: Size, title: string, caption: 
   parent.addChild(box, label);
 };
 
-const clipTo = (parent: Container, target: Container, size: Size, radius: number): void => {
-  const mask = new Graphics();
+const drawClipShape = (mask: Graphics, size: Size, radius: number): void => {
+  mask.clear();
   if (radius > 0) {
     mask.roundRect(0, 0, size.width, size.height, Math.min(radius, size.width / 2, size.height / 2));
   } else {
     mask.rect(0, 0, size.width, size.height);
   }
   mask.fill(0xffffff);
+};
+
+const clipTo = (parent: Container, target: Container, size: Size, radius: number): Graphics => {
+  const mask = new Graphics();
+  drawClipShape(mask, size, radius);
   parent.addChild(mask);
   target.mask = mask;
+  return mask;
+};
+
+const CROP_GHOST_ALPHA = 0.35;
+const CROP_OUTLINE = 0x22ff86;
+
+type CropGhost = { container: Container; sprite: Sprite; outline: Graphics; texture: Texture };
+
+/** Sits behind the cropped sprite in `holder.content`, outside its mask, hidden until a crop drag starts. */
+const createCropGhost = (holder: ContentHolder, source: Texture['source'], visible: boolean): CropGhost => {
+  const texture = new Texture({ source, frame: new Rectangle(0, 0, source.width, source.height), dynamic: true });
+  const sprite = new Sprite(texture);
+  sprite.alpha = CROP_GHOST_ALPHA;
+  const outline = new Graphics();
+  const container = new Container();
+  container.addChild(sprite, outline);
+  container.visible = visible;
+  holder.content.addChildAt(container, 0);
+  holder.cropGhost = container;
+  holder.disposables.push({ destroy: () => texture.destroy(false) });
+  return { container, sprite, outline, texture };
+};
+
+/** Lays the whole picture out around its cropped part, which shows `frame` of the source at `rect`. */
+const fitCropGhost = (ghost: CropGhost, source: Size, frame: Rect, rect: Rect): void => {
+  const scaleX = rect.width / frame.width;
+  const scaleY = rect.height / frame.height;
+  const whole = {
+    x: rect.x - frame.x * scaleX,
+    y: rect.y - frame.y * scaleY,
+    width: source.width * scaleX,
+    height: source.height * scaleY,
+  };
+  ghost.texture.frame.copyFrom(new Rectangle(0, 0, source.width, source.height));
+  ghost.texture.update();
+  ghost.sprite.position.set(whole.x, whole.y);
+  ghost.sprite.setSize(whole.width, whole.height);
+  ghost.outline
+    .clear()
+    .rect(whole.x, whole.y, whole.width, whole.height)
+    .stroke({ color: CROP_OUTLINE, width: 1, pixelLine: true });
 };
 
 /** PixiJS 8 skews angled linear gradients in `local` texture space, so endpoints are given in shape pixels. */
@@ -412,6 +502,7 @@ const drawText = (holder: ContentHolder, element: TextElement): void => {
 export const createPixiCompositionEngine = (options: PixiCompositionEngineOptions): CompositionEngine => {
   let runtime: Runtime | null = null;
   let lifecycle: Promise<unknown> = Promise.resolve();
+  let cropPreviewId: ElementId | null = null;
 
   /** initialize and dispose never interleave, so a remount cannot race a teardown. */
   const serialize = <T>(operation: () => Promise<T>): Promise<T> => {
@@ -452,9 +543,33 @@ export const createPixiCompositionEngine = (options: PixiCompositionEngineOption
     });
   };
 
-  /** Uploads the capture's current frame unless the preview frame rate cap says to skip it. */
+  /** A minimised window reports 0×0 or a 1×1 black frame; that is not a picture to upload. */
+  const MIN_CAPTURE_PICTURE = 16;
+
+  const captureTracks = (stream: MediaStream): MediaStreamTrack[] => stream.getVideoTracks();
+
+  /** True while Chrome has muted the capture (typically a minimised window). */
+  const captureIsMuted = (stream: MediaStream): boolean =>
+    captureTracks(stream).some((track) => track.readyState === 'live' && track.muted);
+
+  /** Real pixels worth uploading: larger than a stub, and not a muted minimise freeze. */
+  const captureHasPicture = (binding: CaptureBinding): boolean => {
+    const { element: video, stream } = binding;
+    if (captureTracks(stream).every((track) => track.readyState === 'ended')) {
+      return false;
+    }
+    if (captureIsMuted(stream) && performance.now() > binding.forcePresentUntil) {
+      return false;
+    }
+    return video.videoWidth >= MIN_CAPTURE_PICTURE && video.videoHeight >= MIN_CAPTURE_PICTURE;
+  };
+
+  /**
+   * Uploads the capture's current frame unless the preview frame rate cap says to skip it.
+   * A muted or tiny frame is ignored, so the last good picture stays up while the window is minimised.
+   */
   const presentCaptureFrame = (binding: CaptureBinding, now: number): boolean => {
-    if (!binding.texture || binding.element.readyState < 2) {
+    if (!binding.texture || binding.element.readyState < 2 || !captureHasPicture(binding)) {
       return false;
     }
     const cap = options.getCapturePreviewFrameRate?.() ?? null;
@@ -468,27 +583,39 @@ export const createPixiCompositionEngine = (options: PixiCompositionEngineOption
       const slot = binding.nextDrawAt < now - interval ? now : binding.nextDrawAt;
       binding.nextDrawAt = slot + interval;
     }
-    binding.texture.source.update();
+    const source = binding.texture.source;
+    source.update();
     const { videoWidth, videoHeight } = binding.element;
-    if (videoWidth > 0 && videoHeight > 0 && (videoWidth !== binding.width || videoHeight !== binding.height)) {
+    if (videoWidth !== binding.width || videoHeight !== binding.height) {
       binding.width = videoWidth;
       binding.height = videoHeight;
       binding.fit?.(videoWidth, videoHeight);
+      // A size change makes `source.update` resize and return before uploading; upload the new frame now.
+      source.update();
+      options.onCapturePicture?.(binding.sourceId, { width: videoWidth, height: videoHeight }, 'resized');
     }
     return true;
   };
 
   const watchCaptureFrames = (rt: Runtime, binding: CaptureBinding): void => {
     const video = binding.element;
-    if (!supportsVideoFrameCallback(video)) {
+    if (!supportsVideoFrameCallback(video) || binding.frameCallback !== null) {
       return;
     }
-    binding.frameCallback = video.requestVideoFrameCallback((now) => {
+    binding.frameCallback = video.requestVideoFrameCallback((now, metadata) => {
       binding.frameCallback = null;
-      if (runtime !== rt || !binding.texture) {
+      binding.lastCallbackAt = now;
+      const presented = metadata?.presentedFrames;
+      const isNewFrame = typeof presented !== 'number' || presented !== binding.lastPresentedFrames;
+      if (typeof presented === 'number') {
+        binding.lastPresentedFrames = presented;
+      }
+      if (runtime !== rt || !binding.texture || binding.suspended) {
         return;
       }
-      if (presentCaptureFrame(binding, now)) {
+      // Only upload when the browser reports a new frame (or metadata is missing). Re-uploading a
+      // frozen minimise frame every callback would hide the fact that capture has stopped.
+      if (isNewFrame && presentCaptureFrame(binding, now)) {
         requestFrame(rt);
       }
       watchCaptureFrames(rt, binding);
@@ -518,17 +645,149 @@ export const createPixiCompositionEngine = (options: PixiCompositionEngineOption
 
   const pauseSceneCaptures = (state: SceneState): void => {
     for (const node of state.elements.values()) {
-      node.capture?.element.pause();
+      if (node.capture) {
+        node.capture.suspended = true;
+        node.capture.element.pause();
+      }
     }
   };
 
   const resumeSceneCaptures = (state: SceneState): void => {
     for (const node of state.elements.values()) {
       const binding = node.capture;
+      if (binding) {
+        binding.suspended = false;
+      }
       if (binding?.texture && binding.element.paused && !binding.element.ended) {
         void binding.element.play().catch(() => undefined);
       }
     }
+  };
+
+  const CAPTURE_WATCHDOG_MS = 500;
+  /** Re-attaching restarts the decoder; throttle so a waking capture is not interrupted every tick. */
+  const CAPTURE_REATTACH_MS = 1500;
+  /** How long after a reattach muted frames are still accepted (stuck `muted` after restore). */
+  const CAPTURE_FORCE_PRESENT_MS = 5000;
+
+  /**
+   * Nudges Chromium's Windows Graphics Capture path. A display track can sit in 0 Hz after a minimise;
+   * renegotiating an ideal frame rate often makes frames flow again once the window paints.
+   */
+  const kickCaptureTrack = (stream: MediaStream): void => {
+    for (const track of captureTracks(stream)) {
+      if (track.readyState !== 'live') {
+        continue;
+      }
+      void track.applyConstraints({ frameRate: { ideal: 30, max: 60 } }).catch(() => undefined);
+    }
+  };
+
+  /**
+   * Brings a capture back after its window was minimised. Re-attaches `srcObject`, nudges constraints,
+   * restarts playback and re-arms the frame callback. Do not call this on a mere frame stall: with WGC
+   * 0 Hz a static window produces no frames while healthy, and re-attaching then can break the track.
+   */
+  const reviveCapture = (rt: Runtime, binding: CaptureBinding): void => {
+    if (runtime !== rt || !binding.texture || binding.suspended) {
+      return;
+    }
+    const { element: video, stream } = binding;
+    if (!captureTracks(stream).some((track) => track.readyState === 'live')) {
+      return;
+    }
+    if (binding.frameCallback !== null) {
+      video.cancelVideoFrameCallback(binding.frameCallback);
+      binding.frameCallback = null;
+    }
+    const now = performance.now();
+    if (now - binding.reattachedAt >= CAPTURE_REATTACH_MS) {
+      binding.reattachedAt = now;
+      binding.forcePresentUntil = now + CAPTURE_FORCE_PRESENT_MS;
+      // Keep the stream on the binding: `video.srcObject` is null for a moment during reattach.
+      video.srcObject = null;
+      video.srcObject = stream;
+      kickCaptureTrack(stream);
+    } else if (video.srcObject !== stream) {
+      video.srcObject = stream;
+    }
+    if (video.paused) {
+      void video.play().catch(() => undefined);
+    }
+    binding.nextDrawAt = Number.NEGATIVE_INFINITY;
+    if (presentCaptureFrame(binding, now)) {
+      requestFrame(rt);
+    }
+    watchCaptureFrames(rt, binding);
+  };
+
+  const readCaptureSurface = (stream: MediaStream): { width: number; height: number } => {
+    for (const track of captureTracks(stream)) {
+      if (track.readyState !== 'live') {
+        continue;
+      }
+      const { width = 0, height = 0 } = track.getSettings();
+      if (width > 0 || height > 0) {
+        return { width, height };
+      }
+    }
+    return { width: 0, height: 0 };
+  };
+
+  const watchCaptureHealth = (rt: Runtime, binding: CaptureBinding): (() => void) => {
+    const { element: video, stream } = binding;
+    const tracks = captureTracks(stream);
+    const resumeIfPaused = () => {
+      if (!binding.suspended && binding.texture && video.srcObject) {
+        void video.play().catch(() => undefined);
+      }
+    };
+    const onResize = () => reviveCapture(rt, binding);
+    const onUnmute = () => reviveCapture(rt, binding);
+    const timer = window.setInterval(() => {
+      if (binding.suspended || !binding.texture) {
+        return;
+      }
+      if (!tracks.some((track) => track.readyState === 'live')) {
+        return;
+      }
+      const surface = readCaptureSurface(stream);
+      const surfaceActive = surface.width >= MIN_CAPTURE_PICTURE && surface.height >= MIN_CAPTURE_PICTURE;
+      const surfaceReturned =
+        surfaceActive &&
+        (binding.lastSurfaceWidth < MIN_CAPTURE_PICTURE || binding.lastSurfaceHeight < MIN_CAPTURE_PICTURE);
+      binding.lastSurfaceWidth = surface.width;
+      binding.lastSurfaceHeight = surface.height;
+
+      // Window came back from a stub size (common when Chrome reports 0×0 while minimised).
+      if (surfaceReturned) {
+        reviveCapture(rt, binding);
+        return;
+      }
+      // Keep the callback chain armed; never re-attach just because frames are quiet — WGC 0 Hz is normal
+      // for a static Spotify window and re-attaching there permanently freezes some Chromium builds.
+      if (binding.frameCallback === null && supportsVideoFrameCallback(video)) {
+        watchCaptureFrames(rt, binding);
+      } else if (!supportsVideoFrameCallback(video) && captureHasPicture(binding)) {
+        if (presentCaptureFrame(binding, performance.now())) {
+          requestFrame(rt);
+        }
+      }
+    }, CAPTURE_WATCHDOG_MS);
+
+    for (const track of tracks) {
+      track.addEventListener('unmute', onUnmute);
+    }
+    video.addEventListener('resize', onResize);
+    video.addEventListener('pause', resumeIfPaused);
+    return () => {
+      window.clearInterval(timer);
+      for (const track of tracks) {
+        track.removeEventListener('unmute', onUnmute);
+      }
+      video.removeEventListener('resize', onResize);
+      video.removeEventListener('pause', resumeIfPaused);
+    };
   };
 
   const layout = (rt: Runtime): void => {
@@ -565,6 +824,8 @@ export const createPixiCompositionEngine = (options: PixiCompositionEngineOption
       return;
     }
     holder.capture = null;
+    binding.stopWatching?.();
+    binding.stopWatching = null;
     if (binding.frameCallback !== null) {
       binding.element.cancelVideoFrameCallback(binding.frameCallback);
       binding.frameCallback = null;
@@ -580,6 +841,8 @@ export const createPixiCompositionEngine = (options: PixiCompositionEngineOption
     for (const child of holder.content.removeChildren()) {
       child.destroy(DESTROY_OWNED);
     }
+    holder.relayout = null;
+    holder.cropGhost = null;
     releaseImage(rt, holder);
     releaseCapture(holder);
     for (const disposable of holder.disposables) {
@@ -645,19 +908,29 @@ export const createPixiCompositionEngine = (options: PixiCompositionEngineOption
       scaleMode,
       `Image for element ${element.id}`,
       (texture, binding) => {
-        const frame = cropFrame(element.crop, { width: texture.width, height: texture.height });
-        binding.view = new Texture({
-          source: texture.source,
-          frame: new Rectangle(frame.x, frame.y, frame.width, frame.height),
-        });
-        const sprite = new Sprite(binding.view);
-        const rect = fitContentRect(element.settings.fitMode, box, frame);
-        sprite.position.set(rect.x, rect.y);
-        sprite.setSize(rect.width, rect.height);
+        const view = new Texture({ source: texture.source, frame: new Rectangle(), dynamic: true });
+        binding.view = view;
+        const sprite = new Sprite(view);
+        const ghost = createCropGhost(node, texture.source, node.id === cropPreviewId);
+        const fit = (next: ContentLayout) => {
+          const whole = { width: texture.width, height: texture.height };
+          const frame = cropFrame(next.crop, whole);
+          view.frame.copyFrom(new Rectangle(frame.x, frame.y, frame.width, frame.height));
+          view.update();
+          const rect = fitContentRect(element.settings.fitMode, next, frame);
+          sprite.position.set(rect.x, rect.y);
+          sprite.setSize(rect.width, rect.height);
+          fitCropGhost(ghost, whole, frame, rect);
+        };
+        fit({ ...box, crop: element.crop });
 
         placeholder.destroy(DESTROY_OWNED);
         node.content.addChild(sprite);
-        clipTo(node.content, sprite, box, element.settings.cornerRadius);
+        const mask = clipTo(node.content, sprite, box, element.settings.cornerRadius);
+        node.relayout = (next) => {
+          fit(next);
+          drawClipShape(mask, next, element.settings.cornerRadius);
+        };
       },
       () => {
         placeholder.destroy(DESTROY_OWNED);
@@ -692,7 +965,8 @@ export const createPixiCompositionEngine = (options: PixiCompositionEngineOption
     video.srcObject = stream;
 
     const binding: CaptureBinding = {
-      streamId: stream.id,
+      sourceId: element.sourceId,
+      stream,
       element: video,
       texture: null,
       fit: null,
@@ -700,6 +974,14 @@ export const createPixiCompositionEngine = (options: PixiCompositionEngineOption
       height: 0,
       frameCallback: null,
       nextDrawAt: Number.NEGATIVE_INFINITY,
+      suspended: false,
+      lastCallbackAt: performance.now(),
+      lastPresentedFrames: -1,
+      reattachedAt: Number.NEGATIVE_INFINITY,
+      forcePresentUntil: 0,
+      lastSurfaceWidth: 0,
+      lastSurfaceHeight: 0,
+      stopWatching: null,
     };
     node.capture = binding;
 
@@ -733,25 +1015,44 @@ export const createPixiCompositionEngine = (options: PixiCompositionEngineOption
           fail();
           return;
         }
-        // Dynamic, so the sprite re-measures when the capture changes resolution; otherwise it keeps
-        // the first frame's bounds and the re-fit scale zooms the picture.
-        const texture = new Texture({ source: new ImageSource({ resource: video }), dynamic: true });
+        // Dynamic, so the sprite re-measures whenever `fit` moves the crop frame (new crop or a capture
+        // resolution change); otherwise it keeps the first frame's bounds and the re-fit scale zooms the picture.
+        const texture = new Texture({
+          source: new ImageSource({ resource: video }),
+          frame: new Rectangle(0, 0, width, height),
+          dynamic: true,
+        });
         binding.texture = texture;
         const sprite = new Sprite(texture);
+        const ghost = createCropGhost(node, texture.source, node.id === cropPreviewId);
+        let fitLayout: ContentLayout = { ...box, crop: element.crop };
         binding.fit = (contentWidth, contentHeight) => {
-          const rect = fitContentRect(element.settings.fitMode, box, { width: contentWidth, height: contentHeight });
+          const whole = { width: contentWidth, height: contentHeight };
+          const frame = cropFrame(fitLayout.crop, whole);
+          texture.frame.copyFrom(new Rectangle(frame.x, frame.y, frame.width, frame.height));
+          texture.update();
+          const rect = fitContentRect(element.settings.fitMode, fitLayout, frame);
           sprite.position.set(rect.x, rect.y);
           sprite.setSize(rect.width, rect.height);
+          fitCropGhost(ghost, whole, frame, rect);
         };
         binding.width = width;
         binding.height = height;
         binding.fit(width, height);
         placeholder.destroy(DESTROY_OWNED);
         node.content.addChild(sprite);
-        clipTo(node.content, sprite, box, element.settings.cornerRadius);
+        const mask = clipTo(node.content, sprite, box, element.settings.cornerRadius);
+        node.relayout = (next) => {
+          fitLayout = next;
+          binding.fit?.(binding.width, binding.height);
+          drawClipShape(mask, next, element.settings.cornerRadius);
+        };
         void video.play().catch(() => undefined);
+        binding.lastCallbackAt = performance.now();
         watchCaptureFrames(rt, binding);
+        binding.stopWatching = watchCaptureHealth(rt, binding);
         requestFrame(rt);
+        options.onCapturePicture?.(element.sourceId, { width, height }, 'shown');
         resolve();
       };
 
@@ -771,10 +1072,19 @@ export const createPixiCompositionEngine = (options: PixiCompositionEngineOption
     const url = element.type === 'image' ? resolveImageUrl(element) : null;
     const streamId = element.type === 'screen' ? (options.resolveScreenStream(element.sourceId)?.id ?? null) : null;
     const key = elementContentKey(element, url ?? streamId);
+    const layout = { width: element.transform.width, height: element.transform.height, crop: element.crop };
     if (key === node.contentKey) {
-      return Promise.resolve();
+      if (sameLayout(node.contentLayout, layout)) {
+        return Promise.resolve();
+      }
+      if (node.relayout) {
+        node.relayout(layout);
+        node.contentLayout = layout;
+        return Promise.resolve();
+      }
     }
     node.contentKey = key;
+    node.contentLayout = layout;
     clearContent(rt, node);
 
     switch (element.type) {
@@ -817,6 +1127,10 @@ export const createPixiCompositionEngine = (options: PixiCompositionEngineOption
       return Promise.resolve();
     }
     if (background.kind === 'none') {
+      const fill = options.compositionFillWhenBackgroundNone;
+      if (fill !== undefined) {
+        holder.content.addChild(new Graphics().rect(0, 0, rt.composition.width, rt.composition.height).fill(fill));
+      }
       return Promise.resolve();
     }
     if (!url) {
@@ -1090,6 +1404,22 @@ export const createPixiCompositionEngine = (options: PixiCompositionEngineOption
         resizeRuntime(rt, viewport);
       }
       return portOk(undefined);
+    },
+
+    previewCrop(elementId) {
+      cropPreviewId = elementId;
+      const rt = runtime;
+      if (!rt) {
+        return;
+      }
+      for (const scene of rt.scenes.values()) {
+        for (const node of scene.elements.values()) {
+          if (node.cropGhost) {
+            node.cropGhost.visible = node.id === cropPreviewId;
+          }
+        }
+      }
+      requestFrame(rt);
     },
 
     dispose() {

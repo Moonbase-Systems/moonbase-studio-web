@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { IDENTITY, moveElement } from '../../playback/scene-element-gesture';
 import { createSessionWithProject } from '../../test-utils/studio-session-fixtures';
 import { addLayer, duplicateLayer, moveLayer, removeLayer, updateLayer } from './layer-commands';
 import { createScene } from './scene-commands';
@@ -34,6 +35,59 @@ describe('layer commands', () => {
       expect(added.value.project?.scenes[0]?.elements[0]?.name).toBe('Hero');
       expect(added.value.editor.selectedElementIds[0]).toBe(added.value.project?.scenes[0]?.elements[0]?.id);
       expect(added.value.isDirty).toBe(true);
+    }
+  });
+
+  it('turns a corner-anchored layer around its centre without moving it first', () => {
+    const { session, ctx } = sessionWithSource();
+    const sceneId = session.project!.scenes[0]!.id;
+    const sourceId = session.project!.sources[0]!.id;
+    const added = addLayer(
+      session,
+      sceneId,
+      sourceId,
+      { transform: { x: 100, y: 100, width: 200, height: 100, scaleX: 2, anchorX: 0, anchorY: 0 } },
+      ctx,
+    );
+    if (!added.ok) {
+      throw new Error('layer not added');
+    }
+    const layerId = added.value.project!.scenes[0]!.elements[0]!.id;
+
+    const rotated = updateLayer(added.value, sceneId, layerId, { transform: { rotation: 90 } }, ctx);
+    expect(rotated.ok).toBe(true);
+    if (rotated.ok) {
+      expect(rotated.value.project!.scenes[0]!.elements[0]!.transform).toMatchObject({
+        rotation: 90,
+        anchorX: 0.5,
+        anchorY: 0.5,
+        x: 200,
+        y: 100,
+      });
+    }
+  });
+
+  it('keeps dynamic text sizing when the layer is dragged around the scene', () => {
+    const { session, ctx } = sessionWithSource();
+    const sceneId = session.project!.scenes[0]!.id;
+    const added = addLayer(session, sceneId, session.project!.sources[0]!.id, undefined, ctx);
+    if (!added.ok) {
+      throw new Error('layer not added');
+    }
+    const element = added.value.project!.scenes[0]!.elements[0]!;
+    const move = moveElement(element.transform, IDENTITY, { x: 240, y: 120 }, null);
+
+    const moved = updateLayer(added.value, sceneId, element.id, { transform: move.transform }, ctx);
+    expect(moved.ok).toBe(true);
+    if (moved.ok) {
+      const result = moved.value.project!.scenes[0]!.elements[0]!;
+      expect(result.type === 'text' && result.settings.sizing).toBe('dynamic');
+      expect(result.transform).toMatchObject({
+        x: element.transform.x + 240,
+        y: element.transform.y + 120,
+        width: element.transform.width,
+        height: element.transform.height,
+      });
     }
   });
 

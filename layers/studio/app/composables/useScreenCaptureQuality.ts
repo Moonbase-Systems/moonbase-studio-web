@@ -4,7 +4,6 @@ import { applyScreenCaptureConstraints } from '../components/properties-inspecto
 import type { ProjectVideoSettings } from '../models/project.domain';
 import {
   BACKGROUND_PREVIEW_FRAME_RATE,
-  backgroundCaptureFrame,
   captureConstraints,
   projectCaptureFrame,
 } from '../playback/screen-capture-constraints';
@@ -31,7 +30,14 @@ export type ScreenCaptureQuality = {
   previewFrameRateCap: Readonly<Ref<number | null>>;
 };
 
-/** Shrinks screen captures while nothing records and the studio window is out of focus. */
+/**
+ * Keeps screen-capture ceilings at the project size.
+ *
+ * Do not call `applyConstraints` when the studio window blurs: Chromium's window-capture path
+ * (Windows Graphics Capture) can permanently freeze or go black if the track is renegotiated while
+ * the shared window is minimised or mid-restore. Preview cost while unfocused is handled only by
+ * capping how often Pixi uploads frames (`previewFrameRateCap`).
+ */
 export function useScreenCaptureQuality(): ScreenCaptureQuality {
   const store = useStudioSessionStore();
   const foreground = ref(true);
@@ -41,12 +47,11 @@ export function useScreenCaptureQuality(): ScreenCaptureQuality {
   };
 
   const video = computed(() => store.project?.settings.video ?? FALLBACK_VIDEO);
-  const background = computed(() => !live.value && !foreground.value);
   // Project edits replace the settings object; compare by value so captures are only re-negotiated
   // when the ceiling itself changes.
   const target = computed(() => {
     const { width, height, frameRate } = video.value;
-    return JSON.stringify([width, height, frameRate, background.value]);
+    return JSON.stringify([width, height, frameRate]);
   });
 
   watch(
@@ -57,9 +62,7 @@ export function useScreenCaptureQuality(): ScreenCaptureQuality {
       if (!import.meta.client) {
         return;
       }
-      void applyScreenCaptureConstraints(
-        background.value ? captureConstraints(backgroundCaptureFrame(settings)) : projectConstraints,
-      );
+      void applyScreenCaptureConstraints(projectConstraints);
     },
     { immediate: true },
   );

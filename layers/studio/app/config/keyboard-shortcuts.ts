@@ -12,6 +12,9 @@ export const KEYBOARD_SHORTCUT_BINDINGS: ShortcutBinding[] = [
   { kind: 'key', actionId: 'rename.cancel', binding: { key: 'Escape' } },
   { kind: 'key', actionId: 'reorder.up', binding: { key: 'ArrowUp', modifiers: ['shift'] } },
   { kind: 'key', actionId: 'reorder.down', binding: { key: 'ArrowDown', modifiers: ['shift'] } },
+  /** Bring forward / send backward (Photoshop-style); `mod` = Ctrl on Win/Linux, Cmd on macOS. */
+  { kind: 'key', actionId: 'reorder.up', binding: { key: ']', modifiers: ['mod'] } },
+  { kind: 'key', actionId: 'reorder.down', binding: { key: '[', modifiers: ['mod'] } },
   { kind: 'pointer', actionId: 'selection.toggle', binding: { modifiers: ['mod'] } },
   { kind: 'pointer', actionId: 'selection.range', binding: { modifiers: ['shift'] } },
 ];

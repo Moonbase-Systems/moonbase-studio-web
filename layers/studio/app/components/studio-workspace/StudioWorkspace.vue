@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { provideStudioCompositionEngine } from '../../composables/useCompositionEngine';
 import { useHistoryShortcuts } from '../../composables/useHistoryShortcuts';
+import { useLayerStackShortcuts } from '../../composables/useLayerStackShortcuts';
 import { AppBootScreen } from '../app-boot';
 import { STUDIO_BOOT_REVEAL_KEY } from '../app-boot/studio-boot-chrome';
 import { PropertiesInspector } from '../properties-inspector';
@@ -9,6 +10,7 @@ import { StudioTopBar } from '../studio-top-bar';
 import ScenePreviewFrame from './ScenePreviewFrame.vue';
 
 useHistoryShortcuts();
+useLayerStackShortcuts();
 provideStudioCompositionEngine();
 
 const studioReveal = useState(STUDIO_BOOT_REVEAL_KEY, () => false);

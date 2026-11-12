@@ -6,6 +6,7 @@ import {
   type OverlayContent,
   type SceneElement,
 } from '../../models/scene-element.domain';
+import { centreAnchor } from '../../playback/scene-element-gesture';
 import { portErr } from '../../ports/result';
 import { displayNameSchema } from '../../schemas/display-name.schema';
 import {
@@ -99,7 +100,12 @@ const applyLayerUpdate = (element: SceneElement, changes: LayerUpdateChanges): S
   }
 
   if (changes.transform) {
-    const merged = { ...element.transform, ...changes.transform };
+    const turnsAroundCorner =
+      changes.transform.rotation !== undefined &&
+      changes.transform.anchorX === undefined &&
+      changes.transform.anchorY === undefined;
+    const current = turnsAroundCorner ? centreAnchor(element.transform) : element.transform;
+    const merged = { ...current, ...changes.transform };
     const parsed = transform2DSchema.safeParse(merged);
     if (!parsed.success) {
       return portErr({

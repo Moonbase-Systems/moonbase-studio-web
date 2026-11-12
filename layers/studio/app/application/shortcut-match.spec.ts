@@ -50,6 +50,29 @@ describe('shortcut-match', () => {
     expect(matchesShortcutKey(keyboardEvent({ key: 'ArrowUp', shiftKey: true }), keyBinding('reorder.up'))).toBe(true);
   });
 
+  it('matches mod+] / mod+[ for stack reorder', () => {
+    expect(matchesShortcutKey(keyboardEvent({ key: ']', ctrlKey: true }), { key: ']', modifiers: ['mod'] })).toBe(true);
+    expect(matchesShortcutKey(keyboardEvent({ key: '[', ctrlKey: true }), { key: '[', modifiers: ['mod'] })).toBe(true);
+    expect(
+      KEYBOARD_SHORTCUT_BINDINGS.some(
+        (item) =>
+          item.kind === 'key' &&
+          item.actionId === 'reorder.up' &&
+          item.binding.key === ']' &&
+          item.binding.modifiers?.includes('mod'),
+      ),
+    ).toBe(true);
+    expect(
+      KEYBOARD_SHORTCUT_BINDINGS.some(
+        (item) =>
+          item.kind === 'key' &&
+          item.actionId === 'reorder.down' &&
+          item.binding.key === '[' &&
+          item.binding.modifiers?.includes('mod'),
+      ),
+    ).toBe(true);
+  });
+
   it('rejects F2 with shift held', () => {
     expect(matchesShortcutKey(keyboardEvent({ key: 'F2', shiftKey: true }), keyBinding('rename'))).toBe(false);
   });

@@ -3,11 +3,13 @@ import type { InjectionKey, Ref } from 'vue';
 import { peekImagePreviewUrl } from '../components/properties-inspector/image-preview-url';
 import { peekScreenPreviewStream } from '../components/properties-inspector/screen-preview-stream';
 import type { PixiCompositionEngineOptions } from '../infrastructure/pixi/pixi-composition-engine';
+import type { ElementId } from '../models/ids.domain';
 import type { Scene } from '../models/scene.domain';
 import type { CompositionEngine, CompositionEngineError } from '../ports/composition-engine';
 import { portErr, portOk, type PortResult } from '../ports/result';
 import { useStudioSessionStore } from '../store/studio-session.store';
 import { useScreenCaptureQuality } from './useScreenCaptureQuality';
+import { useScreenLayerFraming } from './useScreenLayerFraming';
 
 type EngineResult = PortResult<void, CompositionEngineError>;
 
@@ -23,6 +25,8 @@ export type CompositionEngineHandle = {
   diagnostics: Readonly<Ref<readonly CompositionEngineError[]>>;
   initialize(): Promise<EngineResult>;
   render(scene: Scene): Promise<EngineResult>;
+  /** Faintly shows the cropped-away picture of one element while its crop is dragged; null hides it. */
+  previewCrop(elementId: ElementId | null): void;
   dispose(): Promise<EngineResult>;
 };
 
@@ -95,6 +99,10 @@ export function useCompositionEngine(environment: CompositionEngineEnvironment):
     return record(await engine.render(scene));
   }
 
+  function previewCrop(elementId: ElementId | null): void {
+    engine?.previewCrop?.(elementId);
+  }
+
   async function dispose(): Promise<EngineResult> {
     generation += 1;
     isReady.value = false;
@@ -119,6 +127,7 @@ export function useCompositionEngine(environment: CompositionEngineEnvironment):
     diagnostics: readonly(diagnostics),
     initialize,
     render,
+    previewCrop,
     dispose,
   };
 }
@@ -129,6 +138,7 @@ const STUDIO_COMPOSITION_ENGINE: InjectionKey<CompositionEngineHandle> = Symbol(
 export function provideStudioCompositionEngine(): CompositionEngineHandle {
   const store = useStudioSessionStore();
   const captureQuality = useScreenCaptureQuality();
+  const { fitLayersToPicture } = useScreenLayerFraming();
 
   const handle = useCompositionEngine({
     getCompositionSize: () => store.project?.settings.video ?? { width: 1920, height: 1080 },
@@ -146,6 +156,9 @@ export function provideStudioCompositionEngine(): CompositionEngineHandle {
     },
     resolveScreenStream: (sourceId) => peekScreenPreviewStream(sourceId) ?? null,
     getCapturePreviewFrameRate: () => captureQuality.previewFrameRateCap.value,
+    onCapturePicture: (sourceId, picture, change) =>
+      fitLayersToPicture(sourceId, picture, change === 'shown' ? 'contain' : 'keep-longest'),
+    compositionFillWhenBackgroundNone: 0x000000,
   });
 
   provide(STUDIO_COMPOSITION_ENGINE, handle);

@@ -18,6 +18,13 @@ export function holdScreenPreviewStream(sourceId: string, stream: MediaStream) {
     }
   }
   streams.set(sourceId, stream);
+  // Prefer a steady frame rate so Chromium's WGC 0 Hz path does not leave the track silent after a
+  // minimise/restore. `getDisplayMedia` itself rejects `min`/`exact`; `applyConstraints` accepts ideal.
+  void Promise.all(
+    stream
+      .getVideoTracks()
+      .map((track) => track.applyConstraints({ frameRate: { ideal: 30, max: 60 } }).catch(() => undefined)),
+  );
   if (activeConstraints) {
     void applyToStream(stream, activeConstraints);
   }
