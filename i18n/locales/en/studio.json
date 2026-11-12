@@ -240,6 +240,9 @@
         "transform": "Transform"
       },
       "resize": "Resize properties",
+      "screen": {
+        "choose": "Choose screen"
+      },
       "sections": {
         "appearance": "Appearance",
         "audio": "Audio",
