@@ -1,11 +1,13 @@
 import type { InjectionKey, Ref } from 'vue';
 
 import { peekImagePreviewUrl } from '../components/properties-inspector/image-preview-url';
+import { peekScreenPreviewStream } from '../components/properties-inspector/screen-preview-stream';
 import type { PixiCompositionEngineOptions } from '../infrastructure/pixi/pixi-composition-engine';
 import type { Scene } from '../models/scene.domain';
 import type { CompositionEngine, CompositionEngineError } from '../ports/composition-engine';
 import { portErr, portOk, type PortResult } from '../ports/result';
 import { useStudioSessionStore } from '../store/studio-session.store';
+import { useScreenCaptureQuality } from './useScreenCaptureQuality';
 
 type EngineResult = PortResult<void, CompositionEngineError>;
 
@@ -126,6 +128,7 @@ const STUDIO_COMPOSITION_ENGINE: InjectionKey<CompositionEngineHandle> = Symbol(
 /** Studio-wide engine: the boot loader initializes it, ScenePreviewFrame hosts and renders it. */
 export function provideStudioCompositionEngine(): CompositionEngineHandle {
   const store = useStudioSessionStore();
+  const captureQuality = useScreenCaptureQuality();
 
   const handle = useCompositionEngine({
     getCompositionSize: () => store.project?.settings.video ?? { width: 1920, height: 1080 },
@@ -141,6 +144,8 @@ export function provideStudioCompositionEngine(): CompositionEngineHandle {
       }
       return asset.location.kind === 'remoteUrl' ? asset.location.url : (peekImagePreviewUrl(asset.id) ?? null);
     },
+    resolveScreenStream: (sourceId) => peekScreenPreviewStream(sourceId) ?? null,
+    getCapturePreviewFrameRate: () => captureQuality.previewFrameRateCap.value,
   });
 
   provide(STUDIO_COMPOSITION_ENGINE, handle);

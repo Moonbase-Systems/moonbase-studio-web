@@ -1,0 +1,83 @@
+import type { Ref } from 'vue';
+
+import { applyScreenCaptureConstraints } from '../components/properties-inspector/screen-preview-stream';
+import type { ProjectVideoSettings } from '../models/project.domain';
+import {
+  BACKGROUND_PREVIEW_FRAME_RATE,
+  backgroundCaptureFrame,
+  captureConstraints,
+  projectCaptureFrame,
+} from '../playback/screen-capture-constraints';
+import { useStudioSessionStore } from '../store/studio-session.store';
+
+const FALLBACK_VIDEO: ProjectVideoSettings = { width: 1920, height: 1080, frameRate: 30 };
+
+const live = ref(false);
+let projectConstraints = captureConstraints(projectCaptureFrame(FALLBACK_VIDEO));
+
+/**
+ * Recording and streaming call this before they start: captures go back to the project size
+ * and stay there while the studio window is in the background.
+ */
+export async function setScreenCaptureLive(value: boolean): Promise<void> {
+  live.value = value;
+  if (value) {
+    await applyScreenCaptureConstraints(projectConstraints);
+  }
+}
+
+export type ScreenCaptureQuality = {
+  /** Frames per second the scene preview may draw a capture at; null means every new frame. */
+  previewFrameRateCap: Readonly<Ref<number | null>>;
+};
+
+/** Shrinks screen captures while nothing records and the studio window is out of focus. */
+export function useScreenCaptureQuality(): ScreenCaptureQuality {
+  const store = useStudioSessionStore();
+  const foreground = ref(true);
+
+  const refreshForeground = (): void => {
+    foreground.value = document.visibilityState === 'visible' && document.hasFocus();
+  };
+
+  const video = computed(() => store.project?.settings.video ?? FALLBACK_VIDEO);
+  const background = computed(() => !live.value && !foreground.value);
+  // Project edits replace the settings object; compare by value so captures are only re-negotiated
+  // when the ceiling itself changes.
+  const target = computed(() => {
+    const { width, height, frameRate } = video.value;
+    return JSON.stringify([width, height, frameRate, background.value]);
+  });
+
+  watch(
+    target,
+    () => {
+      const settings = video.value;
+      projectConstraints = captureConstraints(projectCaptureFrame(settings));
+      if (!import.meta.client) {
+        return;
+      }
+      void applyScreenCaptureConstraints(
+        background.value ? captureConstraints(backgroundCaptureFrame(settings)) : projectConstraints,
+      );
+    },
+    { immediate: true },
+  );
+
+  onMounted(() => {
+    refreshForeground();
+    window.addEventListener('focus', refreshForeground);
+    window.addEventListener('blur', refreshForeground);
+    document.addEventListener('visibilitychange', refreshForeground);
+  });
+
+  onBeforeUnmount(() => {
+    window.removeEventListener('focus', refreshForeground);
+    window.removeEventListener('blur', refreshForeground);
+    document.removeEventListener('visibilitychange', refreshForeground);
+  });
+
+  return {
+    previewFrameRateCap: computed(() => (live.value && !foreground.value ? BACKGROUND_PREVIEW_FRAME_RATE : null)),
+  };
+}

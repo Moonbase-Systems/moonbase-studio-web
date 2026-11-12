@@ -52,14 +52,10 @@ const shapeAttrs = computed(() => {
       :ry="Math.max(0, height / 2 - inset)"
       v-bind="shapeAttrs"
     />
-    <line
+    <polygon
       v-else
-      :x1="inset"
-      :y1="height / 2"
-      :x2="width - inset"
-      :y2="height / 2"
-      :stroke="element.settings.strokeColor ?? element.settings.fillColor ?? '#ffffff'"
-      :stroke-width="stroke || Math.max(2, Math.min(width, height) * 0.04)"
+      :points="`${width / 2},${inset} ${width - inset},${height - inset} ${inset},${height - inset}`"
+      v-bind="shapeAttrs"
     />
   </svg>
 </template>

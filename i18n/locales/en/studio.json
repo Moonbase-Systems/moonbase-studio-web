@@ -259,8 +259,8 @@
       },
       "shapeTypes": {
         "ellipse": "Ellipse",
-        "line": "Line",
-        "rectangle": "Rectangle"
+        "rectangle": "Rectangle",
+        "triangle": "Triangle"
       },
       "tabs": {
         "crop": "Crop",

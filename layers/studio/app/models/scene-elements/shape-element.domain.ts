@@ -1,7 +1,7 @@
 import type { SourceId } from '../ids.domain';
 import type { SceneElementBase } from './scene-element-base.domain';
 
-export type ShapeType = 'rectangle' | 'ellipse' | 'line';
+export type ShapeType = 'rectangle' | 'ellipse' | 'triangle';
 
 export type ShapeGradientStop = {
   offset: number;
@@ -41,8 +41,11 @@ export const createDefaultShapeElementSettings = (shapeType: ShapeType = 'rectan
 });
 
 export const shapeKindToShapeType = (shapeKind: string): ShapeType => {
-  if (shapeKind === 'ellipse' || shapeKind === 'line') {
-    return shapeKind;
+  if (shapeKind === 'ellipse' || shapeKind === 'circle') {
+    return 'ellipse';
+  }
+  if (shapeKind === 'triangle' || shapeKind === 'line') {
+    return 'triangle';
   }
   return 'rectangle';
 };

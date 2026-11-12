@@ -6,18 +6,26 @@ import {
   FillGradient,
   type FillInput,
   Graphics,
+  ImageSource,
   Rectangle,
   Sprite,
   Text,
   type TextDropShadow,
   TextStyle,
   Texture,
+  Ticker,
 } from 'pixi.js';
 
 import type { Appearance, BlendMode, Transform2D } from '../../models/common.domain';
 import type { AssetId, ElementId, GroupId, SceneId, SourceId } from '../../models/ids.domain';
 import type { Scene, SceneBackground } from '../../models/scene.domain';
-import type { ImageElement, SceneElement, ShapeElement, TextElement } from '../../models/scene-element.domain';
+import type {
+  ImageElement,
+  SceneElement,
+  ScreenElement,
+  ShapeElement,
+  TextElement,
+} from '../../models/scene-element.domain';
 import type { SceneGroup } from '../../models/scene-group.domain';
 import type { CompositionEngine, CompositionEngineError, CompositionViewport } from '../../ports/composition-engine';
 import { portErr, portOk, type PortResult } from '../../ports/result';
@@ -43,6 +51,10 @@ export type PixiCompositionEngineOptions = {
   getRetainedSceneIds: () => readonly SceneId[];
   resolveSourceAssetId: (sourceId: SourceId) => AssetId | null;
   resolveAssetUrl: (assetId: AssetId) => string | null;
+  /** Live display capture for a screen source, when the user has picked one. */
+  resolveScreenStream: (sourceId: SourceId) => MediaStream | null;
+  /** Highest rate the preview redraws captures at; null or omitted redraws on every new capture frame. */
+  getCapturePreviewFrameRate?: () => number | null;
   /** Non-fatal problems: failed texture loads, broken references inside a scene. */
   onDiagnostic?: (error: CompositionEngineError) => void;
 };
@@ -55,10 +67,25 @@ type ImageBinding = {
   view: Texture | null;
 };
 
+type CaptureBinding = {
+  streamId: string;
+  element: HTMLVideoElement;
+  texture: Texture | null;
+  /** Re-fits the sprite when the capture changes resolution. */
+  fit: ((width: number, height: number) => void) | null;
+  width: number;
+  height: number;
+  /** Pending `requestVideoFrameCallback` handle; null where the browser lacks it and frames are polled. */
+  frameCallback: number | null;
+  /** Next slot on the capped preview's frame grid; ignored while the preview is uncapped. */
+  nextDrawAt: number;
+};
+
 type ContentHolder = {
   content: Container;
   contentKey: string | null;
   image: ImageBinding | null;
+  capture: CaptureBinding | null;
   disposables: { destroy(): void }[];
 };
 
@@ -84,14 +111,18 @@ type Runtime = {
   app: Application;
   frame: Container;
   frameMask: Graphics;
+  /** Screen-space edge of the project frame, so the placeable area stays visible. */
+  projectOutline: Graphics;
   scenes: Map<SceneId, SceneState>;
   textures: PixiTextureCache;
   composition: Size;
   viewport: Size;
   frameRequest: number | null;
+  stopIdleTimers: () => void;
 };
 
 const DESTROY_OWNED = { children: true, context: true, style: true } as const;
+const PROJECT_OUTLINE = 0xffffff;
 const PLACEHOLDER_FILL = 0x1f2937;
 const PLACEHOLDER_STROKE = 0x64748b;
 const PLACEHOLDER_TEXT = '#cbd5e1';
@@ -99,6 +130,27 @@ const PLACEHOLDER_TEXT = '#cbd5e1';
 const errorMessage = (error: unknown): string => (error instanceof Error ? error.message : String(error));
 
 const toBlendMode = (blendMode: BlendMode | undefined): BLEND_MODES => blendMode ?? 'inherit';
+
+const SCHEDULER_INTERVAL_MS = 1000;
+
+/**
+ * Pixi keeps `Ticker.system` requesting an animation frame at the display refresh rate for two
+ * listeners the preview has no use for at that pace: pointer hit-testing and the GPU garbage-collection
+ * scheduler. Detaching them lets an unchanged scene stay idle; the scheduler's tasks run every few
+ * tens of seconds, so a one-second timer keeps them on time.
+ */
+const quietSystemTicker = (app: Application): (() => void) => {
+  app.renderer.events.setTargetElement(null as unknown as HTMLElement);
+
+  const scheduler = app.renderer.scheduler as unknown as { _update?: () => void };
+  const update = scheduler._update;
+  if (typeof update !== 'function') {
+    return () => undefined;
+  }
+  Ticker.system.remove(update, scheduler);
+  const timer = window.setInterval(() => update.call(scheduler), SCHEDULER_INTERVAL_MS);
+  return () => window.clearInterval(timer);
+};
 
 const applyPlacement = (node: TransformNode, transform: Transform2D, appearance: Appearance, visible: boolean) => {
   const placement = placementForTransform(transform);
@@ -128,6 +180,7 @@ const createContentHolder = (): ContentHolder => ({
   content: new Container(),
   contentKey: null,
   image: null,
+  capture: null,
   disposables: [],
 });
 
@@ -144,6 +197,9 @@ const placeChildren = (parent: Container, children: Container[]): void => {
 };
 
 const displayResolution = (): number => window.devicePixelRatio || 1;
+
+const supportsVideoFrameCallback = (video: HTMLVideoElement): boolean =>
+  typeof video.requestVideoFrameCallback === 'function';
 
 const drawPlaceholder = (parent: Container, size: Size, title: string, caption: string): void => {
   const box = new Graphics()
@@ -227,20 +283,10 @@ const drawShape = (holder: ContentHolder, element: ShapeElement): void => {
   const { settings } = element;
   const graphics = new Graphics();
 
-  if (settings.shapeType === 'line') {
-    graphics
-      .moveTo(0, height / 2)
-      .lineTo(width, height / 2)
-      .stroke({
-        width: Math.max(settings.strokeWidth, 1),
-        color: settings.strokeColor ?? settings.fillColor ?? '#ffffff',
-      });
-    holder.content.addChild(graphics);
-    return;
-  }
-
   if (settings.shapeType === 'ellipse') {
     graphics.ellipse(width / 2, height / 2, width / 2, height / 2);
+  } else if (settings.shapeType === 'triangle') {
+    graphics.poly([width / 2, 0, width, height, 0, height]);
   } else if (settings.cornerRadius > 0) {
     graphics.roundRect(0, 0, width, height, Math.min(settings.cornerRadius, width / 2, height / 2));
   } else {
@@ -395,10 +441,94 @@ export const createPixiCompositionEngine = (options: PixiCompositionEngineOption
     }
     rt.frameRequest = requestAnimationFrame(() => {
       rt.frameRequest = null;
-      if (runtime === rt) {
-        rt.app.render();
+      if (runtime !== rt) {
+        return;
+      }
+      const polling = pollCaptureFrames(rt, performance.now());
+      rt.app.render();
+      if (polling) {
+        requestFrame(rt);
       }
     });
+  };
+
+  /** Uploads the capture's current frame unless the preview frame rate cap says to skip it. */
+  const presentCaptureFrame = (binding: CaptureBinding, now: number): boolean => {
+    if (!binding.texture || binding.element.readyState < 2) {
+      return false;
+    }
+    const cap = options.getCapturePreviewFrameRate?.() ?? null;
+    if (cap !== null && cap > 0) {
+      const interval = 1000 / cap;
+      // Frames that arrive slightly early still take their slot, so a source running at the cap
+      // keeps its rate despite timing jitter.
+      if (now < binding.nextDrawAt - interval * 0.25) {
+        return false;
+      }
+      const slot = binding.nextDrawAt < now - interval ? now : binding.nextDrawAt;
+      binding.nextDrawAt = slot + interval;
+    }
+    binding.texture.source.update();
+    const { videoWidth, videoHeight } = binding.element;
+    if (videoWidth > 0 && videoHeight > 0 && (videoWidth !== binding.width || videoHeight !== binding.height)) {
+      binding.width = videoWidth;
+      binding.height = videoHeight;
+      binding.fit?.(videoWidth, videoHeight);
+    }
+    return true;
+  };
+
+  const watchCaptureFrames = (rt: Runtime, binding: CaptureBinding): void => {
+    const video = binding.element;
+    if (!supportsVideoFrameCallback(video)) {
+      return;
+    }
+    binding.frameCallback = video.requestVideoFrameCallback((now) => {
+      binding.frameCallback = null;
+      if (runtime !== rt || !binding.texture) {
+        return;
+      }
+      if (presentCaptureFrame(binding, now)) {
+        requestFrame(rt);
+      }
+      watchCaptureFrames(rt, binding);
+    });
+  };
+
+  /** Fallback for browsers without `requestVideoFrameCallback`: reports whether a visible capture is still playing. */
+  const pollCaptureFrames = (rt: Runtime, now: number): boolean => {
+    let polling = false;
+    for (const state of rt.scenes.values()) {
+      if (!state.container.visible) {
+        continue;
+      }
+      for (const node of state.elements.values()) {
+        const binding = node.capture;
+        if (!binding?.texture || supportsVideoFrameCallback(binding.element)) {
+          continue;
+        }
+        presentCaptureFrame(binding, now);
+        if (!binding.element.paused && !binding.element.ended) {
+          polling = true;
+        }
+      }
+    }
+    return polling;
+  };
+
+  const pauseSceneCaptures = (state: SceneState): void => {
+    for (const node of state.elements.values()) {
+      node.capture?.element.pause();
+    }
+  };
+
+  const resumeSceneCaptures = (state: SceneState): void => {
+    for (const node of state.elements.values()) {
+      const binding = node.capture;
+      if (binding?.texture && binding.element.paused && !binding.element.ended) {
+        void binding.element.play().catch(() => undefined);
+      }
+    }
   };
 
   const layout = (rt: Runtime): void => {
@@ -406,6 +536,18 @@ export const createPixiCompositionEngine = (options: PixiCompositionEngineOption
     rt.frame.position.set(letterbox.offsetX, letterbox.offsetY);
     rt.frame.scale.set(letterbox.scale);
     rt.frameMask.clear().rect(0, 0, rt.composition.width, rt.composition.height).fill(0xffffff);
+    const width = rt.composition.width * letterbox.scale;
+    const height = rt.composition.height * letterbox.scale;
+    rt.projectOutline.clear();
+    if (width > 0 && height > 0) {
+      rt.projectOutline.rect(letterbox.offsetX, letterbox.offsetY, width, height).stroke({
+        width: 1,
+        color: PROJECT_OUTLINE,
+        alpha: 0.55,
+        alignment: 1,
+        pixelLine: true,
+      });
+    }
   };
 
   const releaseImage = (rt: Runtime, holder: ContentHolder): void => {
@@ -417,11 +559,29 @@ export const createPixiCompositionEngine = (options: PixiCompositionEngineOption
     holder.image = null;
   };
 
+  const releaseCapture = (holder: ContentHolder): void => {
+    const binding = holder.capture;
+    if (!binding) {
+      return;
+    }
+    holder.capture = null;
+    if (binding.frameCallback !== null) {
+      binding.element.cancelVideoFrameCallback(binding.frameCallback);
+      binding.frameCallback = null;
+    }
+    binding.fit = null;
+    binding.element.pause();
+    binding.element.srcObject = null;
+    binding.texture?.destroy(true);
+    binding.texture = null;
+  };
+
   const clearContent = (rt: Runtime, holder: ContentHolder): void => {
     for (const child of holder.content.removeChildren()) {
       child.destroy(DESTROY_OWNED);
     }
     releaseImage(rt, holder);
+    releaseCapture(holder);
     for (const disposable of holder.disposables) {
       disposable.destroy();
     }
@@ -514,11 +674,103 @@ export const createPixiCompositionEngine = (options: PixiCompositionEngineOption
     return options.resolveAssetUrl(assetId);
   };
 
+  const drawScreen = (
+    rt: Runtime,
+    node: ElementNode,
+    element: ScreenElement,
+    stream: MediaStream | null,
+  ): Promise<void> => {
+    const box = { width: element.transform.width, height: element.transform.height };
+    if (!stream) {
+      drawPlaceholder(node.content, box, element.name, 'screen unavailable');
+      return Promise.resolve();
+    }
+
+    const video = document.createElement('video');
+    video.muted = true;
+    video.playsInline = true;
+    video.srcObject = stream;
+
+    const binding: CaptureBinding = {
+      streamId: stream.id,
+      element: video,
+      texture: null,
+      fit: null,
+      width: 0,
+      height: 0,
+      frameCallback: null,
+      nextDrawAt: Number.NEGATIVE_INFINITY,
+    };
+    node.capture = binding;
+
+    const placeholder = new Container();
+    drawPlaceholder(placeholder, box, element.name, 'loading screen');
+    node.content.addChild(placeholder);
+
+    return new Promise((resolve) => {
+      const stillCurrent = () => runtime === rt && node.capture === binding;
+
+      const fail = () => {
+        if (!stillCurrent()) {
+          resolve();
+          return;
+        }
+        placeholder.destroy(DESTROY_OWNED);
+        drawPlaceholder(node.content, box, element.name, 'screen failed');
+        report({ kind: 'render-failed', message: `Screen for element ${element.id} failed to show` });
+        requestFrame(rt);
+        resolve();
+      };
+
+      const showFrame = () => {
+        if (!stillCurrent() || binding.texture) {
+          resolve();
+          return;
+        }
+        const width = video.videoWidth;
+        const height = video.videoHeight;
+        if (width <= 0 || height <= 0) {
+          fail();
+          return;
+        }
+        // Dynamic, so the sprite re-measures when the capture changes resolution; otherwise it keeps
+        // the first frame's bounds and the re-fit scale zooms the picture.
+        const texture = new Texture({ source: new ImageSource({ resource: video }), dynamic: true });
+        binding.texture = texture;
+        const sprite = new Sprite(texture);
+        binding.fit = (contentWidth, contentHeight) => {
+          const rect = fitContentRect(element.settings.fitMode, box, { width: contentWidth, height: contentHeight });
+          sprite.position.set(rect.x, rect.y);
+          sprite.setSize(rect.width, rect.height);
+        };
+        binding.width = width;
+        binding.height = height;
+        binding.fit(width, height);
+        placeholder.destroy(DESTROY_OWNED);
+        node.content.addChild(sprite);
+        clipTo(node.content, sprite, box, element.settings.cornerRadius);
+        void video.play().catch(() => undefined);
+        watchCaptureFrames(rt, binding);
+        requestFrame(rt);
+        resolve();
+      };
+
+      video.addEventListener('loadeddata', showFrame, { once: true });
+      video.addEventListener('error', fail, { once: true });
+      video.addEventListener('play', () => {
+        if (stillCurrent()) {
+          requestFrame(rt);
+        }
+      });
+    });
+  };
+
   const syncElement = (rt: Runtime, node: ElementNode, element: SceneElement): Promise<void> => {
     applyPlacement(node, element.transform, element.appearance, element.visibility);
 
     const url = element.type === 'image' ? resolveImageUrl(element) : null;
-    const key = elementContentKey(element, url);
+    const streamId = element.type === 'screen' ? (options.resolveScreenStream(element.sourceId)?.id ?? null) : null;
+    const key = elementContentKey(element, url ?? streamId);
     if (key === node.contentKey) {
       return Promise.resolve();
     }
@@ -540,6 +792,8 @@ export const createPixiCompositionEngine = (options: PixiCompositionEngineOption
           });
         }
         return drawImage(rt, node, element, url);
+      case 'screen':
+        return drawScreen(rt, node, element, options.resolveScreenStream(element.sourceId));
       default:
         drawPlaceholder(node.content, element.transform, element.name, element.type);
         return Promise.resolve();
@@ -755,6 +1009,7 @@ export const createPixiCompositionEngine = (options: PixiCompositionEngineOption
         } catch (error) {
           return portErr({ kind: 'io', message: `PixiJS failed to initialize: ${errorMessage(error)}` });
         }
+        const stopIdleTimers = quietSystemTicker(app);
 
         const canvas = app.canvas;
         canvas.style.position = 'absolute';
@@ -766,17 +1021,20 @@ export const createPixiCompositionEngine = (options: PixiCompositionEngineOption
         const frameMask = new Graphics();
         frame.addChild(frameMask);
         frame.mask = frameMask;
-        app.stage.addChild(frame);
+        const projectOutline = new Graphics();
+        app.stage.addChild(frame, projectOutline);
 
         const rt: Runtime = {
           app,
           frame,
           frameMask,
+          projectOutline,
           scenes: new Map(),
           textures: createPixiTextureCache(),
           composition: { width: composition.width, height: composition.height },
           viewport: { width: size.width, height: size.height },
           frameRequest: null,
+          stopIdleTimers,
         };
         runtime = rt;
         layout(rt);
@@ -798,7 +1056,13 @@ export const createPixiCompositionEngine = (options: PixiCompositionEngineOption
         rt.scenes.set(scene.id, state);
         loads = syncScene(rt, state, scene);
         for (const [sceneId, other] of rt.scenes) {
-          other.container.visible = sceneId === scene.id;
+          const active = sceneId === scene.id;
+          other.container.visible = active;
+          if (active) {
+            resumeSceneCaptures(other);
+          } else {
+            pauseSceneCaptures(other);
+          }
         }
         pruneScenes(rt, scene.id);
         renderNow(rt);
@@ -838,6 +1102,7 @@ export const createPixiCompositionEngine = (options: PixiCompositionEngineOption
         if (rt.frameRequest !== null) {
           cancelAnimationFrame(rt.frameRequest);
         }
+        rt.stopIdleTimers();
         try {
           for (const state of rt.scenes.values()) {
             destroySceneState(rt, state);
