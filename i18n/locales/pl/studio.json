@@ -259,8 +259,8 @@
       },
       "shapeTypes": {
         "ellipse": "Elipsa",
-        "line": "Linia",
-        "rectangle": "Prostokąt"
+        "rectangle": "Prostokąt",
+        "triangle": "Trójkąt"
       },
       "tabs": {
         "crop": "Kadr",

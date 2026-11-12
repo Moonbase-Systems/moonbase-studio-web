@@ -124,6 +124,8 @@ export const elementContentKey = (element: SceneElement, resolvedImageUrl: strin
       return JSON.stringify([element.type, size, element.settings]);
     case 'image':
       return JSON.stringify([element.type, size, element.settings, element.crop, resolvedImageUrl]);
+    case 'screen':
+      return JSON.stringify([element.type, size, element.settings, resolvedImageUrl]);
     default:
       return JSON.stringify([element.type, size, element.name]);
   }

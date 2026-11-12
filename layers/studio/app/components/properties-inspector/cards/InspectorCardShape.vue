@@ -13,7 +13,7 @@ const props = defineProps<{
 const { t } = useI18n();
 const { updateSettings } = useElementInspectorUpdate();
 
-const shapeTypes = ['rectangle', 'ellipse', 'line'] as const satisfies readonly ShapeType[];
+const shapeTypes = ['rectangle', 'ellipse', 'triangle'] as const satisfies readonly ShapeType[];
 
 const open = ref(false);
 const triggerRef = ref<HTMLButtonElement | null>(null);

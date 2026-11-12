@@ -45,7 +45,7 @@ watch([() => store.activeScene, isReady], ([scene, ready]) => {
   >
     <div class="flex min-h-0 flex-1 items-center justify-center">
       <div
-        class="bg-surface-container-high border-on-surface-dim/30 relative max-h-full w-full max-w-full overflow-hidden rounded-sm border"
+        class="bg-surface-container-high relative max-h-full w-full max-w-full overflow-hidden"
         :style="{ aspectRatio }"
       >
         <div

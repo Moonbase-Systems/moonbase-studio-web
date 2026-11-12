@@ -84,7 +84,9 @@ const shapeGradientSchema = z.object({
 
 export const shapeSettingsSchema = z
   .object({
-    shapeType: z.enum(['rectangle', 'ellipse', 'line']),
+    shapeType: z
+      .enum(['rectangle', 'ellipse', 'triangle', 'line'])
+      .transform((value) => (value === 'line' ? 'triangle' : value)),
     fillColor: z.string().nullable(),
     fillOpacity: z.number().min(0).max(1),
     strokeColor: z.string().nullable(),
