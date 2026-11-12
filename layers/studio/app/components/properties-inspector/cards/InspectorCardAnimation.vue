@@ -1,15 +1,18 @@
 <script setup lang="ts">
 import { cn } from '~/utils/index';
 
+import type { SceneId } from '../../../models/ids.domain';
 import type { AnimationElement } from '../../../models/scene-elements';
 import type { AnimationEndBehavior, AnimationPlaybackTrigger } from '../../../models/source.domain';
 import { capabilitiesForMediaKind } from '../../../playback/animation-player';
 import { peekAnimationControls } from '../../../playback/animation-player-registry';
 import { holdAnimationPreviewUrl } from '../../../playback/animation-preview-url';
 import { detectAnimationFile } from '../../../playback/detect-animation-file';
+import { readMediaPixelSize } from '../../../playback/read-media-pixel-size';
 import { useStudioSessionStore } from '../../../store/studio-session.store';
 
 const props = defineProps<{
+  sceneId: SceneId;
   element: AnimationElement;
 }>();
 
@@ -98,6 +101,7 @@ async function onFile(event: Event) {
   }
   fileError.value = null;
   const url = URL.createObjectURL(file);
+  const size = await readMediaPixelSize(url, detected.mediaKind);
   const assetIdsBefore = new Set(store.project?.assets.map((asset) => asset.id) ?? []);
   const result = store.runTransaction(() => {
     const added = store.addAsset({
@@ -108,6 +112,8 @@ async function onFile(event: Event) {
       metadata: {
         mimeType: file.type || undefined,
         byteSize: file.size,
+        width: size.width,
+        height: size.height,
       },
     });
     if (!added.ok) {
@@ -126,7 +132,13 @@ async function onFile(event: Event) {
     if (!updated.ok) {
       return updated;
     }
-    return store.renameSource(current.id, sourceNameFromFile(file));
+    const renamed = store.renameSource(current.id, sourceNameFromFile(file));
+    if (!renamed.ok || !size.width || !size.height) {
+      return renamed;
+    }
+    return store.updateLayer(props.sceneId, props.element.id, {
+      transform: { width: size.width, height: size.height },
+    });
   });
   if (!result.ok) {
     URL.revokeObjectURL(url);

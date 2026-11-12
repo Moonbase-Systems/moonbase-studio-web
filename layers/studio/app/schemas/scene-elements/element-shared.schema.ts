@@ -8,8 +8,8 @@ const idSchema = z.string().min(1);
 export const transform2DSchema = z.object({
   x: z.number(),
   y: z.number(),
-  width: z.number().positive(),
-  height: z.number().positive(),
+  width: z.number().min(0),
+  height: z.number().min(0),
   scaleX: z.number().positive(),
   scaleY: z.number().positive(),
   rotation: z.number(),

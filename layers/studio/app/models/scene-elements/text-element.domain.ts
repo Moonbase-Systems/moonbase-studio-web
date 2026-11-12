@@ -5,6 +5,7 @@ export type TextFontStyle = 'normal' | 'italic';
 export type TextAlign = 'left' | 'center' | 'right';
 export type TextVerticalAlign = 'top' | 'middle' | 'bottom';
 export type TextOverflow = 'clip' | 'ellipsis' | 'visible';
+export type TextSizing = 'dynamic' | 'fixed';
 
 export type TextShadowSettings = {
   color: string;
@@ -36,6 +37,8 @@ export type TextElementSettings = {
   shadow: TextShadowSettings | null;
   underline: boolean;
   strikethrough: boolean;
+  /** `dynamic` grows the frame with the text. `fixed` keeps the width and height the user set. */
+  sizing: TextSizing;
 };
 
 export type TextElement = SceneElementBase & {
@@ -66,4 +69,5 @@ export const createDefaultTextElementSettings = (initialText = ''): TextElementS
   shadow: null,
   underline: false,
   strikethrough: false,
+  sizing: 'dynamic',
 });

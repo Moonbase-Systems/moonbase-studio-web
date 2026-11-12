@@ -23,7 +23,10 @@ defineProps<{
       />
     </template>
     <template #options>
-      <InspectorCardAnimation :element="element" />
+      <InspectorCardAnimation
+        :scene-id="sceneId"
+        :element="element"
+      />
     </template>
   </InspectorLayerFrame>
 </template>

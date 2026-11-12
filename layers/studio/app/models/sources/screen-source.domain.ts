@@ -12,6 +12,9 @@ export type ScreenSource = {
   name: string;
   type: 'screen';
   displayId?: string;
+  /** Capture resolution, when the chosen display or window reports one. */
+  width?: number;
+  height?: number;
   settings?: ScreenSourceSettings;
   metadata?: SourceMetadata;
 };

@@ -15,6 +15,7 @@ import {
 } from '../../schemas/scene-elements/element-shared.schema';
 import { assertInitialized, commitProjectChange, withClonedProject } from '../command-utils';
 import type { CommandContext } from '../context';
+import { applyElementFrameRules, creationFrame } from '../element-frame';
 import type { StudioResult } from '../errors';
 import { mergeElementSettings } from '../merge-element-settings';
 import { duplicateSceneElement } from '../scene-clone';
@@ -200,7 +201,10 @@ export const addLayer = (
         source,
         name: options?.name,
         video: project.settings.video,
-        transform: options?.transform,
+        transform: {
+          ...creationFrame(project, source),
+          ...options?.transform,
+        },
         appearance: options?.appearance,
       });
       scene.elements.push(element);
@@ -451,6 +455,8 @@ export const updateLayer = (
   if (!applied.ok) {
     return applied;
   }
+
+  applyElementFrameRules(project, element, changes);
 
   return commitProjectChange(session, project, ctx);
 };
