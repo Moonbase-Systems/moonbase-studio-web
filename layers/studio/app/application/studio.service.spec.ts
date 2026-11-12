@@ -68,6 +68,64 @@ describe('createStudioService', () => {
     expect(session.project!.history.future).toHaveLength(0);
   });
 
+  it('undoes every edit of one gesture in a single step', () => {
+    let session = createEmptyStudioSession();
+    const ctx = createTestContext(['p1', 's1', 'src1', 'l1', 'h1', 'h2', 'h3', 'h4', 'h5']);
+    const service = createStudioService({
+      state: {
+        get: () => session,
+        set: (next) => {
+          session = next;
+        },
+      },
+      context: ctx,
+    });
+
+    service.initialize();
+    service.createProject({ name: 'Gesture' });
+    service.createScene('Scene 1');
+    const sceneId = session.project!.scenes[0]!.id;
+    service.addSource({ type: 'shape', name: 'Box', shapeKind: 'rect' });
+    service.addLayer(sceneId, session.project!.sources[0]!.id);
+    const layerId = session.project!.scenes[0]!.elements[0]!.id;
+    const startX = session.project!.scenes[0]!.elements[0]!.transform.x;
+    const pastBefore = session.project!.history.past.length;
+
+    service.beginGesture();
+    for (const x of [10, 20, 30]) {
+      service.updateLayer(sceneId, layerId, { transform: { x } });
+    }
+    service.endGesture();
+
+    expect(session.project!.history.past).toHaveLength(pastBefore + 1);
+    service.undo();
+    expect(session.project!.scenes[0]!.elements[0]!.transform.x).toBe(startX);
+  });
+
+  it('records nothing for a gesture that changed nothing', () => {
+    let session = createEmptyStudioSession();
+    const ctx = createTestContext(['p1', 's1', 'h1']);
+    const service = createStudioService({
+      state: {
+        get: () => session,
+        set: (next) => {
+          session = next;
+        },
+      },
+      context: ctx,
+    });
+
+    service.initialize();
+    service.createProject({ name: 'Click' });
+    service.createScene('Scene 1');
+    const pastBefore = session.project!.history.past.length;
+
+    service.beginGesture();
+    service.endGesture();
+
+    expect(session.project!.history.past).toHaveLength(pastBefore);
+  });
+
   it('clears redo stack when a new edit happens after undo', () => {
     let session = createEmptyStudioSession();
     const ctx = createTestContext(['p1', 's1', 'h1', 'h2', 'h3', 'h4']);

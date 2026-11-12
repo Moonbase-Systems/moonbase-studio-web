@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { useStudioCompositionEngine } from '../../composables/useCompositionEngine';
 import { useStudioSessionStore } from '../../store/studio-session.store';
+import SceneTransformOverlay from './SceneTransformOverlay.vue';
 
 const store = useStudioSessionStore();
 const { t } = useI18n();
@@ -39,7 +40,7 @@ watch([() => store.activeScene, isReady], ([scene, ready]) => {
 
 <template>
   <div
-    class="px-md py-md flex h-full min-h-0 flex-col"
+    class="px-md py-md relative flex h-full min-h-0 flex-col overflow-hidden"
     data-scene-preview
     @pointerdown="onEmptyPreviewPointerDown"
   >
@@ -69,5 +70,9 @@ watch([() => store.activeScene, isReady], ([scene, ready]) => {
         </span>
       </div>
     </div>
+    <SceneTransformOverlay
+      v-if="!showPlaceholder"
+      :host="host"
+    />
   </div>
 </template>

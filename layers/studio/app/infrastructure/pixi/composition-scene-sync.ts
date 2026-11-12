@@ -115,6 +115,9 @@ export const planSceneSync = (scene: Scene, rendered: RenderedSceneIds): SceneSy
 /**
  * Changes when the drawn content must be rebuilt (Graphics path, Text style, texture frame).
  * Position, scale, rotation, opacity, visibility and blend mode are applied in place and stay out of the key.
+ * Images and screens leave the box size and crop out too: the engine re-fits loaded media to them in place.
+ * Screen `showCursor` is applied with `applyConstraints` on the live track, so it stays out of the key —
+ * rebuilding would tear down the video element and show a black frame after a minimised window returns.
  */
 export const elementContentKey = (element: SceneElement, resolvedImageUrl: string | null = null): string => {
   const size = [element.transform.width, element.transform.height];
@@ -123,9 +126,11 @@ export const elementContentKey = (element: SceneElement, resolvedImageUrl: strin
     case 'text':
       return JSON.stringify([element.type, size, element.settings]);
     case 'image':
-      return JSON.stringify([element.type, size, element.settings, element.crop, resolvedImageUrl]);
-    case 'screen':
-      return JSON.stringify([element.type, size, element.settings, resolvedImageUrl]);
+      return JSON.stringify([element.type, element.settings, resolvedImageUrl]);
+    case 'screen': {
+      const { showCursor: _showCursor, ...drawnSettings } = element.settings;
+      return JSON.stringify([element.type, drawnSettings, resolvedImageUrl]);
+    }
     default:
       return JSON.stringify([element.type, size, element.name]);
   }

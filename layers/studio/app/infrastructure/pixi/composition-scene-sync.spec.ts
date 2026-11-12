@@ -100,6 +100,26 @@ describe('elementContentKey', () => {
     const image = element('img', { id: 'src-img', name: 'Img', type: 'image', assetId: 'asset-1' });
     expect(elementContentKey(image, 'blob:one')).not.toBe(elementContentKey(image, 'blob:two'));
   });
+
+  it('keeps image keys across resizes and crops so loaded media is re-fitted in place', () => {
+    const image = element('img', { id: 'src-img', name: 'Img', type: 'image', assetId: 'asset-1' });
+    const resized: SceneElement = { ...image, transform: { ...image.transform, width: 640 } };
+    const cropped: SceneElement = { ...image, crop: { ...image.crop, left: 0.25 } };
+    expect(elementContentKey(resized, 'blob:one')).toBe(elementContentKey(image, 'blob:one'));
+    expect(elementContentKey(cropped, 'blob:one')).toBe(elementContentKey(image, 'blob:one'));
+  });
+
+  it('ignores screen showCursor so toggling the cursor does not rebuild the capture', () => {
+    const screen = element('scr', { id: 'src-screen', name: 'Screen', type: 'screen' });
+    if (screen.type !== 'screen') {
+      throw new Error('expected screen element');
+    }
+    const toggled: SceneElement = {
+      ...screen,
+      settings: { ...screen.settings, showCursor: !screen.settings.showCursor },
+    };
+    expect(elementContentKey(toggled, 'stream-1')).toBe(elementContentKey(screen, 'stream-1'));
+  });
 });
 
 describe('composition geometry', () => {

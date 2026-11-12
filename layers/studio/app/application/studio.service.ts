@@ -102,6 +102,8 @@ const createHistoryEntry = (
 export const createStudioService = (deps: { state: StudioSessionState; context?: CommandContext }) => {
   const ctx = deps.context ?? defaultContext();
   let historySuspended = false;
+  /** State when a pointer gesture started; its edits land as one history entry when it ends. */
+  let gestureStart: ReturnType<typeof captureHistorySnapshot> = null;
 
   const run = (
     command: (session: StudioSession, context: CommandContext) => StudioResult<StudioSession>,
@@ -109,7 +111,8 @@ export const createStudioService = (deps: { state: StudioSessionState; context?:
   ): StudioResult<StudioSession> => {
     const recordHistory = options?.recordHistory ?? true;
     const current = deps.state.get();
-    const before = recordHistory && !historySuspended && current.project ? captureHistorySnapshot(current) : null;
+    const before =
+      recordHistory && !historySuspended && !gestureStart && current.project ? captureHistorySnapshot(current) : null;
     const result = command(current, ctx);
     if (!result.ok) {
       return result;
@@ -167,6 +170,25 @@ export const createStudioService = (deps: { state: StudioSessionState; context?:
     return { ok: true, value: deps.state.get() };
   };
 
+  const beginGesture = (): void => {
+    gestureStart = captureHistorySnapshot(deps.state.get());
+  };
+
+  const endGesture = (): void => {
+    const before = gestureStart;
+    gestureStart = null;
+    if (!before) {
+      return;
+    }
+    const after = captureHistorySnapshot(deps.state.get());
+    if (after && !historySnapshotsEqual(before, after)) {
+      const pushed = pushHistoryEntry(deps.state.get(), createHistoryEntry(before, after, ctx), ctx);
+      if (pushed.ok) {
+        deps.state.set(pushed.value);
+      }
+    }
+  };
+
   return {
     getSession: (): StudioSession => deps.state.get(),
 
@@ -187,6 +209,10 @@ export const createStudioService = (deps: { state: StudioSessionState; context?:
     redo: () => run((session, context) => redo(session, context), { recordHistory: false }),
 
     runTransaction,
+
+    beginGesture,
+
+    endGesture,
 
     setActiveScene: (sceneId: SceneId) => run((session) => setActiveScene(session, sceneId), { recordHistory: false }),
 

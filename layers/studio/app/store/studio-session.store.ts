@@ -71,6 +71,9 @@ export const useStudioSessionStore = defineStore(STORE_KEYS.STUDIO_SESSION, () =
     undo: () => service.undo(),
     redo: () => service.redo(),
     runTransaction: (fn: () => StudioResult<StudioSession> | undefined) => service.runTransaction(fn),
+    /** Edits between begin and end (a drag on the preview) undo as one step. */
+    beginGesture: () => service.beginGesture(),
+    endGesture: () => service.endGesture(),
     createProject: (input?: { name?: string; type?: ProjectType }) => service.createProject(input),
     openProject: (project: Project) => service.openProject(project),
     closeProject: () => service.closeProject(),

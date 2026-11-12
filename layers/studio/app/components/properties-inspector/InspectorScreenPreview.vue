@@ -14,18 +14,41 @@ const failed = ref(false);
 
 const stream = computed(() => peekScreenPreviewStream(props.element.sourceId) ?? null);
 
-watch([host, stream], () => {
+function resume() {
+  const video = host.value;
+  const current = stream.value;
+  if (!video || !current) {
+    return;
+  }
+  // The element keeps its last black frame after a minimised window returns until the stream is attached again.
+  video.srcObject = null;
+  video.srcObject = current;
+  void video.play().catch(() => undefined);
+}
+
+watch([host, stream], ([, current], _previous, onCleanup) => {
   const video = host.value;
   failed.value = false;
   if (!video) {
     return;
   }
-  video.srcObject = stream.value;
-  if (stream.value) {
-    void video.play().catch(() => {
-      failed.value = true;
-    });
+  video.srcObject = current;
+  if (!current) {
+    return;
   }
+  void video.play().catch(() => {
+    failed.value = true;
+  });
+  // A minimised window mutes the capture; playback has to pick up again once it returns.
+  const tracks = current.getVideoTracks();
+  for (const track of tracks) {
+    track.addEventListener('unmute', resume);
+  }
+  onCleanup(() => {
+    for (const track of tracks) {
+      track.removeEventListener('unmute', resume);
+    }
+  });
 });
 </script>
 

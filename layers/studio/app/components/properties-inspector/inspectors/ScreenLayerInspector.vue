@@ -9,7 +9,7 @@ import { captureConstraints, projectCaptureFrame } from '../../../playback/scree
 import { useStudioSessionStore } from '../../../store/studio-session.store';
 import InspectorLayerFrame from '../InspectorLayerFrame.vue';
 import InspectorScreenPreview from '../InspectorScreenPreview.vue';
-import { holdScreenPreviewStream } from '../screen-preview-stream';
+import { holdScreenPreviewStream, peekScreenPreviewStream } from '../screen-preview-stream';
 
 const props = defineProps<{
   sceneId: SceneId;
@@ -73,6 +73,18 @@ function togglePanel() {
 
 function setShowCursor(value: boolean) {
   updateSettings(props.sceneId, props.element, { showCursor: value });
+  // Apply on the live track; do not rebuild the Pixi screen (that would flash black after a minimise).
+  const stream = peekScreenPreviewStream(props.element.sourceId);
+  if (!stream) {
+    return;
+  }
+  void Promise.all(
+    stream
+      .getVideoTracks()
+      .map((track) =>
+        track.applyConstraints({ cursor: value ? 'always' : 'never' } as MediaTrackConstraints).catch(() => undefined),
+      ),
+  );
 }
 
 function selectScreen(sourceId: string) {

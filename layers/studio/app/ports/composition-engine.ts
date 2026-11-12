@@ -1,3 +1,4 @@
+import type { ElementId } from '../models/ids.domain';
 import type { Scene } from '../models/scene.domain';
 import type { PortResult } from './result';
 
@@ -19,5 +20,7 @@ export type CompositionEngine = {
   initialize(viewport?: CompositionViewport): Promise<PortResult<void, CompositionEngineError>>;
   render(scene: Scene): Promise<PortResult<void, CompositionEngineError>>;
   resize?(viewport: CompositionViewport): Promise<PortResult<void, CompositionEngineError>>;
+  /** Faintly shows the cropped-away picture and its full outline for one element; null hides it. */
+  previewCrop?(elementId: ElementId | null): void;
   dispose(): Promise<PortResult<void, CompositionEngineError>>;
 };
