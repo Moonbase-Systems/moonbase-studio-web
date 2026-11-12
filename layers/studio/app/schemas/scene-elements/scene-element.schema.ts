@@ -68,6 +68,7 @@ export const textSettingsSchema = z
     shadow: textShadowSchema.nullable(),
     underline: z.boolean().default(false),
     strikethrough: z.boolean().default(false),
+    sizing: z.enum(['dynamic', 'fixed']).default('dynamic'),
   })
   .strict();
 

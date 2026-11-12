@@ -71,6 +71,8 @@ const sourceSchema = z.discriminatedUnion('type', [
     ...sourceBaseFields,
     type: z.literal('screen'),
     displayId: z.string().optional(),
+    width: z.number().positive().optional(),
+    height: z.number().positive().optional(),
     settings: screenSourceSettingsSchema.optional(),
   }),
   z.object({
