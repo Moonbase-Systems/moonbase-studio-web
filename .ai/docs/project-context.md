@@ -4,7 +4,7 @@
 
 `moonbase-studio-web` is the editor of a MoonBase project. It is a **Nuxt 4** SSR application written in **TypeScript**, using **Tailwind CSS** for styling and a custom **moonbase-core** Nuxt layer for shared UI components and design tokens.
 
-The editor owns the document: scenes, sources, layers, and save/load. A separate Windows app, MoonBase Bridge, renders Program Output and publishes RTMP. MoonBase AI only recommends a shot. Domain rules are in [architecture/decisions.md](./architecture/decisions.md) (ADR-010). Do not implement FFmpeg, device capture, or the director inside this repository.
+The editor owns the document: scenes, sources, layers, and save/load. A separate app for Windows and Linux, MoonBase Bridge, renders Program Output and publishes RTMP. MoonBase AI only recommends a shot. Domain rules are in [architecture/decisions.md](./architecture/decisions.md) (ADR-010). Do not implement FFmpeg, device capture, or the director inside this repository.
 
 The application is currently in early development (v0.1.0). The default locale is **Polish (pl)**, with English (en) support as well.
 

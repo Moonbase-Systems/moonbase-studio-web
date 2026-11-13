@@ -1,6 +1,6 @@
 # Plan prac
 
-Studio jest edytorem dokumentu projektu. Bridge, osobna aplikacja Windows, rysuje jeden Program Output i publikuje go przez RTMP (FFmpeg). AI czyta klatki kamer i nie zapisuje dokumentu. Termin zakresu FR-02–FR-20 to 18 grudnia 2026. Zadania są w Linearze, w projektach MoonBase Studio Web, MoonBase Bridge i MoonBase AI.
+Studio jest edytorem dokumentu projektu. Bridge, osobna aplikacja na Windows i Linux, rysuje jeden Program Output i publikuje go przez RTMP (FFmpeg). AI czyta klatki kamer i nie zapisuje dokumentu. Termin zakresu FR-02–FR-20 to 18 grudnia 2026. Zadania są w Linearze, w projektach MoonBase Studio Web, MoonBase Bridge i MoonBase AI.
 
 W tym repozytorium działa model, komendy, undo/redo, lista scen i inspektor. Zapis JSON schodzi do IndexedDB. Podgląd w `ScenePreviewFrame` jest placeholderem edytora, nie Program Output. Porty `CompositionEngine` i `SourceProvider` nie mają implementacji. `layers/core` i pakiet `moonbase-core` to wspólna warstwa UI Nuxt, nie silnik mediów.
 

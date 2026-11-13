@@ -62,7 +62,7 @@ Model projektu powinien być niezależny od bieżącego stanu wykonawczego aplik
 
 ### 1.4. Silnik wykonawczy — MoonBase Bridge
 
-MoonBase Bridge jest osobną aplikacją na Windows, którą operator pobiera i uruchamia. Nie ma okna operatora. Realizuje konfigurację przygotowaną w edytorze oraz komunikuje się z urządzeniami i źródłami multimedialnymi. Jeden Program Output zasila klatkę programu w Studio i publikację RTMP.
+MoonBase Bridge jest osobną aplikacją na Windows i Linux (x64 i arm64), którą operator pobiera i uruchamia. Na obu systemach ma ten sam zakres. Identyfikator urządzenia zależy od systemu, więc po przeniesieniu projektu między Windows a Linuxem kamery trzeba przypisać ponownie. Nie ma okna operatora. Realizuje konfigurację przygotowaną w edytorze oraz komunikuje się z urządzeniami i źródłami multimedialnymi. Jeden Program Output zasila klatkę programu w Studio i publikację RTMP.
 
 Pakiet `moonbase-core` w tym repozytorium to wspólna warstwa UI Nuxt. Nie jest silnikiem mediów.
 
