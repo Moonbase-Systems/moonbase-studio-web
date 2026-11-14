@@ -62,9 +62,23 @@
       "yes": "Tak"
     },
     "preview": {
+      "heading": "Podgląd · {width} × {height}",
+      "metrics": {
+        "bitrate": "Bitrate",
+        "bitrateUnit": "kb/s",
+        "fps": "Klatki",
+        "fpsUnit": "fps",
+        "latency": "Opóźnienie",
+        "latencyUnit": "s",
+        "link": "Łącze"
+      },
+      "mixer": "Mikser",
+      "mixerEmpty": "Brak warstw audio w tej scenie",
+      "onAir": "Na antenie",
       "placeholder": "Podgląd sceny",
       "renderFailed": "Nie udało się narysować sceny.",
-      "resize": "Zmień wysokość podglądu"
+      "resize": "Zmień wysokość podglądu",
+      "resting": "Cisza"
     },
     "properties": {
       "animation": {

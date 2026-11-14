@@ -212,6 +212,15 @@ describe('hit testing', () => {
     expect(hitTestScene(scene, { x: 900, y: 900 })).toBeNull();
   });
 
+  it('ignores an audio layer, which has no picture', () => {
+    const audio = createSourceBackedElement({
+      id: 'mic',
+      source: { id: 'src-audio', name: 'Mic', type: 'audio' },
+      video,
+    });
+    expect(hitTestScene(sceneWith([audio]), { x: 960, y: 540 })).toBeNull();
+  });
+
   it('can ignore the dragged element and report what sits under it', () => {
     const bottom = element('bottom', { x: 0, y: 0, width: 400, height: 400 });
     const top = element('top', { x: 100, y: 100, width: 100, height: 100 });

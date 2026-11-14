@@ -62,9 +62,23 @@
       "yes": "Yes"
     },
     "preview": {
+      "heading": "Preview · {width} × {height}",
+      "metrics": {
+        "bitrate": "Bitrate",
+        "bitrateUnit": "kb/s",
+        "fps": "Frames",
+        "fpsUnit": "fps",
+        "latency": "Latency",
+        "latencyUnit": "s",
+        "link": "Link"
+      },
+      "mixer": "Mixer",
+      "mixerEmpty": "No audio layers in this scene",
+      "onAir": "On air",
       "placeholder": "Scene preview",
       "renderFailed": "The scene could not be drawn.",
-      "resize": "Resize preview"
+      "resize": "Resize preview",
+      "resting": "Idle"
     },
     "properties": {
       "animation": {
