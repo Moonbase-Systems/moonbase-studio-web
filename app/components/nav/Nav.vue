@@ -28,7 +28,7 @@ function goTo(path: (typeof links)[number]['to']) {
   <header class="px-x-lg py-md flex items-center justify-between">
     <NuxtLink
       :to="localePath('/')"
-      class="text-accent font-display text-7xl"
+      class="text-accent text-brand-logo font-brand"
     >
       {{ t('nav.logo') }}
     </NuxtLink>
@@ -45,7 +45,7 @@ function goTo(path: (typeof links)[number]['to']) {
       <BaseTextButton
         :text="t('nav.app')"
         :active="isActive('/app')"
-        class="font-display text-5xl"
+        class="text-label-lg font-mono uppercase"
         @click="navigateTo('/app')"
       />
     </nav>

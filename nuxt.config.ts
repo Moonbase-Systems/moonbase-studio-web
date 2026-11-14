@@ -85,12 +85,8 @@ export default defineNuxtConfig({
       sameSite: 'lax',
     },
   },
+  // Families and subsets come from the moonbase-core layer (declaring them twice duplicates the weights in the request).
   googleFonts: {
-    families: {
-      Roboto: '400..700',
-      Inter: '400..700',
-      Lalezar: true,
-    },
     preload: true,
   },
   fonts: {
@@ -102,7 +98,7 @@ export default defineNuxtConfig({
     provider: 'local',
   },
   fontMetrics: {
-    fonts: ['Roboto', { family: 'Roboto' }, 'Inter', 'Lalezar'],
+    fonts: ['Lalezar'],
   },
   image: {
     domains: process.env.API_BASE_URL ? [new URL(process.env.API_BASE_URL).hostname] : [],
