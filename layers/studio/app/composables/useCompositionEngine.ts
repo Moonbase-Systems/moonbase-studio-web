@@ -49,6 +49,10 @@ export function useCompositionEngine(environment: CompositionEngineEnvironment):
 
   const record = (result: EngineResult): EngineResult => {
     lastError.value = result.ok ? null : result.error;
+    // 'not-initialized' is an expected race (render before init, init after dispose), not a fault.
+    if (!result.ok && result.error.kind !== 'not-initialized') {
+      console.error('[studio] Composition engine error:', result.error);
+    }
     return result;
   };
 
@@ -76,6 +80,7 @@ export function useCompositionEngine(environment: CompositionEngineEnvironment):
         ...environment,
         getHost: () => host.value,
         onDiagnostic: (error) => {
+          console.warn('[studio] Composition engine diagnostic:', error);
           diagnostics.value = [...diagnostics.value.slice(-(MAX_DIAGNOSTICS - 1)), error];
         },
       });
