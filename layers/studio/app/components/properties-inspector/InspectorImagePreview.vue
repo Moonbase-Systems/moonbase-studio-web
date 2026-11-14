@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { cn, inspectorTypography } from '~/utils/index';
+import { cn } from '~/utils/index';
 
 import type { ImageElement } from '../../models/scene-elements';
 import { useStudioSessionStore } from '../../store/studio-session.store';
 import { peekImagePreviewUrl } from './image-preview-url';
+import { inspectorBodyTextClass } from './inspector-control-classes';
 
 const props = defineProps<{
   element: ImageElement;
@@ -69,7 +70,7 @@ const imageStyle = computed(() => ({
     />
     <p
       v-else
-      :class="cn(inspectorTypography.body, 'px-x-sm text-on-surface-dim text-center')"
+      :class="cn(inspectorBodyTextClass, 'px-x-sm text-on-surface-dim text-center')"
     >
       {{ t('studio.properties.assetMissing') }}
     </p>

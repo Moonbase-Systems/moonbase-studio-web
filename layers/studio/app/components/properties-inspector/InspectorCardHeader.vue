@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { cn, inspectorTypography } from '~/utils/index';
+import { cn } from '~/utils/index';
 
 import { useElementInspectorUpdate } from '../../composables/useElementInspectorUpdate';
 import type { SceneId } from '../../models/ids.domain';
@@ -10,7 +10,7 @@ import {
   sceneElementTypeIconName,
   sceneElementTypeTone,
 } from '../scene-element-list/scene-element-type-icons';
-import { inspectorFocusRingClass } from './inspector-control-classes';
+import { inspectorBodyTextClass, inspectorFocusRingClass } from './inspector-control-classes';
 
 const props = defineProps<{
   sceneId: SceneId;
@@ -73,7 +73,7 @@ const iconToneClass = computed(() => {
 });
 
 const fieldClass = cn(
-  inspectorTypography.body,
+  inspectorBodyTextClass,
   'h-control border border-line bg-transparent text-on-surface outline-none transition-colors duration-short hover:border-on-surface-dim focus:border-accent aria-[invalid=true]:border-error',
 );
 

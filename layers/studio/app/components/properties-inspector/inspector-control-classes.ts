@@ -1,14 +1,20 @@
-import { cn, inspectorTypography } from '~/utils/index';
+import { cn } from '~/utils/index';
 
 /** Orbit focus ring for keyboard focus. */
 export const inspectorFocusRingClass =
   'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-surface';
 
+/** Control copy: Space Grotesk 400, 14px (inspector chrome; not the Figma Special/Standard scale). */
+export const inspectorBodyTextClass = 'font-sans text-body-sm font-normal';
+
+/** Field label, unit, group heading: Space Mono 12px, upper case. */
+export const inspectorLabelTextClass = 'font-mono text-label font-normal uppercase';
+
 /** Control text: Space Grotesk 400, 14px. */
-export const inspectorControlTextClass = cn(inspectorTypography.body, 'text-on-surface');
+export const inspectorControlTextClass = cn(inspectorBodyTextClass, 'text-on-surface');
 
 /** Field label, unit, group heading: Space Mono 12px, upper case, dim. */
-export const inspectorLabelClass = cn(inspectorTypography.label, 'shrink-0 text-on-surface-dim');
+export const inspectorLabelClass = cn(inspectorLabelTextClass, 'shrink-0 text-on-surface-dim');
 
 /** One row of controls inside a property card. */
 export const inspectorRowClass =

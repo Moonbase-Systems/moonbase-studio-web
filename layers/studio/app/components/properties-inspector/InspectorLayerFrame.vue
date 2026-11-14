@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { cn, inspectorTypography } from '~/utils/index';
+import { cn } from '~/utils/index';
 
 import {
   inspectorCardTitleForRail,
@@ -10,6 +10,7 @@ import type { SceneId } from '../../models/ids.domain';
 import type { SceneElement } from '../../models/scene-element.domain';
 import InspectorCardEffects from './cards/InspectorCardEffects.vue';
 import InspectorCardTransformation from './cards/InspectorCardTransformation.vue';
+import { inspectorBodyTextClass } from './inspector-control-classes';
 import { inspectorRailIcon } from './inspector-rail-icon';
 import InspectorCardHeader from './InspectorCardHeader.vue';
 
@@ -57,7 +58,7 @@ const iconRailItems = computed(() =>
 
     <div class="border-line py-md px-x-sm flex min-w-0 items-center justify-center border">
       <slot name="preview">
-        <p :class="cn(inspectorTypography.body, 'text-on-surface truncate')">
+        <p :class="cn(inspectorBodyTextClass, 'text-on-surface truncate')">
           {{ element.name }}
         </p>
       </slot>

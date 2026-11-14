@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { cn, inspectorTypography } from '~/utils/index';
+import { inspectorLabelClass } from './inspector-control-classes';
 
 const props = defineProps<{
   modelValue: number;
@@ -26,7 +26,7 @@ function onInput(event: Event) {
   emit('change', Math.min(1, Math.max(-1, value / 50 - 1)));
 }
 
-const sideLabelClass = cn(inspectorTypography.label, 'shrink-0 text-on-surface-dim');
+const sideLabelClass = inspectorLabelClass;
 </script>
 
 <template>
