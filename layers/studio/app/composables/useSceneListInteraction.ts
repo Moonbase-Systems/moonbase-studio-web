@@ -1,4 +1,4 @@
-import { buildSceneListRoots, flattenSelectableElementIds } from '../application/scene-list-tree';
+import { flattenSelectableElementIdsForDisplay } from '../application/scene-list-tree';
 import type { ElementId, GroupId, SceneId } from '../models/ids.domain';
 import type { Scene } from '../models/scene.domain';
 import { displayNameSchema } from '../schemas/display-name.schema';
@@ -38,8 +38,13 @@ export function useSceneListInteraction(sceneId: SceneId, scene: () => Scene | u
     if (!current) {
       return [];
     }
-    return flattenSelectableElementIds(current, buildSceneListRoots(current));
+    return flattenSelectableElementIdsForDisplay(current);
   });
+
+  /** Map list drop edge to document index insertion (display top = higher index). */
+  function dropZoneToBlockPlace(zone: 'before' | 'after'): 'before' | 'after' {
+    return zone === 'before' ? 'after' : 'before';
+  }
 
   function ungroupedSelectedIds() {
     const current = scene();
@@ -370,10 +375,10 @@ export function useSceneListInteraction(sceneId: SceneId, scene: () => Scene | u
         if (target.kind === 'element' && members.includes(target.elementId)) {
           return;
         }
-        const place = zone === 'after' ? 'after' : 'before';
-        const anchor = resolveAnchor(target, place);
+        const blockPlace = dropZoneToBlockPlace(zone === 'after' ? 'after' : 'before');
+        const anchor = resolveAnchor(target, blockPlace);
         if (anchor) {
-          return store.moveElementBlock(sceneId, members, anchor, place);
+          return store.moveElementBlock(sceneId, members, anchor, blockPlace);
         }
         return;
       }
@@ -394,7 +399,7 @@ export function useSceneListInteraction(sceneId: SceneId, scene: () => Scene | u
         return;
       }
 
-      const place = zone;
+      const blockPlace = dropZoneToBlockPlace(zone);
       const draggedParent = parentGroupId(draggedId);
       const nextGroup = destinationGroup(target);
 
@@ -412,9 +417,9 @@ export function useSceneListInteraction(sceneId: SceneId, scene: () => Scene | u
         }
       }
 
-      const anchor = resolveAnchor(target, place);
+      const anchor = resolveAnchor(target, blockPlace);
       if (anchor && anchor !== draggedId) {
-        return store.moveElementBlock(sceneId, [draggedId], anchor, place);
+        return store.moveElementBlock(sceneId, [draggedId], anchor, blockPlace);
       }
     });
 

@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { useTreeLine } from '#layers/moonbase-core/app/utils/tree-line';
 import { cn } from '~/utils/index';
 
 import { useShortcutStore } from '../../store/shortcut.store';
@@ -24,9 +23,6 @@ const emit = defineEmits<{
   renameCommit: [];
   renameCancel: [];
 }>();
-
-const { childActive } = useTreeLine(() => props.selected);
-const lineActive = computed(() => props.selected || childActive.value);
 
 const inputRef = ref<HTMLInputElement | null>(null);
 let ignoreBlur = false;
@@ -120,18 +116,21 @@ const expandCollapseLabel = computed(() => (props.open ? t('studio.scene.collaps
 </script>
 
 <template>
-  <div data-scene-view>
+  <div
+    class="mt-xxx-sm"
+    data-scene-view
+  >
     <BaseCollapsible
       :open="open"
       @update:open="emit('update:open', $event)"
     >
       <template #trigger>
-        <div class="gap-x-sm min-h-row flex items-center justify-between">
+        <div class="gap-xxx-sm pr-tiny min-h-row flex items-center justify-between">
           <input
             v-if="renaming"
             ref="inputRef"
             :value="renameDraft"
-            class="text-label text-on-surface border-accent min-w-0 flex-1 border-b bg-transparent text-left font-mono uppercase outline-none"
+            class="text-label text-on-surface border-accent tracking-label min-w-0 flex-1 border-b bg-transparent text-left font-mono uppercase outline-none"
             @input="emit('update:renameDraft', ($event.target as HTMLInputElement).value)"
             @keydown="onRenameKeyDown"
             @blur="onRenameCommit"
@@ -143,7 +142,7 @@ const expandCollapseLabel = computed(() => (props.open ? t('studio.scene.collaps
             type="button"
             :class="
               cn(
-                'text-label duration-short min-w-0 flex-1 truncate text-left font-mono uppercase transition-colors',
+                'text-label tracking-label duration-short min-w-0 flex-1 truncate text-left font-mono uppercase transition-colors',
                 props.selected ? 'text-accent' : 'text-on-surface-dim',
                 'hover:text-on-surface focus-visible:ring-accent focus-visible:ring-offset-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2',
               )
@@ -153,19 +152,27 @@ const expandCollapseLabel = computed(() => (props.open ? t('studio.scene.collaps
             {{ name }}
           </button>
 
-          <div class="gap-tiny flex shrink-0 items-center">
+          <div class="flex shrink-0 items-center gap-0">
             <BaseIconButton
               :label="t('studio.scene.delete')"
+              class="inline-flex size-6 items-center justify-center p-0"
               @click="emit('delete')"
             >
-              <IconMinus />
+              <IconMinus class="size-4" />
             </BaseIconButton>
             <BaseIconButton
               :label="expandCollapseLabel"
+              class="inline-flex size-6 items-center justify-center p-0"
               @click="onToggleOpen"
             >
-              <IconChevronRight v-if="!open" />
-              <IconChevronDown v-else />
+              <IconChevronRight
+                v-if="!open"
+                class="size-4"
+              />
+              <IconChevronDown
+                v-else
+                class="size-4"
+              />
             </BaseIconButton>
           </div>
         </div>
@@ -177,16 +184,13 @@ const expandCollapseLabel = computed(() => (props.open ? t('studio.scene.collaps
         </p>
       </template>
 
-      <BaseRevealList
-        :active="lineActive"
-        dense
-      >
+      <div class="flex flex-col gap-0">
         <slot />
 
         <div class="pt-tiny flex justify-end">
           <slot name="add" />
         </div>
-      </BaseRevealList>
+      </div>
     </BaseCollapsible>
   </div>
 </template>

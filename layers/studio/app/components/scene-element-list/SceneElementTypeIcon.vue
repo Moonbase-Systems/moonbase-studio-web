@@ -23,9 +23,6 @@ const label = computed(() => t(sceneElementTypeIconI18nKey(props.kind)));
 const tone = computed(() => sceneElementTypeTone(props.kind));
 
 const toneClass = computed(() => {
-  if (props.selected) {
-    return 'text-accent';
-  }
   switch (tone.value) {
     case 'accent':
       return 'text-accent';
@@ -45,6 +42,6 @@ const toneClass = computed(() => {
   <Icon
     :name="iconName"
     :aria-label="label"
-    :class="cn('size-md shrink-0', toneClass)"
+    :class="cn('size-4 shrink-0', toneClass)"
   />
 </template>

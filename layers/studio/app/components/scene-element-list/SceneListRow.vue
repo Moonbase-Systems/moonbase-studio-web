@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { useTreeLine } from '#layers/moonbase-core/app/utils/tree-line';
 import { cn } from '~/utils/index';
 
 import type { SceneDropZone } from '../../composables/useSceneListInteraction';
@@ -29,8 +28,10 @@ const props = withDefaults(
     showLayerControls?: boolean;
     visibilityLabel?: string;
     lockLabel?: string;
-    /** Input level in dB (−60…0) for an audio layer. Draws a left-to-right gradient mask. */
+    /** Input level in dB (−60…0) for an audio layer. */
     levelDb?: number;
+    /** Orbit tree depth: 1 = layer under scene, 2 = member in group. */
+    treeDepth?: number;
   }>(),
   {
     selected: false,
@@ -49,6 +50,7 @@ const props = withDefaults(
     visibilityLabel: '',
     lockLabel: '',
     levelDb: undefined,
+    treeDepth: 0,
   },
 );
 
@@ -62,8 +64,6 @@ const emit = defineEmits<{
   commit: [];
   cancel: [];
 }>();
-
-useTreeLine(() => props.selected);
 
 const inputRef = ref<HTMLInputElement | null>(null);
 let ignoreBlur = false;
@@ -121,26 +121,29 @@ watch(
   },
 );
 
+const treeRailActive = computed(() => props.treeDepth > 0 && !props.expandable && props.selected);
+
+const indentStyle = computed(() => (props.treeDepth > 0 ? { width: `${props.treeDepth * 1.2}rem` } : undefined));
+
 const shellClass = computed(() =>
   cn(
-    'group/row relative flex min-h-0 items-center gap-xxx-sm hover:bg-surface-container-high',
+    'group/row relative flex min-h-row min-w-0 items-center gap-xxx-sm pr-tiny hover:bg-surface-container-high',
     props.zone === 'center' && 'ring-1 ring-inset ring-accent',
   ),
 );
 
 const labelClass = computed(() =>
   cn(
-    'min-w-0 flex-1 truncate py-tiny text-left font-sans text-body-sm font-normal',
-    props.selected ? 'text-accent' : props.visible === false ? 'text-on-surface-dim line-through' : 'text-on-surface',
-    props.expandable ? 'pr-xx-lg' : props.showLayerControls ? 'pr-xx-xl' : 'group-hover/row:pr-lg',
+    'block min-w-0 truncate py-tiny text-left font-sans text-body-sm font-normal',
+    props.selected ? 'text-accent' : props.visible === false ? 'text-on-surface-dim' : 'text-on-surface',
   ),
 );
 
-const layerControlsVisible = computed(
-  () => props.showLayerControls && (!props.visible || props.locked || props.selected),
-);
+const layerActionsPinned = computed(() => props.showLayerControls && (props.visible === false || props.locked));
 
-/** Orbit level bar: 20 segments under the label, signal → warning → error. */
+/** Group rows pin delete/toggle like Orbit `kind !== layer`. */
+const rowActionsPinned = computed(() => props.expandable || layerActionsPinned.value);
+
 const LEVEL_SEGMENTS = 20;
 
 const levelPercent = computed(() => {
@@ -153,19 +156,12 @@ const levelPercent = computed(() => {
 
 const levelSegments = computed(() => {
   const lit = Math.round((levelPercent.value / 100) * LEVEL_SEGMENTS);
-  return Array.from({ length: LEVEL_SEGMENTS }, (_, index) => {
-    if (index >= lit) {
-      return 'bg-surface-container-high';
-    }
-    if (index >= LEVEL_SEGMENTS - 2) {
-      return 'bg-error';
-    }
-    if (index >= LEVEL_SEGMENTS - 5) {
-      return 'bg-warning';
-    }
-    return 'bg-accent';
-  });
+  return Array.from({ length: LEVEL_SEGMENTS }, (_, index) =>
+    index < lit ? 'bg-accent' : 'bg-surface-container-high',
+  );
 });
+
+const rowActionBtnClass = 'inline-flex size-6 shrink-0 items-center justify-center p-0';
 
 function onCommit() {
   if (ignoreBlur) {
@@ -208,6 +204,19 @@ function onRenameKeyDown(event: KeyboardEvent) {
       v-if="zone === 'after'"
       class="bg-accent pointer-events-none absolute inset-x-0 bottom-0 h-px"
     />
+
+    <span
+      v-if="treeDepth > 0"
+      class="relative shrink-0 self-stretch"
+      :style="indentStyle"
+      aria-hidden="true"
+    >
+      <span
+        class="left-tiny absolute bottom-0 top-0 w-px"
+        :class="treeRailActive ? 'bg-accent' : 'bg-line'"
+      />
+    </span>
+
     <div
       v-if="iconKinds.length > 0"
       class="gap-x-tiny flex shrink-0 items-center"
@@ -216,35 +225,36 @@ function onRenameKeyDown(event: KeyboardEvent) {
         v-for="kind in iconKinds"
         :key="kind"
         :kind="kind"
-        :selected="selected"
       />
     </div>
     <SceneElementTypeIcon
       v-else-if="iconKind"
+      class="shrink-0"
       :kind="iconKind"
-      :selected="selected"
     />
+
     <input
       v-if="editing"
       ref="inputRef"
       :value="draft"
-      class="text-body-sm py-xx-sm text-on-surface border-accent min-w-0 flex-1 border-b bg-transparent font-sans outline-none"
+      class="text-body-sm py-tiny text-on-surface border-accent min-w-0 flex-1 border-b bg-transparent font-sans outline-none"
       @input="emit('update:draft', ($event.target as HTMLInputElement).value)"
       @keydown="onRenameKeyDown"
       @blur="onCommit"
       @click.stop
       @keydown.stop
     />
-    <span
-      v-if="!editing"
-      :class="cn(labelClass, levelDb !== undefined && 'relative')"
+
+    <div
+      v-else
+      class="min-w-0 flex-1"
     >
-      <span class="inline-block max-w-full truncate">
+      <span :class="labelClass">
         {{ label }}
       </span>
       <span
         v-if="levelDb !== undefined"
-        class="bottom-x-tiny h-x-tiny pointer-events-none absolute inset-x-0 grid grid-cols-[repeat(20,minmax(0,1fr))] gap-px"
+        class="mt-x-tiny h-x-tiny pointer-events-none grid w-full grid-cols-[repeat(20,minmax(0,1fr))] gap-px"
         aria-hidden="true"
       >
         <span
@@ -253,22 +263,21 @@ function onRenameKeyDown(event: KeyboardEvent) {
           :class="segment"
         />
       </span>
-    </span>
+    </div>
 
     <div
-      class="gap-tiny absolute inset-y-0 right-0 flex items-center"
+      class="duration-short flex shrink-0 items-center gap-0 transition-opacity"
       :class="
-        expandable
-          ? ''
-          : layerControlsVisible
-            ? 'pointer-events-auto opacity-100'
-            : 'pointer-events-none opacity-0 group-hover/row:pointer-events-auto group-hover/row:opacity-100'
+        rowActionsPinned
+          ? 'opacity-100'
+          : 'pointer-events-none opacity-0 group-focus-within/row:pointer-events-auto group-focus-within/row:opacity-100 group-hover/row:pointer-events-auto group-hover/row:opacity-100'
       "
     >
       <template v-if="showLayerControls">
         <BaseIconButton
           :label="visibilityLabel"
-          :class="visible ? '' : 'opacity-100'"
+          :class="cn(rowActionBtnClass, visible === false && 'text-accent')"
+          :aria-pressed="visible === false"
           @mousedown.stop
           @click.stop="emit('toggleVisibility')"
         >
@@ -279,7 +288,8 @@ function onRenameKeyDown(event: KeyboardEvent) {
         </BaseIconButton>
         <BaseIconButton
           :label="lockLabel"
-          :class="locked ? 'opacity-100' : ''"
+          :class="cn(rowActionBtnClass, locked && 'text-accent')"
+          :aria-pressed="locked"
           @mousedown.stop
           @click.stop="emit('toggleLocked')"
         >
@@ -291,20 +301,27 @@ function onRenameKeyDown(event: KeyboardEvent) {
       </template>
       <BaseIconButton
         :label="deleteLabel"
-        class="opacity-0 focus-visible:opacity-100 group-hover/row:opacity-100"
+        :class="rowActionBtnClass"
         @mousedown.stop
         @click.stop="emit('delete')"
       >
-        <IconMinus />
+        <IconMinus class="size-4" />
       </BaseIconButton>
       <BaseIconButton
         v-if="expandable"
         :label="toggleLabel"
+        :class="rowActionBtnClass"
         @mousedown.stop
         @click.stop="emit('toggle')"
       >
-        <IconChevronRight v-if="!open" />
-        <IconChevronDown v-else />
+        <IconChevronRight
+          v-if="!open"
+          class="size-4"
+        />
+        <IconChevronDown
+          v-else
+          class="size-4"
+        />
       </BaseIconButton>
     </div>
   </div>
