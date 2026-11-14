@@ -1,189 +1,101 @@
 # Design Tokens — moonbase-studio-web
 
-All design tokens are defined in `moonbase-core` and exposed as Tailwind utility classes. CSS custom properties live in `app/assets/css/tokens.css`. The Tailwind extension is in `tailwind.config.ts` of the core layer.
+All design tokens are defined in `moonbase-core` and exposed as Tailwind utility classes. CSS custom properties live in `moonbase-core/app/assets/css/tokens.css`; the Tailwind extension is in `moonbase-core/tailwind.config.ts`. This app adds no token overrides.
 
-The active theme is set via a class on `<html>`: `theme-light`, `theme-dark` (default), or `theme-blue`.
+The design source is the **MoonBase Studio Design System** (claude.ai artifact), direction **Orbit**, `tokens.json` v2. The Moonbase Commander 7" screen uses the same values (`electronics/moonbase-commander/docs/ekran-7.md`, section 2).
+
+`1rem = 10px` (root-font-size plugin in the core layer).
 
 ---
 
-## Themes
+## Theme
 
-| Class                   | Description                                              |
-| ----------------------- | -------------------------------------------------------- |
-| `theme-light` / `:root` | Light theme                                              |
-| `theme-dark`            | Dark theme (default, set in core layer `nuxt.config.ts`) |
-| `theme-blue`            | Dark blue-tinted theme                                   |
+One dark theme, applied on `:root`, `.theme-dark` and `html[data-theme='dark']`. There is no light or blue theme.
 
 ---
 
 ## Colors
 
-### Surface
+| Design system  | Tailwind class                                                         | Value                           | Use                                                     |
+| -------------- | ---------------------------------------------------------------------- | ------------------------------- | ------------------------------------------------------- |
+| surface        | `bg-surface`                                                           | `#050004`                       | Page and 7" screen background (~88% of a screen)        |
+| panel          | `bg-surface-container`                                                 | `#121212`                       | Only overlays (menu, dialog, popover) and hardware keys |
+| raised         | `bg-surface-container-high`                                            | `#1C1C1C`                       | Hover rows, unlit segments                              |
+| line           | `border-line` / `bg-line`                                              | `#2A2A2A`                       | 1px block frames, dividers (decorative, 1.45:1)         |
+| on-surface     | `text-on-surface`                                                      | `#FFFFFF`                       | Text, large numbers, icons                              |
+| on-surface-dim | `text-on-surface-dim`                                                  | `#8A8A8A`                       | Labels, units, disabled (6.03:1 on surface)             |
+| signal         | `text-accent` / `border-accent` / `bg-accent`                          | `#22FF86`                       | Live, active, selected, focus, corner brackets          |
+| signal-dim     | `accent-dim`                                                           | `#18B85F`                       | Hover / pressed on signal, charge-bar head              |
+| on-signal      | `text-on-accent`                                                       | `#050004`                       | Text on green fills                                     |
+| warning        | `warning`                                                              | `#E6A15C`                       | Pause, limited power, thresholds                        |
+| error          | `error`                                                                | `#E85D4C`                       | Stream error, lost camera, validation                   |
+| info           | `info`                                                                 | `#5280EA`                       | Informational messages                                  |
+| success        | `success`                                                              | `#22FF86`                       | Same as signal                                          |
+| category       | `category-layout`, `category-interactive`, `category-interactive-fill` | `#00E5FF`, `#FF00CC`, `#37002C` | Element categories in the add panel and layer icons     |
 
-| Token              | Tailwind class                | Light     | Dark      | Blue      |
-| ------------------ | ----------------------------- | --------- | --------- | --------- |
-| Background surface | `bg-surface` / `text-surface` | `#F2F2F2` | `#0B0D11` | `#0E131B` |
-| Elevated surface   | `bg-surface-container`        | `#E9E9E9` | `#14181D` | `#1D2129` |
-| Inverted surface   | `bg-surface-inverted`         | `#000000` | `#E7E7E7` | `#E7E7E8` |
-
-### Content / Text
-
-| Token         | Tailwind class             | Light     | Dark      | Blue      |
-| ------------- | -------------------------- | --------- | --------- | --------- |
-| Primary text  | `text-on-surface`          | `#050315` | `#FFFFFF` | `#FFFFFF` |
-| Dimmed text   | `text-on-surface-dim`      | `#5A5A5A` | `#B3B3B3` | `#B3B3B3` |
-| Inverted text | `text-on-surface-inverted` | `#FFFFFF` | `#000000` | `#000000` |
-
-### Accent
-
-| Token          | Tailwind class                      | Light     | Dark      | Blue      |
-| -------------- | ----------------------------------- | --------- | --------- | --------- |
-| Primary accent | `text-accent` / `bg-accent`         | `#0072F5` | `#3B82F6` | `#00C9E4` |
-| Dimmed accent  | `text-accent-dim` / `bg-accent-dim` | `#79B4EF` | `#234E94` | `#007989` |
-
-### Semantic
-
-| Token   | Tailwind class                | Value (all themes) |
-| ------- | ----------------------------- | ------------------ |
-| Info    | `text-info` / `bg-info`       | `#5280EA`          |
-| Warning | `text-warning` / `bg-warning` | `#FF6A00`          |
-| Error   | `text-error` / `bg-error`     | `#DC2626`          |
-| Success | `text-success` / `bg-success` | `#84CC16`          |
-
-All semantic colors also have `-container` variants (same values currently): `bg-info-container`, `bg-error-container`, etc.
-
-All color tokens support Tailwind opacity modifier: `bg-accent/80`, `text-error/30`, etc.
+Avoid opacity modifiers; disabled is `text-on-surface-dim` with a dashed border.
 
 ---
 
 ## Typography
 
-### Font Families
+| Class                                   | Family / weight   | Size / line height | Use                                        |
+| --------------------------------------- | ----------------- | ------------------ | ------------------------------------------ |
+| `text-display`                          | Space Grotesk 300 | 96 / 92, -0.03em   | Scene on air, power verdict                |
+| `text-numeric-xl`                       | Space Grotesk 300 | 120 / 112          | One big number per view                    |
+| `text-numeric-lg`                       | Space Grotesk 300 | 48 / 52            | Tile number, page heading                  |
+| `text-title`                            | Space Grotesk 300 | 28 / 36            | View, card and dialog titles (white)       |
+| `text-numeric-md`                       | Space Grotesk 300 | 20 / 24            | Transport time, large field values         |
+| `text-body-lg`                          | Space Grotesk 400 | 18 / 26            | Console-distance text                      |
+| `text-body-md`                          | Space Grotesk 400 | 16 / 24            | Text buttons, dialog body                  |
+| `text-body-sm`                          | Space Grotesk 400 | 14 / 20            | Rows, menu items, field values             |
+| `text-body-x-sm`                        | Space Grotesk 400 | 12 / 16            | Hints, errors (minimum size)               |
+| `text-state`                            | Space Grotesk 700 | 14 / 20            | State values, key labels                   |
+| `text-label` + `font-mono uppercase`    | Space Mono 400    | 12 / 16, 0.14em    | Labels, units, group headings, state words |
+| `text-label-lg` + `font-mono uppercase` | Space Mono 400    | 14 / 20, 0.12em    | Labels at console distance                 |
+| `text-brand-logo` + `font-brand`        | Lalezar 400       | 28 / 36            | MoonBase wordmark only                     |
 
-| Token   | Tailwind class | Font                                          |
-| ------- | -------------- | --------------------------------------------- |
-| Primary | `font-roboto`  | Roboto (400–700, preloaded from Google Fonts) |
-| Brand   | `font-arlon`   | Arlon Bold (local)                            |
-
-### Font Sizes
-
-| Token           | Tailwind class        | Size / Line Height |
-| --------------- | --------------------- | ------------------ |
-| Heading X-Huge  | `text-heading-x-huge` | 6.4rem / 7.6rem    |
-| Heading X-Large | `text-heading-x-lg`   | 3.6rem / 4.4rem    |
-| Heading Large   | `text-heading-lg`     | 2.8rem / 3.6rem    |
-| Heading Medium  | `text-heading-md`     | 2.0rem / 2.8rem    |
-| Body Large      | `text-body-lg`        | 1.8rem / 2.8rem    |
-| Body Medium     | `text-body-md`        | 1.6rem / 2.4rem    |
-| Body Small      | `text-body-sm`        | 1.4rem / 2.0rem    |
-| Body X-Small    | `text-body-x-sm`      | 1.2rem / 1.6rem    |
-
-> Note: `1rem = 10px` due to the `root-font-size` Tailwind plugin in the core layer.
-
-### Font Weights
-
-| Token    | Tailwind class        |
-| -------- | --------------------- |
-| Regular  | `font-normal` (400)   |
-| Medium   | `font-medium` (500)   |
-| Semibold | `font-semibold` (600) |
-
-### Letter Spacing
-
-| Token    | Tailwind class   | Value    |
-| -------- | ---------------- | -------- |
-| X-Small  | `tracking-x-sm`  | -0.02rem |
-| Small    | `tracking-sm`    | -0.01rem |
-| Medium   | `tracking-md`    | 0rem     |
-| Large    | `tracking-lg`    | 0rem     |
-| X-Large  | `tracking-x-lg`  | +0.02rem |
-| XX-Large | `tracking-xx-lg` | +0.04rem |
+Families: `font-sans`, `font-mono`, `font-brand`. Weights: `font-light`, `font-normal`, `font-bold`. Numbers: `tabular-nums`.
 
 ---
 
-## Spacing
+## Spacing and sizes
 
-All spacing tokens follow a named scale. The base unit is loosely `0.2rem` at the smallest.
+The named scale stays (`x-tiny` 2px … `xxxx-huge` 52px). Orbit uses its 4px-grid members: `tiny` 4, `xxx-sm` 8, `x-sm` 12, `md` 16, `xx-lg` 24, `xxxx-lg` 32, `xxx-huge` 48 (`x-tiny` 2 for hairline gaps).
 
-| Token       | Tailwind class            | Value      |
-| ----------- | ------------------------- | ---------- |
-| X-Tiny      | `p-x-tiny` / `gap-x-tiny` | 0.2rem     |
-| Tiny        | `p-tiny`                  | 0.4rem     |
-| XXXX-Small  | `p-xxxx-sm`               | 0.6rem     |
-| XXX-Small   | `p-xxx-sm`                | 0.8rem     |
-| XX-Small    | `p-xx-sm`                 | 1.0rem     |
-| X-Small     | `p-x-sm`                  | 1.2rem     |
-| Small       | `p-sm`                    | 1.4rem     |
-| **Medium**  | `p-md`                    | **1.6rem** |
-| Large       | `p-lg`                    | 1.8rem     |
-| **X-Large** | `p-x-lg`                  | **2.0rem** |
-| XX-Large    | `p-xx-lg`                 | 2.4rem     |
-| XXX-Large   | `p-xxx-lg`                | 2.8rem     |
-| XXXX-Large  | `p-xxxx-lg`               | 3.2rem     |
-| Huge        | `p-huge`                  | 3.6rem     |
-| X-Huge      | `p-x-huge`                | 4.0rem     |
-| XX-Huge     | `p-xx-huge`               | 4.4rem     |
-| XXX-Huge    | `p-xxx-huge`              | 4.8rem     |
-| XXXX-Huge   | `p-xxxx-huge`             | 5.2rem     |
-
-The same scale applies to all spacing utilities: `p-`, `m-`, `gap-`, `space-`, `w-`, `h-`, etc.
+Size tokens: `h-bar` 48 (app bar), `h-control` 32 (fields, menu items), `h-row` 28 (list rows), `size-bracket` 12 (corner bracket arm), `size-key` 128 (ScreenKey face).
 
 ---
 
-## Border Radius
+## Radius
 
-| Token      | Tailwind class | Value      |
-| ---------- | -------------- | ---------- |
-| None       | `rounded-none` | 0rem       |
-| X-Small    | `rounded-x-sm` | 0.2rem     |
-| **Small**  | `rounded-sm`   | **0.4rem** |
-| **Medium** | `rounded-md`   | **0.8rem** |
-| Large      | `rounded-lg`   | 1.6rem     |
-| Full       | `rounded-full` | 9999px     |
+Every radius token is `0`. `rounded-full` only for the status dot.
 
 ---
 
-## Transition Durations
+## Components that carry the Orbit patterns
 
-| Token   | Tailwind class     | Value |
-| ------- | ------------------ | ----- |
-| Short   | `duration-short`   | 200ms |
-| Medium  | `duration-medium`  | 600ms |
-| Long    | `duration-long`    | 1s    |
-| X-Long  | `duration-x-long`  | 1.5s  |
-| XX-Long | `duration-xx-long` | 2s    |
+- `BaseFrame` / `BaseFrameBrackets` — 1px frame, corner brackets for the active block.
+- `BaseStatusBadge` — status dot plus a mono word.
+- `BasePropertyCard`, `BaseOptionGroup` — frame with brackets, mono or thin title.
+- `StudioDialog` (studio layer) — dialog with four brackets, mono label, thin title, actions under a line.
 
 ---
 
-## Transition Easing
+## Transitions
 
-| Token       | Tailwind class | Cubic Bezier                     |
-| ----------- | -------------- | -------------------------------- |
-| Ease-in-out | `ease-in-out`  | `cubic-bezier(0.65, 0, 0.35, 1)` |
-| Ease-in     | `ease-in`      | `cubic-bezier(0.4, 0, 1, 1)`     |
-| Ease-out    | `ease-out`     | `cubic-bezier(0, 0, 0.2, 1)`     |
+| Token   | Class              | Value                          |
+| ------- | ------------------ | ------------------------------ |
+| Short   | `duration-short`   | 200ms (view and state changes) |
+| Medium  | `duration-medium`  | 600ms                          |
+| Long    | `duration-long`    | 1s                             |
+| X-Long  | `duration-x-long`  | 1.5s                           |
+| XX-Long | `duration-xx-long` | 2s                             |
 
----
-
-## Semantic Icons
-
-Defined in `layers/core/app/utils/icons.ts`. Use `getSemanticIconName(theme, variant)`.
-
-| Theme      | Fill icon                               | Outline icon                                    |
-| ---------- | --------------------------------------- | ----------------------------------------------- |
-| `success`  | `material-symbols:check-circle`         | `material-symbols:check-circle-outline-rounded` |
-| `info`     | `material-symbols:info-rounded`         | `material-symbols:info-outline-rounded`         |
-| `warning`  | `material-symbols:warning-rounded`      | `material-symbols:warning-outline-rounded`      |
-| `error`    | `material-symbols:error-circle-rounded` | `material-symbols:error-outline-rounded`        |
-| `critical` | `mdi:close-octagon`                     | `mdi:close-octagon-outline`                     |
-
-Icon sets available: `@iconify-json/material-symbols`, `@iconify-json/mdi`.
+Level meters: short attack, ~300ms decay. Power flow line: 1.2s linear.
 
 ---
 
-## Page / Layout Transitions
+## Semantic icons
 
-The `fade` transition is defined globally in `base.css`:
-
-- Duration: `300ms`, easing: `cubic-bezier(0.55, 0, 0.1, 1)`
-- Applied to page and layout transitions (`pageTransition`, `layoutTransition` in `nuxt.config.ts`)
+Defined in `layers/core/app/utils/icons.ts`. Use `getSemanticIconName(theme, variant)`. Icon sets: `@iconify-json/material-symbols`, `@iconify-json/mdi`.
