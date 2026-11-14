@@ -15,6 +15,13 @@ export type StudioBootStepHooks = {
   beforeSpin?: () => void | Promise<void>;
 };
 
+function logStepFailure<R extends { ok: boolean; error?: unknown }>(step: string, result: R): R {
+  if (!result.ok) {
+    console.error(`[studio] Boot step "${step}" failed:`, result.error);
+  }
+  return result;
+}
+
 export function useStudioBoot(hooks?: StudioBootStepHooks) {
   const store = useStudioSessionStore();
   const compositionEngine = useStudioCompositionEngine();
@@ -64,27 +71,35 @@ export function useStudioBoot(hooks?: StudioBootStepHooks) {
     studioReveal.value = false;
     overlayMounted.value = true;
 
-    const result = await runStudioBoot({
-      isInitialized: () => store.isInitialized,
-      hasProject: () => store.project != null,
-      initialize: () => store.initialize(),
-      createProject: (input) => store.createProject(input),
-      isEngineReady: () => compositionEngine.isReady.value,
-      initializeEngine,
-      stepPauseMs: bootTiming.stepPauseMs,
-      onStep: async (key) => {
-        if (stepKey.value !== null) {
-          await hooks?.beforeStepLabel?.();
-        }
+    let result: { ok: boolean };
+    try {
+      result = await runStudioBoot({
+        isInitialized: () => store.isInitialized,
+        hasProject: () => store.project != null,
+        initialize: () => logStepFailure('session', store.initialize()),
+        createProject: (input) => logStepFailure('project', store.createProject(input)),
+        isEngineReady: () => compositionEngine.isReady.value,
+        // Engine failures are already logged by useCompositionEngine.
+        initializeEngine,
+        stepPauseMs: bootTiming.stepPauseMs,
+        onStep: async (key) => {
+          if (stepKey.value !== null) {
+            await hooks?.beforeStepLabel?.();
+          }
 
-        stepKey.value = key;
-        stepRevision.value += 1;
+          stepKey.value = key;
+          stepRevision.value += 1;
 
-        await hooks?.afterStepLabel?.();
-      },
-    });
+          await hooks?.afterStepLabel?.();
+        },
+      });
+    } catch (error) {
+      console.error(`[studio] Boot threw during step ${stepKey.value ?? 'start'}:`, error);
+      result = { ok: false };
+    }
 
     if (!result.ok) {
+      console.error(`[studio] Boot failed at step ${stepKey.value ?? 'start'}`);
       failed.value = true;
       return;
     }
