@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { cn } from '~/utils/index';
+import { cn, inspectorTypography } from '~/utils/index';
 
 import type { ImageElement } from '../../models/scene-elements';
 import { useStudioSessionStore } from '../../store/studio-session.store';
@@ -56,7 +56,7 @@ const imageStyle = computed(() => ({
 
 <template>
   <div
-    class="flex h-[88px] w-full max-w-[180px] items-center justify-center overflow-hidden bg-[color-mix(in_srgb,white_5%,#050004)]"
+    class="border-line flex h-[88px] w-full max-w-[180px] items-center justify-center overflow-hidden border"
     :style="frameStyle"
   >
     <img
@@ -69,7 +69,7 @@ const imageStyle = computed(() => ({
     />
     <p
       v-else
-      :class="cn('font-inter text-body-sm px-[12px] text-center font-medium text-white')"
+      :class="cn(inspectorTypography.body, 'px-x-sm text-on-surface-dim text-center')"
     >
       {{ t('studio.properties.assetMissing') }}
     </p>

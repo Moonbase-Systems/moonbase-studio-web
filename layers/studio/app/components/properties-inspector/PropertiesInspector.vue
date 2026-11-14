@@ -34,7 +34,7 @@ const linkedSource = computed(() => {
 
 <template>
   <div
-    class="flex h-full min-h-0 items-center justify-center gap-[10px] overflow-hidden bg-[#050004] p-[10px]"
+    class="bg-surface p-md flex h-full min-h-0 flex-col overflow-y-auto"
     data-properties-inspector
     @pointerdown.stop
   >

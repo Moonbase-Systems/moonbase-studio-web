@@ -8,6 +8,16 @@ import type { ImageElement } from '../../../models/scene-elements';
 import type { ImageSource } from '../../../models/source.domain';
 import { useStudioSessionStore } from '../../../store/studio-session.store';
 import { holdImagePreviewUrl } from '../image-preview-url';
+import {
+  inspectorChevronClass,
+  inspectorFieldShellClass,
+  inspectorFocusRingClass,
+  inspectorLabelClass,
+  inspectorMenuItemClass,
+  inspectorMenuPanelClass,
+  inspectorRowClass,
+  inspectorToggleClass,
+} from '../inspector-control-classes';
 
 const props = defineProps<{
   sceneId: SceneId;
@@ -26,10 +36,9 @@ const fitTriggerRef = ref<HTMLButtonElement | null>(null);
 const fileRef = ref<HTMLInputElement | null>(null);
 const panelStyle = ref<Record<string, string>>({ left: '0px', bottom: '0px' });
 
-const textControlClass = 'font-inter text-body-sm font-medium tracking-normal text-white';
-const labelClass = cn(textControlClass, 'shrink-0');
-const fieldShellClass =
-  'flex h-[24px] items-center gap-[8px] border border-transparent bg-[color-mix(in_srgb,white_5%,#050004)] px-[8px]';
+const labelClass = inspectorLabelClass;
+const rowClass = inspectorRowClass;
+const fieldShellClass = inspectorFieldShellClass;
 
 const imageSources = computed(() =>
   (store.project?.sources.filter((source) => source.type === 'image') ?? []).filter((source) => !isPlaceholder(source)),
@@ -186,13 +195,13 @@ function commitCornerRadius(raw: string) {
 </script>
 
 <template>
-  <div class="flex w-full max-w-[464px] flex-col items-center gap-[8px]">
-    <div class="flex w-full flex-wrap items-center justify-center gap-[8px] bg-[#050004] p-[6px]">
+  <div class="gap-xxx-sm flex w-full min-w-0 flex-col items-stretch">
+    <div :class="rowClass">
       <span :class="labelClass">{{ t('studio.properties.labels.source') }}</span>
-      <div :class="cn(fieldShellClass, textControlClass, 'min-w-[120px]')">
+      <div :class="cn(fieldShellClass, 'min-w-[120px]')">
         <button
           type="button"
-          class="min-w-0 flex-1 truncate text-left"
+          :class="cn('min-w-0 flex-1 truncate text-left', inspectorFocusRingClass)"
           @click="openFilePicker"
         >
           {{ sourceLabel }}
@@ -200,8 +209,14 @@ function commitCornerRadius(raw: string) {
         <button
           ref="sourceTriggerRef"
           type="button"
-          class="text-[12px] transition-transform duration-200"
-          :class="menu === 'source' ? 'rotate-180' : ''"
+          :class="
+            cn(
+              inspectorChevronClass,
+              'hover:text-on-surface',
+              inspectorFocusRingClass,
+              menu === 'source' && 'rotate-180',
+            )
+          "
           :aria-expanded="menu === 'source'"
           :aria-label="t('studio.properties.labels.source')"
           @click="toggleMenu('source')"
@@ -219,26 +234,21 @@ function commitCornerRadius(raw: string) {
       />
     </div>
 
-    <div class="flex w-full flex-wrap items-center justify-center gap-[8px] bg-[#050004] p-[6px]">
+    <div :class="rowClass">
       <span :class="labelClass">{{ t('studio.properties.fields.fitMode') }}</span>
       <button
         ref="fitTriggerRef"
         type="button"
-        :class="cn(fieldShellClass, textControlClass)"
+        :class="fieldShellClass"
         :aria-expanded="menu === 'fit'"
         @click="toggleMenu('fit')"
       >
         {{ t(`studio.properties.fitModes.${element.settings.fitMode}`) }}
-        <span
-          class="text-[12px] transition-transform duration-200"
-          :class="menu === 'fit' ? 'rotate-180' : ''"
-        >
-          &gt;
-        </span>
+        <span :class="cn(inspectorChevronClass, menu === 'fit' && 'rotate-180')"> &gt; </span>
       </button>
     </div>
 
-    <div class="flex w-full flex-wrap items-center justify-center gap-[8px] bg-[#050004] p-[6px]">
+    <div :class="rowClass">
       <BaseScrubField
         compact
         :label="t('studio.properties.fields.cornerRadius')"
@@ -251,15 +261,7 @@ function commitCornerRadius(raw: string) {
       />
       <button
         type="button"
-        :class="
-          cn(
-            textControlClass,
-            'flex h-[24px] items-center justify-center border px-[8px]',
-            element.settings.smoothing
-              ? 'border-[#22FF86] text-[#22FF86]'
-              : 'border-transparent bg-[color-mix(in_srgb,white_5%,#050004)] text-white',
-          )
-        "
+        :class="inspectorToggleClass(element.settings.smoothing)"
         :aria-pressed="element.settings.smoothing"
         @click="toggleSmoothing"
       >
@@ -277,12 +279,12 @@ function commitCornerRadius(raw: string) {
       />
       <div
         v-if="menu === 'source'"
-        class="fixed z-50 flex flex-col gap-[4px] border border-white/15 bg-[color-mix(in_srgb,white_8%,#050004)] p-[6px]"
+        :class="inspectorMenuPanelClass"
         :style="panelStyle"
       >
         <button
           type="button"
-          :class="cn(textControlClass, 'flex h-[24px] items-center px-[8px] text-left')"
+          :class="inspectorMenuItemClass()"
           @click="openFilePicker"
         >
           {{ t('studio.properties.labels.file') }}
@@ -291,13 +293,7 @@ function commitCornerRadius(raw: string) {
           v-for="source in imageSources"
           :key="source.id"
           type="button"
-          :class="
-            cn(
-              textControlClass,
-              'flex h-[24px] items-center px-[8px] text-left',
-              source.id === element.sourceId && 'text-[#22FF86]',
-            )
-          "
+          :class="inspectorMenuItemClass(source.id === element.sourceId)"
           @click="pickSource(source.id)"
         >
           <span class="truncate">{{ source.name }}</span>
@@ -305,20 +301,14 @@ function commitCornerRadius(raw: string) {
       </div>
       <div
         v-if="menu === 'fit'"
-        class="fixed z-50 flex flex-col gap-[4px] border border-white/15 bg-[color-mix(in_srgb,white_8%,#050004)] p-[6px]"
+        :class="inspectorMenuPanelClass"
         :style="panelStyle"
       >
         <button
           v-for="fitMode in fitModes"
           :key="fitMode"
           type="button"
-          :class="
-            cn(
-              textControlClass,
-              'flex h-[24px] items-center px-[8px] text-left',
-              fitMode === element.settings.fitMode && 'text-[#22FF86]',
-            )
-          "
+          :class="inspectorMenuItemClass(fitMode === element.settings.fitMode)"
           @click="pickFit(fitMode)"
         >
           {{ t(`studio.properties.fitModes.${fitMode}`) }}

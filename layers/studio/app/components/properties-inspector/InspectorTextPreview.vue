@@ -111,16 +111,23 @@ onMounted(() => {
   onBeforeUnmount(() => observer.disconnect());
 });
 
+/** The user's text background, painted on its own layer so its opacity does not fade the text. */
+const backgroundStyle = computed(() => {
+  const settings = props.element.settings;
+  if (!settings.backgroundColor || settings.backgroundOpacity <= 0) {
+    return null;
+  }
+  return {
+    backgroundColor: settings.backgroundColor,
+    opacity: String(Math.min(1, settings.backgroundOpacity)),
+  };
+});
+
 const previewStyle = computed(() => {
   const settings = props.element.settings;
   const decorations = [settings.underline ? 'underline' : '', settings.strikethrough ? 'line-through' : ''].filter(
     Boolean,
   );
-  const background =
-    settings.backgroundColor && settings.backgroundOpacity > 0
-      ? `color-mix(in srgb, ${settings.backgroundColor} ${settings.backgroundOpacity * 100}%, transparent)`
-      : 'transparent';
-
   return {
     fontFamily: settings.fontFamily,
     fontSize: `${fittedSize.value}px`,
@@ -131,7 +138,6 @@ const previewStyle = computed(() => {
     lineHeight: String(settings.lineHeight > 0 ? settings.lineHeight : 1),
     textAlign: 'center' as const,
     textDecoration: decorations.join(' ') || 'none',
-    backgroundColor: background,
     padding: `${settings.padding}px`,
     whiteSpace: 'pre' as const,
     WebkitTextStroke:
@@ -145,15 +151,23 @@ const previewStyle = computed(() => {
     ref="boxRef"
     class="flex h-full min-h-0 w-full items-center justify-center overflow-hidden"
   >
-    <textarea
-      :value="draft"
-      wrap="off"
-      rows="1"
-      class="max-h-full max-w-full resize-none overflow-hidden border-0 bg-transparent text-center outline-none [field-sizing:content]"
-      :style="previewStyle"
-      @focus="focused = true"
-      @blur="focused = false"
-      @input="onInput"
-    />
+    <div class="relative flex max-h-full max-w-full overflow-hidden">
+      <span
+        v-if="backgroundStyle"
+        class="pointer-events-none absolute inset-0"
+        :style="backgroundStyle"
+        aria-hidden="true"
+      />
+      <textarea
+        :value="draft"
+        wrap="off"
+        rows="1"
+        class="relative max-h-full max-w-full resize-none overflow-hidden border-0 bg-transparent text-center outline-none [field-sizing:content]"
+        :style="previewStyle"
+        @focus="focused = true"
+        @blur="focused = false"
+        @input="onInput"
+      />
+    </div>
   </div>
 </template>

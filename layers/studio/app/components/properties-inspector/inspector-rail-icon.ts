@@ -19,7 +19,7 @@ export function inspectorRailIcon(
     return { maskUrl: '/inspector-icons/type-screen.svg' };
   }
   if (type === 'shape' || type === 'image' || type === 'browser' || type === 'animation') {
-    return { icon: sceneElementTypeIconName(type), iconClass: 'size-[2.4rem]' };
+    return { icon: sceneElementTypeIconName(type), iconClass: 'size-xx-lg' };
   }
   return { icon: sceneElementTypeIconName(type) };
 }

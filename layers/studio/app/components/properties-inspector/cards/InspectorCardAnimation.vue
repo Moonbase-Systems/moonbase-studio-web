@@ -10,6 +10,15 @@ import { holdAnimationPreviewUrl } from '../../../playback/animation-preview-url
 import { detectAnimationFile } from '../../../playback/detect-animation-file';
 import { readMediaPixelSize } from '../../../playback/read-media-pixel-size';
 import { useStudioSessionStore } from '../../../store/studio-session.store';
+import {
+  inspectorControlTextClass,
+  inspectorFieldShellClass,
+  inspectorLabelClass,
+  inspectorMenuItemClass,
+  inspectorMenuPanelClass,
+  inspectorRowClass,
+  inspectorToggleClass,
+} from '../inspector-control-classes';
 
 const props = defineProps<{
   sceneId: SceneId;
@@ -19,10 +28,10 @@ const props = defineProps<{
 const { t } = useI18n();
 const store = useStudioSessionStore();
 
-const textControlClass = 'font-inter text-body-sm font-medium tracking-normal text-white';
-const labelClass = cn(textControlClass, 'shrink-0');
-const fieldShellClass =
-  'flex h-[24px] min-w-0 items-center border border-transparent bg-[color-mix(in_srgb,white_5%,#050004)] px-[8px]';
+const textControlClass = inspectorControlTextClass;
+const labelClass = inspectorLabelClass;
+const rowClass = inspectorRowClass;
+const fieldShellClass = inspectorFieldShellClass;
 
 const fileRef = ref<HTMLInputElement | null>(null);
 const fileError = ref<'unsupported' | 'static' | 'unreadable' | null>(null);
@@ -183,34 +192,27 @@ function control(action: 'play' | 'pause' | 'stop' | 'restart') {
 }
 
 function toggleClass(active: boolean, disabled = false) {
-  return cn(
-    textControlClass,
-    'flex h-[24px] items-center justify-center border px-[8px]',
-    disabled && 'cursor-not-allowed opacity-40',
-    active
-      ? 'border-[#22FF86] text-[#22FF86]'
-      : 'border-transparent bg-[color-mix(in_srgb,white_5%,#050004)] text-white',
-  );
+  return inspectorToggleClass(active, disabled);
 }
 </script>
 
 <template>
   <div
     v-if="source"
-    class="flex w-full max-w-[464px] flex-col items-center gap-[8px]"
+    class="gap-xxx-sm flex w-full min-w-0 flex-col items-stretch"
   >
-    <div class="flex w-full flex-wrap items-center justify-center gap-[8px] bg-[#050004] p-[6px]">
+    <div :class="rowClass">
       <span :class="labelClass">{{ t('studio.properties.labels.file') }}</span>
       <button
         type="button"
-        :class="cn(fieldShellClass, textControlClass, 'max-w-[220px]')"
+        :class="cn(fieldShellClass, 'max-w-[220px]')"
         @click="fileRef?.click()"
       >
         <span class="truncate">{{ source.assetId ? source.name : t('studio.properties.animation.noFile') }}</span>
       </button>
       <span
         v-if="source.assetId"
-        :class="cn(labelClass, 'uppercase')"
+        :class="labelClass"
         >{{ source.format }}</span
       >
       <input
@@ -223,11 +225,11 @@ function toggleClass(active: boolean, disabled = false) {
     </div>
     <p
       v-if="fileError"
-      :class="cn(textControlClass, 'text-center text-[#ff8a2a]')"
+      :class="cn(textControlClass, 'text-error text-center')"
     >
       {{ t(`studio.properties.animation.${fileError}`) }}
     </p>
-    <div class="flex w-full flex-wrap items-center justify-center gap-[8px] bg-[#050004] p-[6px]">
+    <div :class="rowClass">
       <span :class="labelClass">{{ t('studio.properties.animation.playback') }}</span>
       <button
         type="button"
@@ -271,7 +273,7 @@ function toggleClass(active: boolean, disabled = false) {
       />
     </div>
 
-    <div class="flex w-full flex-wrap items-center justify-center gap-[8px] bg-[#050004] p-[6px]">
+    <div :class="rowClass">
       <InspectorHintText
         :text-class="labelClass"
         :hint="t('studio.properties.animation.startHint')"
@@ -291,12 +293,12 @@ function toggleClass(active: boolean, disabled = false) {
       />
     </div>
 
-    <div class="flex w-full flex-wrap items-center justify-center gap-[8px] bg-[#050004] p-[6px]">
+    <div :class="rowClass">
       <span :class="labelClass">{{ t('studio.properties.animation.trigger') }}</span>
       <button
         ref="triggerRef"
         type="button"
-        :class="cn(fieldShellClass, textControlClass)"
+        :class="fieldShellClass"
         @click="toggleMenu('trigger')"
       >
         {{ t(`studio.properties.animation.triggers.${shownTrigger}`) }}
@@ -330,12 +332,12 @@ function toggleClass(active: boolean, disabled = false) {
       />
     </div>
 
-    <div class="flex w-full flex-wrap items-center justify-center gap-[8px] bg-[#050004] p-[6px]">
+    <div :class="rowClass">
       <span :class="labelClass">{{ t('studio.properties.animation.after') }}</span>
       <button
         ref="endRef"
         type="button"
-        :class="cn(fieldShellClass, textControlClass)"
+        :class="fieldShellClass"
         :disabled="!capabilities.ended"
         @click="toggleMenu('end')"
       >
@@ -358,7 +360,7 @@ function toggleClass(active: boolean, disabled = false) {
       </button>
     </div>
 
-    <div class="flex w-full flex-wrap items-center justify-center gap-[8px] bg-[#050004] p-[6px]">
+    <div :class="rowClass">
       <button
         type="button"
         :class="toggleClass(false)"
@@ -401,20 +403,14 @@ function toggleClass(active: boolean, disabled = false) {
       />
       <div
         v-if="menu === 'trigger'"
-        class="fixed z-50 flex flex-col gap-[4px] border border-white/15 bg-[color-mix(in_srgb,white_8%,#050004)] p-[6px]"
+        :class="inspectorMenuPanelClass"
         :style="panelStyle"
       >
         <button
           v-for="trigger in triggerOptions"
           :key="trigger"
           type="button"
-          :class="
-            cn(
-              textControlClass,
-              'flex h-[24px] items-center px-[8px] text-left',
-              shownTrigger === trigger && 'text-[#22FF86]',
-            )
-          "
+          :class="inspectorMenuItemClass(shownTrigger === trigger)"
           @click="pickTrigger(trigger)"
         >
           {{ t(`studio.properties.animation.triggers.${trigger}`) }}
@@ -422,20 +418,14 @@ function toggleClass(active: boolean, disabled = false) {
       </div>
       <div
         v-if="menu === 'end'"
-        class="fixed z-50 flex flex-col gap-[4px] border border-white/15 bg-[color-mix(in_srgb,white_8%,#050004)] p-[6px]"
+        :class="inspectorMenuPanelClass"
         :style="panelStyle"
       >
         <button
           v-for="end in endOptions"
           :key="end"
           type="button"
-          :class="
-            cn(
-              textControlClass,
-              'flex h-[24px] items-center px-[8px] text-left',
-              source.endBehavior === end && 'text-[#22FF86]',
-            )
-          "
+          :class="inspectorMenuItemClass(source.endBehavior === end)"
           @click="pickEnd(end)"
         >
           {{ t(`studio.properties.animation.ends.${end}`) }}

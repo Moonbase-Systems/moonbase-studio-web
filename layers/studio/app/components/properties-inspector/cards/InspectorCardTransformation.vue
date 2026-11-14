@@ -4,6 +4,7 @@ import type { ElementCrop } from '../../../models/common.domain';
 import type { SceneId } from '../../../models/ids.domain';
 import type { SceneElement } from '../../../models/scene-element.domain';
 import { useStudioSessionStore } from '../../../store/studio-session.store';
+import { inspectorLabelClass } from '../inspector-control-classes';
 import InspectorTransformCropField from './InspectorTransformCropField.vue';
 
 const props = defineProps<{
@@ -54,87 +55,74 @@ const cropFields: { key: keyof ElementCrop; edge: 'top' | 'right' | 'bottom' | '
 </script>
 
 <template>
-  <div class="flex w-full flex-col items-center gap-[8px]">
-    <div class="flex w-full min-w-0 flex-wrap items-center justify-center gap-x-[16px] gap-y-[8px]">
-      <span class="flex size-[24px] shrink-0 items-center justify-center text-white">
-        <IconInspectorMove />
-      </span>
-      <BaseScrubField
-        compact
-        :model-value="element.transform.x"
-        :label="t('studio.properties.fields.x')"
-        field-suffix="horizontal"
-        field-class="w-[64px]"
-        :min="0"
-        :max="video.width"
-        @change="commitTransform('x', $event)"
-      />
-      <BaseScrubField
-        compact
-        :model-value="element.transform.y"
-        :label="t('studio.properties.fields.y')"
-        field-suffix="vertical"
-        field-class="w-[64px]"
-        :min="0"
-        :max="video.height"
-        @change="commitTransform('y', $event)"
-      />
-    </div>
+  <!-- One form grid: a label column sized to the longest label, every field fills the rest. -->
+  <div class="gap-x-sm gap-y-xxx-sm grid w-full grid-cols-[auto_minmax(0,1fr)] items-center">
+    <BaseScrubField
+      compact
+      class="contents"
+      :model-value="element.transform.x"
+      :label="t('studio.properties.fields.x')"
+      suffix="px"
+      field-suffix="horizontal"
+      :min="0"
+      :max="video.width"
+      @change="commitTransform('x', $event)"
+    />
+    <BaseScrubField
+      compact
+      class="contents"
+      :model-value="element.transform.y"
+      :label="t('studio.properties.fields.y')"
+      suffix="px"
+      field-suffix="vertical"
+      :min="0"
+      :max="video.height"
+      @change="commitTransform('y', $event)"
+    />
+    <BaseScrubField
+      compact
+      class="contents"
+      :model-value="element.transform.width"
+      :label="t('studio.properties.labels.width')"
+      suffix="px"
+      show-lock
+      :min="0"
+      :max="video.width"
+      @change="commitTransform('width', $event)"
+      @lock-click="toggleKeepAspectRatio"
+    />
+    <BaseScrubField
+      compact
+      class="contents"
+      :model-value="element.transform.height"
+      :label="t('studio.properties.labels.height')"
+      suffix="px"
+      show-lock
+      :min="0"
+      :max="video.height"
+      @change="commitTransform('height', $event)"
+      @lock-click="toggleKeepAspectRatio"
+    />
+    <BaseScrubField
+      compact
+      class="contents"
+      :model-value="element.transform.rotation"
+      :label="t('studio.properties.labels.rotation')"
+      suffix="°"
+      field-suffix="horizontal"
+      :min="0"
+      :max="360"
+      @change="commitTransform('rotation', $event)"
+    />
 
-    <div class="flex w-full min-w-0 flex-wrap items-center justify-center gap-x-[16px] gap-y-[8px]">
-      <span class="flex size-[24px] shrink-0 items-center justify-center text-white">
-        <IconInspectorScale />
-      </span>
-      <BaseScrubField
-        compact
-        :model-value="element.transform.width"
-        :label="t('studio.properties.labels.width')"
-        show-lock
-        field-class="w-[72px]"
-        :min="0"
-        :max="video.width"
-        @change="commitTransform('width', $event)"
-        @lock-click="toggleKeepAspectRatio"
-      />
-      <BaseScrubField
-        compact
-        :model-value="element.transform.height"
-        :label="t('studio.properties.labels.height')"
-        show-lock
-        field-class="w-[72px]"
-        :min="0"
-        :max="video.height"
-        @change="commitTransform('height', $event)"
-        @lock-click="toggleKeepAspectRatio"
-      />
-    </div>
-
-    <div class="flex w-full min-w-0 flex-wrap items-center justify-center gap-x-[16px] gap-y-[8px]">
-      <span class="flex size-[20px] shrink-0 items-center justify-center text-white">
-        <IconInspectorRotate />
-      </span>
-      <BaseScrubField
-        compact
-        :model-value="element.transform.rotation"
-        label=" "
-        suffix="°"
-        field-suffix="horizontal"
-        field-class="w-[64px]"
-        :min="0"
-        :max="360"
-        @change="commitTransform('rotation', $event)"
-      />
-    </div>
-
-    <div class="flex w-full min-w-0 flex-wrap items-center justify-center gap-[8px]">
-      <span class="flex size-[24px] shrink-0 items-center justify-center text-white">
-        <IconInspectorCropInset />
-      </span>
+    <span :class="inspectorLabelClass">{{ t('studio.properties.labels.crop') }}</span>
+    <div class="gap-xxx-sm grid min-w-0 grid-cols-2">
       <InspectorTransformCropField
         v-for="field in cropFields"
         :key="field.key"
         :model-value="element.crop[field.key]"
         :edge="field.edge"
+        :label="t(`studio.properties.fields.crop.${field.key}`)"
         @change="commitCrop(field.key, $event)"
       />
     </div>

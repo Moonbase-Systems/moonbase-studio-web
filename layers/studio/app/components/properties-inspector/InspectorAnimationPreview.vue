@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { cn } from '~/utils/index';
+import { cn, inspectorTypography } from '~/utils/index';
 
 import { useAnimationPlayback } from '../../composables/useAnimationPlayback';
 import type { SceneId } from '../../models/ids.domain';
@@ -80,9 +80,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div
-    class="flex h-[88px] w-full max-w-[180px] items-center justify-center overflow-hidden bg-[color-mix(in_srgb,white_5%,#050004)]"
-  >
+  <div class="border-line flex h-[88px] w-full max-w-[180px] items-center justify-center overflow-hidden border">
     <div
       v-show="mediaUrl && !failed"
       ref="host"
@@ -90,7 +88,7 @@ onUnmounted(() => {
     />
     <p
       v-if="!mediaUrl || failed"
-      :class="cn('font-inter text-body-sm px-[12px] text-center font-medium text-white')"
+      :class="cn(inspectorTypography.body, 'px-x-sm text-on-surface-dim text-center')"
     >
       {{ source?.assetId ? t('studio.properties.assetMissing') : t('studio.properties.animation.noFile') }}
     </p>

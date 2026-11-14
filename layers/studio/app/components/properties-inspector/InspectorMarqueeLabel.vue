@@ -81,8 +81,7 @@ watch(
 .marquee-copy {
   flex-shrink: 0;
   white-space: nowrap;
-  background: color-mix(in srgb, #22ff86 5%, transparent);
-  padding-inline: 4px;
+  padding-inline: 0.4rem;
 }
 
 .marquee-gap {

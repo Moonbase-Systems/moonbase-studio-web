@@ -3,6 +3,13 @@ import { cn } from '~/utils/index';
 
 import type { BrowserElement } from '../../../models/scene-elements';
 import { useStudioSessionStore } from '../../../store/studio-session.store';
+import {
+  inspectorControlTextClass,
+  inspectorFieldShellClass,
+  inspectorLabelClass,
+  inspectorRowClass,
+  inspectorToggleClass,
+} from '../inspector-control-classes';
 
 const props = defineProps<{
   element: BrowserElement;
@@ -11,10 +18,10 @@ const props = defineProps<{
 const { t } = useI18n();
 const store = useStudioSessionStore();
 
-const textControlClass = 'font-inter text-body-sm font-medium tracking-normal text-white';
-const labelClass = cn(textControlClass, 'shrink-0');
-const fieldShellClass =
-  'flex h-[24px] min-w-0 flex-1 items-center border border-transparent bg-[color-mix(in_srgb,white_5%,#050004)] px-[8px] focus-within:border-[#22FF86]';
+const textControlClass = inspectorControlTextClass;
+const labelClass = inspectorLabelClass;
+const rowClass = inspectorRowClass;
+const fieldShellClass = cn(inspectorFieldShellClass, 'flex-1');
 
 const source = computed(() => {
   const linked = store.project?.sources.find((item) => item.id === props.element.sourceId);
@@ -78,22 +85,16 @@ function toggleBypassCache() {
 }
 
 function toggleClass(active: boolean) {
-  return cn(
-    textControlClass,
-    'flex h-[24px] items-center justify-center border px-[8px]',
-    active
-      ? 'border-[#22FF86] text-[#22FF86]'
-      : 'border-transparent bg-[color-mix(in_srgb,white_5%,#050004)] text-white',
-  );
+  return inspectorToggleClass(active);
 }
 </script>
 
 <template>
   <div
     v-if="source"
-    class="flex w-full max-w-[464px] flex-col items-center gap-[8px]"
+    class="gap-xxx-sm flex w-full min-w-0 flex-col items-stretch"
   >
-    <div class="flex w-full items-center justify-center gap-[8px] bg-[#050004] p-[6px]">
+    <div :class="cn(rowClass, 'flex-nowrap')">
       <span :class="labelClass">{{ t('studio.properties.labels.browserUrl') }}</span>
       <label :class="fieldShellClass">
         <input
@@ -110,7 +111,7 @@ function toggleClass(active: boolean) {
       </label>
     </div>
 
-    <div class="flex w-full flex-wrap items-center justify-center gap-[8px] bg-[#050004] p-[6px]">
+    <div :class="rowClass">
       <BaseScrubField
         compact
         :label="t('studio.properties.labels.refreshInterval')"

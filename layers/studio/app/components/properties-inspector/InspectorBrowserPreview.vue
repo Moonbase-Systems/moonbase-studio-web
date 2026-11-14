@@ -42,7 +42,7 @@ const frameStyle = computed(() => {
 </script>
 
 <template>
-  <div class="relative h-[88px] w-full max-w-[180px] overflow-hidden bg-[color-mix(in_srgb,white_5%,#050004)]">
+  <div class="border-line relative h-[88px] w-full max-w-[180px] overflow-hidden border">
     <iframe
       v-if="pageUrl"
       :key="pageUrl"

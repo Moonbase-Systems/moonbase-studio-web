@@ -7,6 +7,17 @@ import type { AudioVisualElement } from '../../../models/scene-elements';
 import { useStudioSessionStore } from '../../../store/studio-session.store';
 import { holdAudioPreviewStream } from '../audio-preview-stream';
 import AudioBalanceSlider from '../AudioBalanceSlider.vue';
+import {
+  inspectorChevronClass,
+  inspectorControlTextClass,
+  inspectorFieldShellClass,
+  inspectorFocusRingClass,
+  inspectorLabelClass,
+  inspectorMenuItemClass,
+  inspectorMenuPanelClass,
+  inspectorRowClass,
+  inspectorToggleClass,
+} from '../inspector-control-classes';
 import InspectorMarqueeLabel from '../InspectorMarqueeLabel.vue';
 
 const props = defineProps<{
@@ -25,10 +36,10 @@ const panelStyle = ref<Record<string, string>>({ left: '0px', bottom: '0px', max
 const inputs = ref<MediaDeviceInfo[]>([]);
 const volumeUnit = ref<'percent' | 'db'>('percent');
 
-const textControlClass = 'font-inter text-body-sm font-medium tracking-normal text-white';
-const labelClass = cn(textControlClass, 'shrink-0');
-const fieldShellClass =
-  'flex h-[24px] min-w-[120px] items-center gap-[8px] border border-transparent bg-[color-mix(in_srgb,white_5%,#050004)] px-[4px] focus-within:border-[#22FF86]';
+const textControlClass = inspectorControlTextClass;
+const labelClass = inspectorLabelClass;
+const rowClass = inspectorRowClass;
+const fieldShellClass = cn(inspectorFieldShellClass, 'min-w-[120px]');
 
 const linkedSource = computed(() => {
   const result = store.findSource(props.element.sourceId);
@@ -201,38 +212,27 @@ function commitOffset(raw: string) {
 }
 
 function decorationClass(active: boolean) {
-  return cn(
-    textControlClass,
-    'flex h-[24px] items-center justify-center border px-[8px]',
-    active
-      ? 'border-[#22FF86] text-[#22FF86]'
-      : 'border-transparent bg-[color-mix(in_srgb,white_5%,#050004)] text-white',
-  );
+  return inspectorToggleClass(active);
 }
 </script>
 
 <template>
-  <div class="flex w-full max-w-[464px] flex-col items-center gap-[8px]">
-    <div class="flex w-full flex-wrap items-center justify-center gap-[8px] bg-[#050004] p-[6px]">
+  <div class="gap-xxx-sm flex w-full min-w-0 flex-col items-stretch">
+    <div :class="rowClass">
       <span :class="labelClass">{{ t('studio.properties.labels.source') }}</span>
       <button
         ref="triggerRef"
         type="button"
-        :class="cn(fieldShellClass, textControlClass, 'max-w-[180px] overflow-hidden')"
+        :class="cn(fieldShellClass, 'max-w-[180px] overflow-hidden')"
         :aria-expanded="open"
         @click="togglePanel"
       >
         <span class="min-w-0 flex-1 truncate text-left">{{ linkedSource?.name ?? element.sourceId }}</span>
-        <span
-          class="text-[12px] transition-transform duration-200"
-          :class="open ? 'rotate-180' : ''"
-        >
-          &gt;
-        </span>
+        <span :class="cn(inspectorChevronClass, open && 'rotate-180')"> &gt; </span>
       </button>
     </div>
 
-    <div class="flex w-full flex-wrap items-center justify-center gap-[8px] bg-[#050004] p-[6px]">
+    <div :class="rowClass">
       <span :class="labelClass">{{ t('studio.properties.fields.volume') }}</span>
       <BaseInspectorField
         :model-value="volumeDraft"
@@ -256,7 +256,7 @@ function decorationClass(active: boolean) {
       </button>
     </div>
 
-    <div class="flex w-full flex-wrap items-center justify-center gap-[8px] bg-[#050004] p-[6px]">
+    <div :class="rowClass">
       <button
         type="button"
         :class="decorationClass(element.settings.muted)"
@@ -281,21 +281,18 @@ function decorationClass(active: boolean) {
 
     <button
       type="button"
-      :class="cn(textControlClass, 'flex h-[24px] items-center gap-[8px] px-[8px]')"
+      :class="
+        cn(textControlClass, 'h-row gap-xxx-sm px-xxx-sm hover:text-accent flex items-center', inspectorFocusRingClass)
+      "
       :aria-expanded="advancedOpen"
       @click="advancedOpen = !advancedOpen"
     >
       {{ t('studio.properties.labels.advanced') }}
-      <span
-        class="text-[12px] transition-transform duration-200"
-        :class="advancedOpen ? 'rotate-90' : ''"
-      >
-        &gt;
-      </span>
+      <span :class="cn(inspectorChevronClass, advancedOpen && 'rotate-90')"> &gt; </span>
     </button>
 
     <template v-if="advancedOpen">
-      <div class="flex w-full flex-wrap items-center justify-center gap-[8px] bg-[#050004] p-[6px]">
+      <div :class="rowClass">
         <span :class="labelClass">{{ t('studio.properties.labels.gain') }}</span>
         <BaseInspectorField
           :model-value="element.settings.gainDb"
@@ -305,7 +302,7 @@ function decorationClass(active: boolean) {
         />
       </div>
 
-      <div class="flex w-full flex-wrap items-center justify-center gap-[8px] bg-[#050004] p-[6px]">
+      <div :class="rowClass">
         <span :class="labelClass">{{ t('studio.properties.labels.balance') }}</span>
         <BaseInspectorField
           :model-value="Math.round(element.settings.pan * 100)"
@@ -318,7 +315,7 @@ function decorationClass(active: boolean) {
         />
       </div>
 
-      <div class="flex w-full flex-wrap items-center justify-center gap-[8px] bg-[#050004] p-[6px]">
+      <div :class="rowClass">
         <span :class="labelClass">{{ t('studio.properties.labels.offset') }}</span>
         <BaseInspectorField
           :model-value="element.settings.syncOffsetMs"
@@ -339,36 +336,30 @@ function decorationClass(active: boolean) {
       />
       <div
         v-if="open"
-        class="fixed z-50 flex w-[240px] flex-col gap-[4px] overflow-y-auto overflow-x-hidden border border-white/15 bg-[color-mix(in_srgb,white_8%,#050004)] p-[6px]"
+        :class="cn(inspectorMenuPanelClass, 'w-[240px] overflow-y-auto overflow-x-hidden')"
         :style="panelStyle"
       >
         <p
           v-if="inputs.length === 0"
-          :class="textControlClass"
+          :class="cn(textControlClass, 'px-xxx-sm text-on-surface-dim')"
         >
           {{ t('studio.properties.noAudioSources') }}
         </p>
-        <p :class="cn(textControlClass, 'shrink-0 px-[8px] text-[#22FF86]')">
+        <p :class="cn(labelClass, 'px-xxx-sm py-tiny')">
           {{ t('studio.properties.labels.microphones') }}
         </p>
         <button
           v-for="device in inputs"
           :key="device.deviceId"
           type="button"
-          :class="
-            cn(
-              textControlClass,
-              'group flex h-[24px] shrink-0 items-center overflow-hidden px-[8px] text-left',
-              device.deviceId === linkedSource?.deviceId && 'text-[#22FF86]',
-            )
-          "
+          :class="cn(inspectorMenuItemClass(device.deviceId === linkedSource?.deviceId), 'group overflow-hidden')"
           @click="pickDevice(device)"
         >
           <InspectorMarqueeLabel :label="device.label || device.deviceId" />
         </button>
         <button
           type="button"
-          :class="cn(textControlClass, 'group flex h-[24px] shrink-0 items-center overflow-hidden px-[8px] text-left')"
+          :class="cn(inspectorMenuItemClass(), 'group overflow-hidden')"
           @click="pickSystem"
         >
           <InspectorMarqueeLabel :label="t('studio.properties.labels.systemSource')" />
