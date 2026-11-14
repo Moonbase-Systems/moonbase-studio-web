@@ -123,14 +123,14 @@ watch(
 
 const shellClass = computed(() =>
   cn(
-    'group/row relative flex min-h-0 items-center gap-x-tiny rounded-x-sm',
-    props.zone === 'center' && 'ring-1 ring-accent',
+    'group/row relative flex min-h-0 items-center gap-xxx-sm hover:bg-surface-container-high',
+    props.zone === 'center' && 'ring-1 ring-inset ring-accent',
   ),
 );
 
 const labelClass = computed(() =>
   cn(
-    'min-w-0 flex-1 truncate py-xx-sm text-left font-roboto text-body-sm font-medium',
+    'min-w-0 flex-1 truncate py-tiny text-left font-sans text-body-sm font-normal',
     props.selected ? 'text-accent' : props.visible === false ? 'text-on-surface-dim line-through' : 'text-on-surface',
     props.expandable ? 'pr-xx-lg' : props.showLayerControls ? 'pr-xx-xl' : 'group-hover/row:pr-lg',
   ),
@@ -140,10 +140,8 @@ const layerControlsVisible = computed(
   () => props.showLayerControls && (!props.visible || props.locked || props.selected),
 );
 
-const LEVEL_GRADIENT = 'linear-gradient(90deg,#22FF86 0%,#7adf4a 42%,#e6c84a 68%,#ff8a2a 82%,#ff3b3b 100%)';
-
-const textRef = ref<HTMLElement | null>(null);
-const textWidth = ref(0);
+/** Orbit level bar: 20 segments under the label, signal → warning → error. */
+const LEVEL_SEGMENTS = 20;
 
 const levelPercent = computed(() => {
   if (props.levelDb === undefined) {
@@ -153,37 +151,20 @@ const levelPercent = computed(() => {
   return ((clamped + 60) / 60) * 100;
 });
 
-const maskWidth = computed(() => (textWidth.value * levelPercent.value) / 100);
-
-let labelObserver: ResizeObserver | undefined;
-
-function measureLabel() {
-  textWidth.value = textRef.value?.offsetWidth ?? 0;
-}
-
-function setTextEl(el: Element | ComponentPublicInstance | null) {
-  const node = el instanceof HTMLElement ? el : null;
-  textRef.value = node;
-  labelObserver?.disconnect();
-  labelObserver = undefined;
-  if (!node) {
-    textWidth.value = 0;
-    return;
-  }
-  measureLabel();
-  labelObserver = new ResizeObserver(measureLabel);
-  labelObserver.observe(node);
-}
-
-watch(
-  () => props.label,
-  () => {
-    void nextTick(measureLabel);
-  },
-);
-
-onBeforeUnmount(() => {
-  labelObserver?.disconnect();
+const levelSegments = computed(() => {
+  const lit = Math.round((levelPercent.value / 100) * LEVEL_SEGMENTS);
+  return Array.from({ length: LEVEL_SEGMENTS }, (_, index) => {
+    if (index >= lit) {
+      return 'bg-surface-container-high';
+    }
+    if (index >= LEVEL_SEGMENTS - 2) {
+      return 'bg-error';
+    }
+    if (index >= LEVEL_SEGMENTS - 5) {
+      return 'bg-warning';
+    }
+    return 'bg-accent';
+  });
 });
 
 function onCommit() {
@@ -247,7 +228,7 @@ function onRenameKeyDown(event: KeyboardEvent) {
       v-if="editing"
       ref="inputRef"
       :value="draft"
-      class="text-body-sm py-xx-sm font-roboto text-on-surface min-w-0 flex-1 bg-transparent outline-none"
+      class="text-body-sm py-xx-sm text-on-surface border-accent min-w-0 flex-1 border-b bg-transparent font-sans outline-none"
       @input="emit('update:draft', ($event.target as HTMLInputElement).value)"
       @keydown="onRenameKeyDown"
       @blur="onCommit"
@@ -258,24 +239,19 @@ function onRenameKeyDown(event: KeyboardEvent) {
       v-if="!editing"
       :class="cn(labelClass, levelDb !== undefined && 'relative')"
     >
-      <span
-        :ref="setTextEl"
-        class="inline-block max-w-full truncate"
-      >
+      <span class="inline-block max-w-full truncate">
         {{ label }}
       </span>
       <span
-        v-if="levelDb !== undefined && maskWidth > 0"
-        class="pointer-events-none absolute inset-y-0 left-0 overflow-hidden"
-        :style="{ width: `${maskWidth}px` }"
+        v-if="levelDb !== undefined"
+        class="bottom-x-tiny h-x-tiny pointer-events-none absolute inset-x-0 grid grid-cols-[repeat(20,minmax(0,1fr))] gap-px"
         aria-hidden="true"
       >
         <span
-          class="py-xx-sm block whitespace-nowrap bg-clip-text text-transparent"
-          :style="{ width: `${textWidth}px`, backgroundImage: LEVEL_GRADIENT }"
-        >
-          {{ label }}
-        </span>
+          v-for="(segment, index) in levelSegments"
+          :key="index"
+          :class="segment"
+        />
       </span>
     </span>
 

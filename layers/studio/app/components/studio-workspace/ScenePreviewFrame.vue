@@ -46,7 +46,7 @@ watch([() => store.activeScene, isReady], ([scene, ready]) => {
   >
     <div class="flex min-h-0 flex-1 items-center justify-center">
       <div
-        class="bg-surface-container-high relative max-h-full w-full max-w-full overflow-hidden"
+        class="border-line bg-surface relative max-h-full w-full max-w-full overflow-hidden border"
         :style="{ aspectRatio }"
       >
         <div
@@ -57,13 +57,13 @@ watch([() => store.activeScene, isReady], ([scene, ready]) => {
         />
         <span
           v-if="showPlaceholder"
-          class="text-body-sm font-roboto text-on-surface-dim pointer-events-none absolute inset-0 flex items-center justify-center"
+          class="text-body-sm text-on-surface-dim pointer-events-none absolute inset-0 flex items-center justify-center font-sans"
         >
           {{ t('studio.preview.placeholder') }}
         </span>
         <span
           v-if="renderFailed"
-          class="text-body-x-sm font-roboto text-on-surface-dim absolute inset-x-0 bottom-0 px-2 py-1"
+          class="text-body-x-sm text-on-surface-dim px-xxx-sm py-tiny absolute inset-x-0 bottom-0 font-sans"
           :title="lastError?.kind === 'render-failed' ? lastError.message : undefined"
         >
           {{ t('studio.preview.renderFailed') }}

@@ -126,12 +126,12 @@ const expandCollapseLabel = computed(() => (props.open ? t('studio.scene.collaps
       @update:open="emit('update:open', $event)"
     >
       <template #trigger>
-        <div class="gap-x-sm min-h-md flex items-center justify-between">
+        <div class="gap-x-sm min-h-row flex items-center justify-between">
           <input
             v-if="renaming"
             ref="inputRef"
             :value="renameDraft"
-            class="text-body-md text-on-surface min-w-0 flex-1 bg-transparent text-left font-medium outline-none"
+            class="text-label text-on-surface border-accent min-w-0 flex-1 border-b bg-transparent text-left font-mono uppercase outline-none"
             @input="emit('update:renameDraft', ($event.target as HTMLInputElement).value)"
             @keydown="onRenameKeyDown"
             @blur="onRenameCommit"
@@ -143,9 +143,9 @@ const expandCollapseLabel = computed(() => (props.open ? t('studio.scene.collaps
             type="button"
             :class="
               cn(
-                'text-body-md duration-short min-w-0 flex-1 truncate text-left font-medium transition-colors',
-                props.selected ? 'text-accent' : 'text-on-surface',
-                'hover:text-accent focus-visible:ring-accent focus-visible:ring-offset-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2',
+                'text-label duration-short min-w-0 flex-1 truncate text-left font-mono uppercase transition-colors',
+                props.selected ? 'text-accent' : 'text-on-surface-dim',
+                'hover:text-on-surface focus-visible:ring-accent focus-visible:ring-offset-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2',
               )
             "
             @click="onSelect"
@@ -171,7 +171,7 @@ const expandCollapseLabel = computed(() => (props.open ? t('studio.scene.collaps
         </div>
         <p
           v-if="renaming && renameError"
-          class="text-body-sm text-on-surface-dim"
+          class="text-body-x-sm text-error"
         >
           {{ renameError }}
         </p>

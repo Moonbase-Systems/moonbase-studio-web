@@ -326,17 +326,17 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="bg-surface px-x-lg py-x-lg font-roboto text-on-surface min-h-screen">
+  <div class="bg-surface px-x-lg py-x-lg text-on-surface min-h-screen font-sans">
     <div class="gap-x-lg mx-auto flex max-w-[64rem] flex-col">
       <header class="gap-sm flex flex-col">
-        <h2 class="text-body-md text-accent font-medium">CompositionEngine — PixiJS adapter demo</h2>
+        <h2 class="text-body-md text-accent font-normal">CompositionEngine — PixiJS adapter demo</h2>
         <p class="text-body-sm text-on-surface-dim">
           Scenes live in memory on this page. The studio session and saved projects are not touched.
         </p>
       </header>
 
       <div
-        class="bg-surface-container-high border-on-surface-dim/30 relative w-full overflow-hidden rounded-sm border"
+        class="bg-surface-container-high border-line relative w-full overflow-hidden border"
         style="aspect-ratio: 16 / 9"
       >
         <div
@@ -376,7 +376,7 @@ onMounted(() => {
       </div>
 
       <section class="gap-sm flex flex-col">
-        <h3 class="text-body-sm font-medium">Steps</h3>
+        <h3 class="text-body-sm font-normal">Steps</h3>
         <ol
           class="gap-x-sm flex flex-col"
           data-demo-steps
@@ -394,7 +394,7 @@ onMounted(() => {
       </section>
 
       <section class="gap-sm flex flex-col">
-        <h3 class="text-body-sm font-medium">Diagnostics</h3>
+        <h3 class="text-body-sm font-normal">Diagnostics</h3>
         <p
           v-if="diagnostics.length === 0"
           class="text-body-sm text-on-surface-dim"

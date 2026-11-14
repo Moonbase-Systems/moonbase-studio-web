@@ -24,10 +24,10 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="bg-surface px-x-lg py-x-lg font-roboto text-on-surface min-h-screen">
+  <div class="bg-surface px-x-lg py-x-lg text-on-surface min-h-screen font-sans">
     <div class="gap-x-lg mx-auto flex max-w-[40rem] flex-col">
       <section class="gap-md flex flex-col">
-        <h2 class="text-body-md text-accent font-medium">{{ t('nav.app') }} — SceneView preview</h2>
+        <h2 class="text-body-md text-accent font-normal">{{ t('nav.app') }} — SceneView preview</h2>
 
         <SceneElementList />
       </section>
