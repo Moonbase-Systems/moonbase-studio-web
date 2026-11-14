@@ -10,6 +10,7 @@ import {
   sceneElementTypeIconName,
   sceneElementTypeTone,
 } from '../scene-element-list/scene-element-type-icons';
+import { inspectorFocusRingClass } from './inspector-control-classes';
 
 const props = defineProps<{
   sceneId: SceneId;
@@ -72,17 +73,20 @@ const iconToneClass = computed(() => {
 });
 
 const fieldClass = cn(
-  inspectorTypography.standardSmall,
-  'h-[36px] border-0 bg-[color-mix(in_srgb,white_5%,#050004)] text-white outline-none',
+  inspectorTypography.body,
+  'h-control border border-line bg-transparent text-on-surface outline-none transition-colors duration-short hover:border-on-surface-dim focus:border-accent aria-[invalid=true]:border-error',
+);
+
+const stateButtonClass = cn(
+  'size-row text-on-surface transition-colors duration-short hover:text-accent active:text-accent-dim',
+  inspectorFocusRingClass,
 );
 </script>
 
 <template>
-  <div
-    class="flex h-full min-w-0 flex-[460] flex-col items-center justify-center gap-[clamp(12px,4vh,41px)] overflow-hidden px-[54px] py-[9px]"
-  >
+  <div class="gap-x-sm flex min-w-0 items-center">
     <span
-      class="size-[46.5px]"
+      class="size-xxxx-lg shrink-0"
       :class="iconToneClass"
       :aria-label="iconLabel"
     >
@@ -96,25 +100,25 @@ const fieldClass = cn(
         class="size-full"
       />
     </span>
-    <div class="flex w-full max-w-[352px] flex-col">
+    <div class="flex min-w-0 flex-1 flex-col">
       <input
         v-model="nameDraft"
-        :class="cn(fieldClass, 'w-full px-[14px] text-left')"
+        :class="cn(fieldClass, 'px-x-sm w-full text-left')"
         :aria-invalid="nameError ? true : undefined"
         @change="commitName"
         @keydown.enter="($event.target as HTMLInputElement).blur()"
       />
       <p
         v-if="nameError"
-        class="text-on-surface-dim mt-tiny text-[10px] leading-none"
+        class="mt-tiny text-body-x-sm text-error font-sans"
       >
         {{ nameError }}
       </p>
     </div>
-    <div class="flex items-center gap-[17px] text-white">
+    <div class="gap-xxx-sm flex shrink-0 items-center">
       <button
         type="button"
-        class="size-[27px]"
+        :class="stateButtonClass"
         :aria-label="t('studio.properties.fields.visible')"
         :aria-pressed="element.visibility"
         @click="toggleVisibility"
@@ -127,7 +131,7 @@ const fieldClass = cn(
       </button>
       <button
         type="button"
-        class="size-[27px]"
+        :class="stateButtonClass"
         :aria-label="t('studio.properties.fields.locked')"
         :aria-pressed="element.locked"
         @click="toggleLocked"

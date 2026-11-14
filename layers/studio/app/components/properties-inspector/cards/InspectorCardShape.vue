@@ -3,7 +3,21 @@ import { cn } from '~/utils/index';
 
 import { useElementInspectorUpdate } from '../../../composables/useElementInspectorUpdate';
 import type { SceneId } from '../../../models/ids.domain';
-import type { ShapeElement, ShapeType } from '../../../models/scene-elements';
+import {
+  createDefaultShapeElementSettings,
+  createDefaultTextElementSettings,
+  type ShapeElement,
+  type ShapeType,
+} from '../../../models/scene-elements';
+import {
+  inspectorChevronClass,
+  inspectorFieldShellClass,
+  inspectorLabelClass,
+  inspectorMenuItemClass,
+  inspectorMenuPanelClass,
+  inspectorRowClass,
+  inspectorToggleClass,
+} from '../inspector-control-classes';
 
 const props = defineProps<{
   sceneId: SceneId;
@@ -15,14 +29,18 @@ const { updateSettings } = useElementInspectorUpdate();
 
 const shapeTypes = ['rectangle', 'ellipse', 'triangle'] as const satisfies readonly ShapeType[];
 
+/** Stroke colour applied when the stroke is first switched on (the default text colour). */
+const DEFAULT_STROKE_COLOR = createDefaultTextElementSettings().color;
+/** Fill colour applied when the fill is first switched on (the default shape fill). */
+const DEFAULT_FILL_COLOR = createDefaultShapeElementSettings().fillColor ?? DEFAULT_STROKE_COLOR;
+
 const open = ref(false);
 const triggerRef = ref<HTMLButtonElement | null>(null);
 const panelStyle = ref<Record<string, string>>({ left: '0px', bottom: '0px' });
 
-const textControlClass = 'font-inter text-body-sm font-medium tracking-normal text-white';
-const labelClass = cn(textControlClass, 'shrink-0');
-const fieldShellClass =
-  'flex h-[24px] items-center gap-[8px] border border-transparent bg-[color-mix(in_srgb,white_5%,#050004)] px-[8px] focus-within:border-[#22FF86]';
+const labelClass = inspectorLabelClass;
+const rowClass = inspectorRowClass;
+const fieldShellClass = inspectorFieldShellClass;
 
 const fillOn = computed(() => props.element.settings.fillColor != null && props.element.settings.fillOpacity > 0);
 const strokeOn = computed(() => props.element.settings.strokeColor != null && props.element.settings.strokeWidth > 0);
@@ -59,7 +77,7 @@ function toggleFill() {
     return;
   }
   updateSettings(props.sceneId, props.element, {
-    fillColor: props.element.settings.fillColor ?? '#3b82f6',
+    fillColor: props.element.settings.fillColor ?? DEFAULT_FILL_COLOR,
     fillOpacity: 1,
   });
 }
@@ -85,7 +103,7 @@ function toggleStroke() {
     return;
   }
   updateSettings(props.sceneId, props.element, {
-    strokeColor: props.element.settings.strokeColor ?? '#ffffff',
+    strokeColor: props.element.settings.strokeColor ?? DEFAULT_STROKE_COLOR,
     strokeWidth: props.element.settings.strokeWidth > 0 ? props.element.settings.strokeWidth : 2,
   });
 }
@@ -114,38 +132,27 @@ function commitCornerRadius(raw: string) {
 }
 
 function decorationClass(active: boolean) {
-  return cn(
-    textControlClass,
-    'flex h-[24px] items-center justify-center border px-[8px]',
-    active
-      ? 'border-[#22FF86] text-[#22FF86]'
-      : 'border-transparent bg-[color-mix(in_srgb,white_5%,#050004)] text-white',
-  );
+  return inspectorToggleClass(active);
 }
 </script>
 
 <template>
-  <div class="flex w-full max-w-[464px] flex-col items-center gap-[8px]">
-    <div class="flex w-full flex-wrap items-center justify-center gap-[8px] bg-[#050004] p-[6px]">
+  <div class="gap-xxx-sm flex w-full min-w-0 flex-col items-stretch">
+    <div :class="rowClass">
       <span :class="labelClass">{{ t('studio.properties.rails.shape') }}</span>
       <button
         ref="triggerRef"
         type="button"
-        :class="cn(fieldShellClass, textControlClass)"
+        :class="fieldShellClass"
         :aria-expanded="open"
         @click="togglePanel"
       >
         {{ t(`studio.properties.shapeTypes.${element.settings.shapeType}`) }}
-        <span
-          class="text-[12px] transition-transform duration-200"
-          :class="open ? 'rotate-180' : ''"
-        >
-          &gt;
-        </span>
+        <span :class="cn(inspectorChevronClass, open && 'rotate-180')"> &gt; </span>
       </button>
     </div>
 
-    <div class="flex w-full flex-wrap items-center justify-center gap-[8px] bg-[#050004] p-[6px]">
+    <div :class="rowClass">
       <button
         type="button"
         :class="decorationClass(fillOn)"
@@ -157,7 +164,7 @@ function decorationClass(active: boolean) {
       <BaseInspectorField
         v-if="fillOn"
         type="color"
-        :model-value="element.settings.fillColor ?? '#3b82f6'"
+        :model-value="element.settings.fillColor ?? DEFAULT_FILL_COLOR"
         :label="t('studio.properties.fields.fillColor')"
         @change="setFillColor"
       />
@@ -175,7 +182,7 @@ function decorationClass(active: boolean) {
       />
     </div>
 
-    <div class="flex w-full flex-wrap items-center justify-center gap-[8px] bg-[#050004] p-[6px]">
+    <div :class="rowClass">
       <button
         type="button"
         :class="decorationClass(strokeOn)"
@@ -187,7 +194,7 @@ function decorationClass(active: boolean) {
       <BaseInspectorField
         v-if="strokeOn"
         type="color"
-        :model-value="element.settings.strokeColor ?? '#ffffff'"
+        :model-value="element.settings.strokeColor ?? DEFAULT_STROKE_COLOR"
         :label="t('studio.properties.fields.strokeColor')"
         @change="setStrokeColor"
       />
@@ -206,7 +213,7 @@ function decorationClass(active: boolean) {
 
     <div
       v-if="element.settings.shapeType === 'rectangle'"
-      class="flex w-full flex-wrap items-center justify-center gap-[8px] bg-[#050004] p-[6px]"
+      :class="rowClass"
     >
       <BaseScrubField
         compact
@@ -230,20 +237,14 @@ function decorationClass(active: boolean) {
       />
       <div
         v-if="open"
-        class="fixed z-50 flex w-[160px] flex-col gap-[4px] border border-white/15 bg-[color-mix(in_srgb,white_8%,#050004)] p-[6px]"
+        :class="cn(inspectorMenuPanelClass, 'w-[160px]')"
         :style="panelStyle"
       >
         <button
           v-for="shapeType in shapeTypes"
           :key="shapeType"
           type="button"
-          :class="
-            cn(
-              textControlClass,
-              'flex h-[24px] items-center px-[8px] text-left',
-              shapeType === element.settings.shapeType && 'text-[#22FF86]',
-            )
-          "
+          :class="inspectorMenuItemClass(shapeType === element.settings.shapeType)"
           @click="pickShape(shapeType)"
         >
           {{ t(`studio.properties.shapeTypes.${shapeType}`) }}

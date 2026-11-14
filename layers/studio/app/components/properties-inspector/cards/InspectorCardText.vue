@@ -3,7 +3,15 @@ import { cn } from '~/utils/index';
 
 import { useElementInspectorUpdate } from '../../../composables/useElementInspectorUpdate';
 import type { SceneId } from '../../../models/ids.domain';
-import type { TextElement } from '../../../models/scene-elements';
+import { createDefaultTextElementSettings, type TextElement } from '../../../models/scene-elements';
+import {
+  inspectorFieldShellClass,
+  inspectorLabelClass,
+  inspectorMenuItemClass,
+  inspectorMenuPanelClass,
+  inspectorRowClass,
+  inspectorToggleClass,
+} from '../inspector-control-classes';
 
 const props = defineProps<{
   sceneId: SceneId;
@@ -12,6 +20,9 @@ const props = defineProps<{
 
 const { t } = useI18n();
 const { updateSettings } = useElementInspectorUpdate();
+
+/** Background colour applied when the background is first switched on (the default text colour). */
+const DEFAULT_BACKGROUND_COLOR = createDefaultTextElementSettings().color;
 
 function setString(key: 'fontFamily' | 'color', value: string) {
   updateSettings(props.sceneId, props.element, { [key]: value });
@@ -61,7 +72,7 @@ function toggleBackground() {
     return;
   }
   updateSettings(props.sceneId, props.element, {
-    backgroundColor: props.element.settings.backgroundColor ?? '#ffffff',
+    backgroundColor: props.element.settings.backgroundColor ?? DEFAULT_BACKGROUND_COLOR,
     backgroundOpacity: 1,
   });
 }
@@ -116,31 +127,23 @@ function commitPx(key: 'letterSpacing' | 'lineHeight', raw: string) {
   updateSettings(props.sceneId, props.element, { [key]: value });
 }
 
-const textControlClass = 'font-inter text-body-sm font-medium tracking-normal text-white';
-const labelClass = cn(textControlClass, 'shrink-0');
-const fieldShellClass =
-  'border border-transparent bg-[color-mix(in_srgb,white_5%,#050004)] focus-within:border-[#22FF86]';
+const labelClass = inspectorLabelClass;
+const rowClass = inspectorRowClass;
 
 function decorationClass(active: boolean) {
-  return cn(
-    textControlClass,
-    'flex h-[24px] min-w-[24px] items-center justify-center border px-[6px]',
-    active
-      ? 'border-[#22FF86] text-[#22FF86]'
-      : 'border-transparent bg-[color-mix(in_srgb,white_5%,#050004)] text-white',
-  );
+  return inspectorToggleClass(active);
 }
 </script>
 
 <template>
-  <div class="flex w-full max-w-[464px] flex-col items-center gap-[8px]">
-    <div class="flex w-full flex-wrap items-center justify-center gap-[8px] bg-[#050004] p-[6px]">
-      <div class="flex items-center gap-[6px]">
+  <div class="gap-xxx-sm flex w-full min-w-0 flex-col items-stretch">
+    <div :class="rowClass">
+      <div class="gap-xxx-sm flex items-center">
         <span :class="labelClass">{{ t('studio.properties.labels.font') }}</span>
         <button
           ref="fontTriggerRef"
           type="button"
-          :class="cn(fieldShellClass, textControlClass, 'flex h-[24px] items-center gap-[2px] px-[4px]')"
+          :class="cn(inspectorFieldShellClass, 'gap-x-tiny')"
           :aria-expanded="fontOpen"
           :aria-haspopup="true"
           @click="toggleFontPanel"
@@ -148,7 +151,7 @@ function decorationClass(active: boolean) {
           <span>{{ element.settings.fontFamily }}</span>
           <svg
             viewBox="0 0 24 24"
-            class="size-4 shrink-0 rotate-90 text-white"
+            class="size-md text-on-surface-dim shrink-0 rotate-90"
             aria-hidden="true"
           >
             <path
@@ -159,29 +162,29 @@ function decorationClass(active: boolean) {
         </button>
       </div>
 
-      <label class="flex items-center gap-[6px]">
+      <label class="gap-xxx-sm flex items-center">
         <span :class="labelClass">{{ t('studio.properties.labels.weight') }}</span>
         <BaseInspectorField
           :model-value="displayWeight(element.settings.fontWeight)"
-          class="w-[28px]"
+          class="w-row"
           @change="commitWeight($event)"
         />
       </label>
 
       <BaseInspectorField
         type="color"
-        class="ml-[12px]"
+        class="ml-x-sm"
         :model-value="element.settings.color"
         :label="t('studio.properties.fields.color')"
         @change="setString('color', $event)"
       />
     </div>
 
-    <div class="flex w-full flex-wrap items-center justify-center gap-[8px] bg-[#050004] p-[6px]">
-      <span :class="cn(textControlClass, 'text-[#22FF86]')">
+    <div :class="rowClass">
+      <span :class="labelClass">
         {{ t('studio.properties.labels.space') }}
       </span>
-      <label class="flex items-center gap-[6px]">
+      <label class="gap-xxx-sm flex items-center">
         <span :class="labelClass">{{ t('studio.properties.labels.letters') }}</span>
         <BaseInspectorField
           :model-value="element.settings.letterSpacing"
@@ -190,7 +193,7 @@ function decorationClass(active: boolean) {
           @change="commitPx('letterSpacing', $event)"
         />
       </label>
-      <label class="flex items-center gap-[6px]">
+      <label class="gap-xxx-sm flex items-center">
         <span :class="labelClass">{{ t('studio.properties.labels.lines') }}</span>
         <BaseInspectorField
           :model-value="element.settings.lineHeight"
@@ -201,8 +204,8 @@ function decorationClass(active: boolean) {
       </label>
     </div>
 
-    <div class="flex w-full flex-wrap items-center justify-center gap-[8px] bg-[#050004] p-[6px]">
-      <span :class="cn(textControlClass, 'text-[#22FF86]')">
+    <div :class="rowClass">
+      <span :class="labelClass">
         {{ t('studio.properties.labels.style') }}
       </span>
       <button
@@ -216,7 +219,7 @@ function decorationClass(active: boolean) {
       <BaseInspectorField
         v-if="backgroundOn"
         type="color"
-        :model-value="element.settings.backgroundColor ?? '#ffffff'"
+        :model-value="element.settings.backgroundColor ?? DEFAULT_BACKGROUND_COLOR"
         :label="t('studio.properties.fields.backgroundColor')"
         @change="setBackground"
       />
@@ -260,20 +263,14 @@ function decorationClass(active: boolean) {
     />
     <div
       v-if="fontOpen"
-      class="fixed z-50 flex min-w-[96px] flex-col border border-white/15 bg-[color-mix(in_srgb,white_8%,#050004)] p-[4px]"
+      :class="cn(inspectorMenuPanelClass, 'min-w-[96px]')"
       :style="fontPanelStyle"
     >
       <button
         v-for="font in fontChoices"
         :key="font"
         type="button"
-        :class="
-          cn(
-            textControlClass,
-            'h-[24px] px-[8px] text-left text-white hover:bg-[#22FF86] hover:text-[#050004]',
-            font === element.settings.fontFamily && 'text-[#22FF86]',
-          )
-        "
+        :class="inspectorMenuItemClass(font === element.settings.fontFamily)"
         @click="pickFont(font)"
       >
         {{ font }}

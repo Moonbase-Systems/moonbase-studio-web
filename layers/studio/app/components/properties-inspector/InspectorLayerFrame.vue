@@ -49,29 +49,29 @@ const iconRailItems = computed(() =>
 </script>
 
 <template>
-  <div class="flex h-full min-h-0 w-full min-w-0 items-stretch justify-center gap-[10px]">
+  <div class="gap-md flex w-full min-w-0 flex-col">
     <InspectorCardHeader
       :scene-id="sceneId"
       :element="element"
     />
 
-    <div class="flex h-full min-h-0 min-w-0 flex-[437] items-center justify-center px-[10px]">
+    <div class="border-line py-md px-x-sm flex min-w-0 items-center justify-center border">
       <slot name="preview">
-        <p :class="cn(inspectorTypography.standardSmall, 'truncate text-white')">
+        <p :class="cn(inspectorTypography.body, 'text-on-surface truncate')">
           {{ element.name }}
         </p>
       </slot>
     </div>
 
-    <div class="flex h-full min-w-0 flex-[631] items-stretch overflow-hidden bg-[#050004] pl-[17px]">
+    <div class="gap-xxx-sm flex min-w-0 flex-col">
       <BaseIconRail
         v-model="activeRailId"
         :items="iconRailItems"
-        class="shrink-0 self-center"
+        class="flex-row self-start"
       />
       <BasePropertyCard
         :title="t(cardTitle)"
-        class="ml-[24px] h-full"
+        class="h-auto w-full flex-none overflow-visible"
       >
         <slot
           v-if="activeRailId === 'source'"

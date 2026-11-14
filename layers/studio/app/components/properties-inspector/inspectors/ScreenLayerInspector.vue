@@ -7,6 +7,15 @@ import type { ScreenElement } from '../../../models/scene-elements';
 import type { ScreenSource, Source } from '../../../models/source.domain';
 import { captureConstraints, projectCaptureFrame } from '../../../playback/screen-capture-constraints';
 import { useStudioSessionStore } from '../../../store/studio-session.store';
+import {
+  inspectorChevronClass,
+  inspectorControlTextClass,
+  inspectorFieldShellClass,
+  inspectorFocusRingClass,
+  inspectorLabelClass,
+  inspectorMenuItemClass,
+  inspectorMenuPanelClass,
+} from '../inspector-control-classes';
 import InspectorLayerFrame from '../InspectorLayerFrame.vue';
 import InspectorScreenPreview from '../InspectorScreenPreview.vue';
 import { holdScreenPreviewStream, peekScreenPreviewStream } from '../screen-preview-stream';
@@ -26,9 +35,8 @@ const triggerRef = ref<HTMLButtonElement | null>(null);
 const panelStyle = ref<Record<string, string>>({ left: '0px', top: '0px' });
 const picking = ref(false);
 
-const textControlClass = 'font-inter text-body-sm font-medium tracking-normal text-white';
-const fieldShellClass =
-  'flex h-[24px] min-w-[120px] items-center gap-[8px] border border-transparent bg-[color-mix(in_srgb,white_5%,#050004)] px-[4px] focus-within:border-[#22FF86]';
+const textControlClass = inspectorControlTextClass;
+const fieldShellClass = cn(inspectorFieldShellClass, 'min-w-[120px]');
 
 const linkedScreen = computed(() => (props.linkedSource?.type === 'screen' ? props.linkedSource : null));
 
@@ -200,13 +208,13 @@ async function pickDisplay() {
       <InspectorScreenPreview :element="element" />
     </template>
     <template #options>
-      <div class="flex w-full max-w-[464px] flex-col items-center gap-[10px]">
-        <div class="flex items-center gap-[10px]">
-          <span :class="cn(textControlClass, 'shrink-0')">{{ t('studio.properties.labels.source') }}</span>
-          <div :class="cn(fieldShellClass, textControlClass)">
+      <div class="gap-x-sm flex w-full max-w-[464px] flex-col items-center">
+        <div class="gap-x-sm flex items-center">
+          <span :class="inspectorLabelClass">{{ t('studio.properties.labels.source') }}</span>
+          <div :class="fieldShellClass">
             <button
               type="button"
-              class="min-w-0 flex-1 truncate text-left"
+              :class="cn('disabled:text-on-surface-dim min-w-0 flex-1 truncate text-left', inspectorFocusRingClass)"
               :disabled="picking"
               @click="pickDisplay"
             >
@@ -215,8 +223,7 @@ async function pickDisplay() {
             <button
               ref="triggerRef"
               type="button"
-              class="text-[12px] transition-transform duration-200"
-              :class="open ? 'rotate-180' : ''"
+              :class="cn(inspectorChevronClass, 'hover:text-on-surface', inspectorFocusRingClass, open && 'rotate-180')"
               :aria-expanded="open"
               :aria-label="t('studio.properties.labels.source')"
               @click="togglePanel"
@@ -243,19 +250,19 @@ async function pickDisplay() {
           />
           <div
             v-if="open"
-            class="fixed z-50 flex flex-col gap-[6px] overflow-y-auto border border-white/15 bg-[color-mix(in_srgb,white_8%,#050004)] p-[10px]"
+            :class="cn(inspectorMenuPanelClass, 'overflow-y-auto')"
             :style="panelStyle"
           >
             <button
               type="button"
-              :class="cn(textControlClass, 'h-[24px] shrink-0 px-[8px] text-left')"
+              :class="inspectorMenuItemClass()"
               @click="pickDisplay"
             >
               {{ t('studio.properties.screen.choose') }}
             </button>
             <p
               v-if="screenSources.length === 0"
-              :class="textControlClass"
+              :class="cn(textControlClass, 'px-xxx-sm text-on-surface-dim')"
             >
               {{ t('studio.properties.noScreens') }}
             </p>
@@ -265,11 +272,8 @@ async function pickDisplay() {
               type="button"
               :class="
                 cn(
-                  textControlClass,
-                  'h-[24px] shrink-0 px-[8px] text-left',
-                  source.id === element.sourceId
-                    ? 'bg-[#22FF86] text-[#050004]'
-                    : 'text-white hover:bg-[#22FF86] hover:text-[#050004]',
+                  inspectorMenuItemClass(),
+                  source.id === element.sourceId && 'bg-accent text-on-accent hover:bg-accent-dim',
                 )
               "
               @click="selectScreen(source.id)"

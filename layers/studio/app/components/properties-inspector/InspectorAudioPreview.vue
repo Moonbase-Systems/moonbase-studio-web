@@ -222,7 +222,7 @@ function setVolume(volume: number) {
 </script>
 
 <template>
-  <div class="flex w-full max-w-[280px] flex-col items-center gap-[14px]">
+  <div class="gap-md flex w-full max-w-[280px] flex-col items-center">
     <AudioLevelMeter :level-db="levelDb" />
     <AudioVolumeSlider
       :model-value="element.settings.volume"

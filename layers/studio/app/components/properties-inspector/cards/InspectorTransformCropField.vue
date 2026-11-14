@@ -1,9 +1,11 @@
 <script setup lang="ts">
-import { cn } from '~/utils/index';
+import { cn, inspectorTypography } from '~/utils/index';
 
 defineProps<{
   modelValue: number;
   edge: 'top' | 'right' | 'bottom' | 'left';
+  /** Accessible name of the edge, e.g. "Góra". */
+  label?: string;
   disabled?: boolean;
 }>();
 
@@ -12,17 +14,19 @@ const emit = defineEmits<{
 }>();
 
 const edgeClass: Record<string, string> = {
-  top: 'border-t-2 border-t-[#22FF86]',
-  right: 'border-r-2 border-r-[#22FF86]',
-  bottom: 'border-b-2 border-b-[#22FF86]',
-  left: 'border-l-2 border-l-[#22FF86]',
+  top: 'border-t-2 border-t-accent',
+  right: 'border-r-2 border-r-accent',
+  bottom: 'border-b-2 border-b-accent',
+  left: 'border-l-2 border-l-accent',
 };
 </script>
 
 <template>
-  <div class="flex items-center gap-[8px]">
+  <label
+    class="h-row border-line px-tiny gap-xxx-sm duration-short hover:border-on-surface-dim focus-within:border-accent flex min-w-0 items-center border transition-colors"
+  >
     <span
-      class="size-[20px] shrink-0 border border-[#787878]"
+      class="size-md border-on-surface-dim shrink-0 border"
       :class="edgeClass[edge]"
       aria-hidden="true"
     />
@@ -31,13 +35,15 @@ const edgeClass: Record<string, string> = {
       inputmode="decimal"
       :value="modelValue"
       :disabled="disabled"
+      :aria-label="label"
       :class="
         cn(
-          'font-inter text-body-sm font-medium tracking-normal',
-          'h-[24px] w-[20px] shrink-0 border-0 bg-[color-mix(in_srgb,white_5%,#050004)] px-[2px] text-center text-white outline-none',
+          inspectorTypography.value,
+          'text-on-surface disabled:text-on-surface-dim w-full min-w-0 border-0 bg-transparent p-0 outline-none',
         )
       "
       @change="emit('change', ($event.target as HTMLInputElement).value)"
     />
-  </div>
+    <span class="text-label text-on-surface-dim shrink-0 font-mono uppercase">px</span>
+  </label>
 </template>

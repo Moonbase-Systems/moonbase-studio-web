@@ -79,7 +79,7 @@ onScopeDispose(onLeave);
     <div
       v-if="visible"
       ref="tipRef"
-      class="font-inter text-body-sm pointer-events-none fixed z-[80] max-w-[280px] border border-white/15 bg-[color-mix(in_srgb,white_8%,#050004)] px-[8px] py-[6px] font-medium leading-[18px] text-white"
+      class="border-line bg-surface-container px-xxx-sm py-tiny text-body-sm text-on-surface pointer-events-none fixed z-[80] max-w-[280px] border font-sans font-normal"
       :style="{ left: `${x}px`, top: `${y}px` }"
     >
       {{ hint }}
