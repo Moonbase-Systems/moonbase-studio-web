@@ -1,3 +1,6 @@
+// Production CSP (nuxt-security) forbids 'unsafe-eval'; this swaps Pixi's generated shader/uniform code for static versions.
+import 'pixi.js/unsafe-eval';
+
 import {
   Application,
   type BLEND_MODES,
