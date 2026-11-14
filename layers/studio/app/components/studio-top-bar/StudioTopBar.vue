@@ -8,6 +8,18 @@ const { t } = useI18n();
 const localePath = useLocalePath();
 
 const open = ref(false);
+/** Bridge is not wired yet — keep transport actions disabled. */
+const bridgeOnline = ref(false);
+
+const transportLabels = computed(() => ({
+  group: t('studio.transport.group'),
+  status: t('studio.transport.statusIdle'),
+  pause: t('studio.transport.pause'),
+  resume: t('studio.transport.resume'),
+  stop: t('studio.transport.stop'),
+  stream: t('studio.transport.stream'),
+  record: t('studio.transport.record'),
+}));
 
 async function leaveToHome() {
   await navigateTo(localePath('/'));
@@ -15,7 +27,7 @@ async function leaveToHome() {
 </script>
 
 <template>
-  <header class="border-line bg-surface px-md gap-xx-lg h-bar flex shrink-0 items-center border-b">
+  <header class="border-line bg-surface px-md h-bar gap-xx-lg flex shrink-0 items-center border-b">
     <AlertDialogRoot v-model:open="open">
       <AlertDialogTrigger as-child>
         <button
@@ -44,6 +56,34 @@ async function leaveToHome() {
         </template>
       </StudioDialog>
     </AlertDialogRoot>
-    <ProjectDocumentActions />
+
+    <ProjectDocumentActions>
+      <template #trailing>
+        <BaseTransportControl
+          state="idle"
+          time="00:00:00"
+          :stream-disabled="!bridgeOnline"
+          :labels="transportLabels"
+        />
+        <span
+          class="bg-line h-xx-lg w-px shrink-0"
+          aria-hidden="true"
+        />
+        <div class="gap-md flex shrink-0 items-center">
+          <BaseStatusBadge
+            :state="bridgeOnline ? 'ok' : 'offline'"
+            :label="t('studio.transport.bridge')"
+          />
+          <BaseStatusBadge
+            state="offline"
+            :label="t('studio.transport.controller')"
+          />
+        </div>
+        <span
+          class="bg-line h-xx-lg w-px shrink-0"
+          aria-hidden="true"
+        />
+      </template>
+    </ProjectDocumentActions>
   </header>
 </template>

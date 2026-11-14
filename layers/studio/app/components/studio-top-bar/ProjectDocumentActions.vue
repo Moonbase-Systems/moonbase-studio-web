@@ -87,10 +87,10 @@ function onRenameKeydown(event: KeyboardEvent) {
 </script>
 
 <template>
-  <div class="gap-xx-lg flex min-w-0 flex-1 items-center">
+  <div class="gap-xx-lg flex h-full min-w-0 flex-1 items-center">
     <div
       v-if="store.project"
-      class="min-w-0 max-w-[24rem]"
+      class="min-w-0 max-w-[22.4rem]"
     >
       <input
         v-if="renaming"
@@ -135,20 +135,25 @@ function onRenameKeydown(event: KeyboardEvent) {
       {{ statusMessage }}
     </span>
 
-    <div class="gap-xx-lg ml-auto flex shrink-0 items-center">
-      <BaseTextButton
-        :text="t('studio.document.new')"
-        @click="requestNewProject"
-      />
-      <BaseTextButton
-        :text="t('studio.document.open')"
-        @click="requestOpen"
-      />
-      <BaseTextButton
-        :text="t('studio.document.save')"
-        :disabled="!store.project"
-        @click="saveProject"
-      />
+    <div class="min-w-0 flex-1" />
+
+    <div class="gap-md flex h-full shrink-0 items-center">
+      <slot name="trailing" />
+      <div class="gap-md flex shrink-0 items-center">
+        <BaseTextButton
+          :text="t('studio.document.new')"
+          @click="requestNewProject"
+        />
+        <BaseTextButton
+          :text="t('studio.document.open')"
+          @click="requestOpen"
+        />
+        <BaseTextButton
+          :text="t('studio.document.save')"
+          :disabled="!store.project"
+          @click="saveProject"
+        />
+      </div>
     </div>
 
     <AlertDialogRoot v-model:open="confirmOpen">

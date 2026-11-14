@@ -326,6 +326,19 @@
       "empty": "Brak scen w projekcie.",
       "resize": "Zmień szerokość panelu scen",
       "title": "Sceny"
+    },
+    "transport": {
+      "bridge": "Bridge",
+      "controller": "Kontroler",
+      "group": "Transmisja",
+      "pause": "Pauza",
+      "record": "Nagrywanie",
+      "resume": "Wznów",
+      "statusIdle": "Cisza",
+      "statusLive": "Na żywo",
+      "statusPaused": "Pauza",
+      "stop": "Zatrzymaj",
+      "stream": "Stream"
     }
   }
 }

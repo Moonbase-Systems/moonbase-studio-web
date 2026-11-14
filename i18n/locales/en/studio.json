@@ -326,6 +326,19 @@
       "empty": "No scenes in the project.",
       "resize": "Resize scenes panel",
       "title": "Scenes"
+    },
+    "transport": {
+      "bridge": "Bridge",
+      "controller": "Controller",
+      "group": "Broadcast",
+      "pause": "Pause",
+      "record": "Record",
+      "resume": "Resume",
+      "statusIdle": "Idle",
+      "statusLive": "Live",
+      "statusPaused": "Paused",
+      "stop": "Stop",
+      "stream": "Stream"
     }
   }
 }
