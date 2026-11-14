@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { cn, inspectorTypography } from '~/utils/index';
+import { cn } from '~/utils/index';
 
 import { useAnimationPlayback } from '../../composables/useAnimationPlayback';
 import type { SceneId } from '../../models/ids.domain';
@@ -11,6 +11,7 @@ import {
 } from '../../playback/animation-player-registry';
 import { peekAnimationPreviewUrl } from '../../playback/animation-preview-url';
 import { useStudioSessionStore } from '../../store/studio-session.store';
+import { inspectorBodyTextClass } from './inspector-control-classes';
 
 const props = defineProps<{
   sceneId: SceneId;
@@ -88,7 +89,7 @@ onUnmounted(() => {
     />
     <p
       v-if="!mediaUrl || failed"
-      :class="cn(inspectorTypography.body, 'px-x-sm text-on-surface-dim text-center')"
+      :class="cn(inspectorBodyTextClass, 'px-x-sm text-on-surface-dim text-center')"
     >
       {{ source?.assetId ? t('studio.properties.assetMissing') : t('studio.properties.animation.noFile') }}
     </p>

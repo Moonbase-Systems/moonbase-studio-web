@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { cn, inspectorTypography } from '~/utils/index';
+import { cn, inspectorFieldTypography } from '~/utils/index';
 
 defineProps<{
   modelValue: number;
@@ -38,8 +38,8 @@ const edgeClass: Record<string, string> = {
       :aria-label="label"
       :class="
         cn(
-          inspectorTypography.value,
-          'text-on-surface disabled:text-on-surface-dim w-full min-w-0 border-0 bg-transparent p-0 outline-none',
+          inspectorFieldTypography('standard-small'),
+          'text-on-surface disabled:text-on-surface-dim w-full min-w-0 border-0 bg-transparent p-0 tabular-nums outline-none',
         )
       "
       @change="emit('change', ($event.target as HTMLInputElement).value)"

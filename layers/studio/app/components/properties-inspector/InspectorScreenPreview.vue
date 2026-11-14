@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { cn, inspectorTypography } from '~/utils/index';
+import { cn } from '~/utils/index';
 
 import type { ScreenElement } from '../../models/scene-elements';
+import { inspectorBodyTextClass } from './inspector-control-classes';
 import { peekScreenPreviewStream } from './screen-preview-stream';
 
 const props = defineProps<{
@@ -66,7 +67,7 @@ watch([host, stream], ([, current], _previous, onCleanup) => {
     />
     <p
       v-if="!stream || failed"
-      :class="cn(inspectorTypography.body, 'px-x-sm text-on-surface-dim text-center')"
+      :class="cn(inspectorBodyTextClass, 'px-x-sm text-on-surface-dim text-center')"
     >
       {{ t('studio.properties.screen.choose') }}
     </p>
