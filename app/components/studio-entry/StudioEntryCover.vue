@@ -15,7 +15,7 @@ const reduceMotion = computed(() => prefersReducedMotion.value === 'reduce');
     <div class="entry-cover-stage">
       <BootCraftRig :reduce-motion="reduceMotion" />
       <p
-        class="entry-cover-label text-body-sm font-roboto"
+        class="entry-cover-label text-body-sm font-sans"
         :class="{ 'entry-cover-label-static': reduceMotion }"
       >
         {{ t('studio.boot.opening') }}

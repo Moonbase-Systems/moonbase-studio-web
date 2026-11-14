@@ -200,14 +200,14 @@ watch(displayedLightPower, (power) => {
           v-if="labelsVisible"
           :key="stepRevision"
           ref="labelTargetRef"
-          class="boot-label boot-label-glass text-body-sm font-roboto"
+          class="boot-label boot-label-glass text-body-sm font-sans"
           :class="snappyLightTransition ? 'boot-label-glass-snappy' : 'boot-label-glass-damped'"
         >
           <span class="boot-label-text">{{ labelText }}</span>
         </p>
         <p
           v-if="failed"
-          class="text-body-x-sm font-roboto text-on-surface-dim boot-failed-message"
+          class="text-body-x-sm text-on-surface-dim boot-failed-message font-sans"
         >
           {{ t('studio.boot.failed') }}
         </p>

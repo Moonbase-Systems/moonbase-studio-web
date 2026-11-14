@@ -1,34 +1,37 @@
+/* Orbit: one face (Space Grotesk), thin large sizes, white titles. Values mirror the core tokens. */
 html,
 body {
   background-color: rgb(var(--color-surface));
   color: rgb(var(--color-on-surface));
-  font-family: Inter, sans-serif;
+  font-family: 'Space Grotesk', system-ui, sans-serif;
+}
+
+h1,
+h2,
+h3 {
+  margin: 0;
+  font-weight: 300;
+  color: rgb(var(--color-on-surface));
 }
 
 h1 {
-  font-size: 4.5rem;
-  font-weight: 700;
-  color: rgb(var(--color-on-surface));
-  font-family: Lalezar, sans-serif;
+  font-size: 4.8rem;
+  line-height: 5.2rem;
+  letter-spacing: -0.03em;
 }
 
 h2 {
-  font-size: 3.6rem;
-  font-weight: 600;
-  color: rgb(var(--color-on-surface));
-  font-family: Lalezar, sans-serif;
+  font-size: 2.8rem;
+  line-height: 3.6rem;
 }
 
 h3 {
-  font-size: 2.8rem;
-  font-weight: 600;
-  color: rgb(var(--color-on-surface));
-  font-family: Lalezar, sans-serif;
+  font-size: 2rem;
+  line-height: 2.4rem;
 }
 
 p {
   font-size: 1.6rem;
+  line-height: 2.4rem;
   font-weight: 400;
-  color: rgb(var(--color-on-surface));
-  font-family: Inter, sans-serif;
 }
