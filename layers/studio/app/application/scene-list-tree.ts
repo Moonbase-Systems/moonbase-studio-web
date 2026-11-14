@@ -41,6 +41,39 @@ export const buildSceneListRoots = (scene: Scene): SceneListRootNode[] => {
   return roots;
 };
 
+const stackIndex = (scene: Scene, node: SceneListRootNode): number => {
+  const elementIndex = new Map(scene.elements.map((element, index) => [element.id, index]));
+  if (node.kind === 'element') {
+    return elementIndex.get(node.element.id) ?? 0;
+  }
+  const indexes = node.group.elementIds.map((id) => elementIndex.get(id) ?? 0);
+  return indexes.length > 0 ? Math.max(...indexes) : 0;
+};
+
+/** Sidebar list: front of stack (highest `elements` index) at the top. Document / Pixi order unchanged. */
+export const buildSceneListRootsForDisplay = (scene: Scene): SceneListRootNode[] =>
+  [...buildSceneListRoots(scene)].sort((left, right) => stackIndex(scene, right) - stackIndex(scene, left));
+
+export const groupMemberIdsForDisplay = (scene: Scene, group: SceneGroup): ElementId[] => {
+  const elementIndex = new Map(scene.elements.map((element, index) => [element.id, index]));
+  return [...group.elementIds].sort((left, right) => (elementIndex.get(right) ?? 0) - (elementIndex.get(left) ?? 0));
+};
+
+export const flattenSelectableElementIdsForDisplay = (scene: Scene, roots?: SceneListRootNode[]): ElementId[] => {
+  const displayRoots = roots ?? buildSceneListRootsForDisplay(scene);
+  const ordered: ElementId[] = [];
+
+  for (const root of displayRoots) {
+    if (root.kind === 'element') {
+      ordered.push(root.element.id);
+      continue;
+    }
+    ordered.push(...groupMemberIdsForDisplay(scene, root.group));
+  }
+
+  return ordered;
+};
+
 export const flattenSelectableElementIds = (scene: Scene, roots: SceneListRootNode[]): ElementId[] => {
   const ordered: ElementId[] = [];
 

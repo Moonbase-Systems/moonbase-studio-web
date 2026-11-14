@@ -142,7 +142,7 @@ function handleKeyDown(event: KeyboardEvent) {
     <div
       ref="listRef"
       tabindex="0"
-      class="gap-md mt-md flex min-h-0 flex-1 flex-col overflow-y-auto outline-none"
+      class="mt-md flex min-h-0 flex-1 flex-col gap-0 overflow-y-auto outline-none"
       @keydown="handleKeyDown"
     >
       <SceneContextMenu

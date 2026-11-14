@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import { buildSceneListRoots } from '../../application/scene-list-tree';
+import { buildSceneListRootsForDisplay, groupMemberIdsForDisplay } from '../../application/scene-list-tree';
 import { useSceneAudioLevel } from '../../composables/useSceneAudioLevel';
 import { useSceneElementActions } from '../../composables/useSceneElementActions';
 import { type SceneDropTarget, useSceneListInteraction } from '../../composables/useSceneListInteraction';
 import type { ElementId, GroupId } from '../../models/ids.domain';
 import type { Scene } from '../../models/scene.domain';
 import type { SceneElementType } from '../../models/scene-element.domain';
+import type { SceneGroup } from '../../models/scene-group.domain';
 import { useShortcutStore } from '../../store/shortcut.store';
 import { useStudioSessionStore } from '../../store/studio-session.store';
 import { AddElementPanel } from '../add-element-panel';
@@ -63,8 +64,16 @@ const interaction = useSceneListInteraction(props.scene.id, () => sceneState.val
 
 const listRoots = computed(() => {
   const current = sceneState.value;
-  return current ? buildSceneListRoots(current) : [];
+  return current ? buildSceneListRootsForDisplay(current) : [];
 });
+
+function groupMemberIdsForRow(group: SceneGroup) {
+  const current = sceneState.value;
+  if (!current) {
+    return [];
+  }
+  return groupMemberIdsForDisplay(current, group);
+}
 
 const sceneHeaderSelected = computed(
   () => store.activeSceneId === props.scene.id && store.selectedLayerIds.length === 0,
@@ -145,10 +154,6 @@ function draftError() {
   return interaction.renameDraft.value?.error ?? null;
 }
 
-function groupLineActive(elementIds: ElementId[]) {
-  return elementIds.some((id) => interaction.isElementSelected(id));
-}
-
 function onGroupContextMenu(groupId: GroupId, event: MouseEvent) {
   if (shortcuts.matchesPointer(event, 'selection.range')) {
     return;
@@ -222,6 +227,7 @@ function groupMemberIconKinds(elementIds: ElementId[]): SceneElementType[] {
             @contextmenu.capture="interaction.handleRowContextMenu(root.element.id, $event)"
           >
             <SceneListRow
+              :tree-depth="1"
               :label="root.element.name"
               :icon-kind="root.element.type"
               :level-db="audioLevel(root.element)"
@@ -265,6 +271,7 @@ function groupMemberIconKinds(elementIds: ElementId[]): SceneElementType[] {
               @contextmenu.capture="onGroupContextMenu(root.group.id, $event)"
             >
               <SceneListRow
+                :tree-depth="1"
                 :label="root.group.name"
                 :icon-kinds="groupMemberIconKinds(root.group.elementIds)"
                 :selected="root.group.elementIds.every((id) => interaction.isElementSelected(id))"
@@ -285,13 +292,9 @@ function groupMemberIconKinds(elementIds: ElementId[]): SceneElementType[] {
             </div>
           </SceneLayerContextMenu>
 
-          <BaseRevealList
-            v-if="isGroupOpen(root.group.id)"
-            dense
-            :active="groupLineActive(root.group.elementIds)"
-          >
+          <template v-if="isGroupOpen(root.group.id)">
             <SceneLayerContextMenu
-              v-for="elementId in root.group.elementIds"
+              v-for="elementId in groupMemberIdsForRow(root.group)"
               :key="elementId"
               :scene-id="scene.id"
               v-on="contextMenuListeners"
@@ -310,6 +313,7 @@ function groupMemberIconKinds(elementIds: ElementId[]): SceneElementType[] {
                 @contextmenu.capture="interaction.handleRowContextMenu(elementId, $event)"
               >
                 <SceneListRow
+                  :tree-depth="2"
                   :label="elementById(elementId)!.name"
                   :icon-kind="elementById(elementId)!.type"
                   :level-db="audioLevel(elementById(elementId)!)"
@@ -333,7 +337,7 @@ function groupMemberIconKinds(elementIds: ElementId[]): SceneElementType[] {
                 />
               </div>
             </SceneLayerContextMenu>
-          </BaseRevealList>
+          </template>
         </div>
       </template>
     </div>
