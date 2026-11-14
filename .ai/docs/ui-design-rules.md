@@ -30,7 +30,7 @@ Inconsistent UI is a defect. Visual and behavioral patterns must be uniform acro
   - `hover` — visible, subtle feedback
   - `focus` — clearly visible focus ring (never removed, only styled)
   - `active` / `pressed` — immediate visual response
-  - `disabled` — reduced opacity, no pointer events, cursor `not-allowed`
+  - `disabled` — `text-on-surface-dim`, dashed border, no pointer events, cursor `not-allowed` (no opacity)
 - Do not mix token-based values with hardcoded values within the same component.
 
 ---
@@ -54,28 +54,30 @@ Tailwind is the **only** permitted styling system. All visual output must be exp
 - Do not use default Tailwind spacing numerics (e.g. `p-4`, `gap-2`) — they are overridden by the project scale.
 - `1rem = 10px` in this project due to the `root-font-size` plugin.
 
-### Typography
+### Typography (Orbit)
 
-- Use the semantic font size scale: `text-heading-x-huge`, `text-heading-x-lg`, `text-heading-lg`, `text-heading-md`, `text-body-lg`, `text-body-md`, `text-body-sm`, `text-body-x-sm`.
-- Font families: `font-roboto` for all UI text; `font-arlon` for brand/logo elements only.
-- Font weights: `font-normal` (400), `font-medium` (500), `font-semibold` (600).
-- Letter spacing: use `tracking-x-sm` through `tracking-xx-lg` from the defined scale.
+- Families: `font-sans` (Space Grotesk) for all UI text; `font-mono` (Space Mono) for labels, units, group headings and state words, always `uppercase`; `font-brand` (Lalezar) for the MoonBase wordmark only.
+- Weights: `font-light` (300) for sizes ≥ 20px (titles, large numbers), `font-normal` (400) for text, `font-bold` (700) only for state values (`text-state`). Do not use 500 or 600.
+- Size scale: `text-display` (96), `text-numeric-xl` (120), `text-numeric-lg` (48), `text-title` (28), `text-numeric-md` (20), `text-body-lg` (18), `text-body-md` (16), `text-body-sm` (14), `text-body-x-sm` (12, the minimum), `text-state` (14/700), `text-label` (12 mono, 0.14em), `text-label-lg` (14 mono, 0.12em), `text-brand-logo` (28 Lalezar).
+- Numbers always get `tabular-nums`.
+- The inspector uses `inspectorTypography` (`title`, `valueLarge`, `value`, `body`, `label`) from `app/utils/inspector-typography.utils.ts`. Those styles do not include color.
 - Never hardcode `font-size`, `line-height`, or `font-family` values.
 
-### Color Usage
+### Color Usage (Orbit)
 
-- Use semantic color tokens only. Never use Tailwind's default palette (e.g. `bg-blue-500`).
-- Surface colors: `bg-surface`, `bg-surface-container`, `bg-surface-inverted`.
-- Text colors: `text-on-surface`, `text-on-surface-dim`, `text-on-surface-inverted`.
-- Accent: `bg-accent`, `text-accent`, `bg-accent-dim`, `text-accent-dim`.
-- Semantic: `bg-info`, `bg-warning`, `bg-error`, `bg-success` (and their `-container` variants).
-- Opacity modifiers are allowed: `bg-accent/80`, `text-error/30`.
-- Theme is applied via `theme-light`, `theme-dark`, or `theme-blue` on `<html>` — do not override theme-sensitive tokens per component.
+- Use semantic color tokens only. Never use Tailwind's default palette (e.g. `bg-blue-500`) or hex values.
+- One dark theme. `bg-surface` is the page; a block is `border border-line`, not a filled panel. `bg-surface-container` (panel) only for overlays (menus, dialogs, popovers) and hardware keys. `bg-surface-container-high` (raised) for hover rows and unlit segments.
+- Text: `text-on-surface`; labels, units and disabled: `text-on-surface-dim`; on green fills: `text-on-accent`.
+- `accent` is the signal green: live, active, selected, focus, corner brackets. It is a stroke, dot, segment or number — a fill only for “Start / Resume” and the on-air key. Hover/pressed: `accent-dim`.
+- Semantic: `warning`, `error`, `info` (`success` equals `accent`). Every state also carries a word or icon.
+- Element categories (Studio): `category-layout`, `category-interactive` (`category-interactive-fill` for hover).
+- Avoid opacity modifiers and transparency; disabled is `text-on-surface-dim` plus a dashed border, not `opacity-50`.
+- Active blocks get corner brackets: `BaseFrame active` or `BaseFrameBrackets`.
 
-### Border Radius
+### Border Radius (Orbit)
 
-- Use the defined scale: `rounded-none`, `rounded-x-sm`, `rounded-sm`, `rounded-md`, `rounded-lg`, `rounded-full`.
-- Do not use Tailwind's default radius values (e.g. `rounded`, `rounded-2xl`).
+- No rounding: every radius token is 0. `rounded-full` only for the status dot (`BaseStatusBadge`).
+- No shadows, gradients, blur or glass. The boot screen is the only exception.
 
 ### Transitions
 
