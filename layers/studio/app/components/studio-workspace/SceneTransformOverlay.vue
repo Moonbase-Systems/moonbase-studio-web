@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { useStudioCompositionEngine } from '../../composables/useCompositionEngine';
 import { letterboxComposition } from '../../infrastructure/pixi/composition-geometry';
+import { isRenderableElement } from '../../infrastructure/pixi/composition-scene-sync';
 import type { ElementCrop, Transform2D } from '../../models/common.domain';
 import type { ElementId, SceneId } from '../../models/ids.domain';
 import type { SceneElement } from '../../models/scene-element.domain';
@@ -106,7 +107,9 @@ const selected = computed(() => {
     return [];
   }
   const ids = new Set(store.selectedLayerIds);
-  return current.elements.filter((element) => ids.has(element.id) && element.visibility);
+  return current.elements.filter(
+    (element) => ids.has(element.id) && element.visibility && isRenderableElement(element),
+  );
 });
 
 const primary = computed(() => (selected.value.length === 1 ? selected.value[0]! : null));
@@ -558,8 +561,9 @@ onBeforeUnmount(() => {
       <polygon
         v-if="hovered"
         :points="outlinePoints(hovered)"
+        class="text-accent"
         fill="none"
-        stroke="white"
+        stroke="currentColor"
         stroke-opacity="0.45"
         stroke-width="1"
       />
@@ -567,9 +571,10 @@ onBeforeUnmount(() => {
         v-for="element in selected"
         :key="element.id"
         :points="outlinePoints(element)"
+        class="text-accent"
         fill="none"
-        stroke="white"
-        stroke-width="1.5"
+        stroke="currentColor"
+        stroke-width="1"
         :stroke-dasharray="element.locked ? '4 3' : undefined"
       />
       <line

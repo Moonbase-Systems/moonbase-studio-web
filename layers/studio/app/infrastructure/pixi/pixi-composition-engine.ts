@@ -798,7 +798,12 @@ export const createPixiCompositionEngine = (options: PixiCompositionEngineOption
     const width = rt.composition.width * letterbox.scale;
     const height = rt.composition.height * letterbox.scale;
     rt.projectOutline.clear();
-    if (width > 0 && height > 0) {
+    const flush =
+      letterbox.offsetX < 0.5 &&
+      letterbox.offsetY < 0.5 &&
+      Math.abs(width - rt.viewport.width) < 1 &&
+      Math.abs(height - rt.viewport.height) < 1;
+    if (!flush && width > 0 && height > 0) {
       rt.projectOutline.rect(letterbox.offsetX, letterbox.offsetY, width, height).stroke({
         width: 1,
         color: PROJECT_OUTLINE,

@@ -158,7 +158,6 @@ export function provideStudioCompositionEngine(): CompositionEngineHandle {
     getCapturePreviewFrameRate: () => captureQuality.previewFrameRateCap.value,
     onCapturePicture: (sourceId, picture, change) =>
       fitLayersToPicture(sourceId, picture, change === 'shown' ? 'contain' : 'keep-longest'),
-    compositionFillWhenBackgroundNone: 0x000000,
   });
 
   provide(STUDIO_COMPOSITION_ENGINE, handle);
