@@ -1,17 +1,9 @@
 <script setup lang="ts">
-import {
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogOverlay,
-  AlertDialogPortal,
-  AlertDialogRoot,
-  AlertDialogTitle,
-} from 'reka-ui';
+import { AlertDialogAction, AlertDialogCancel, AlertDialogRoot } from 'reka-ui';
 
 import { useProjectDocument } from '../../composables/useProjectDocument';
 import { useStudioSessionStore } from '../../store/studio-session.store';
+import StudioDialog from '../studio-dialog/StudioDialog.vue';
 
 const { t } = useI18n();
 const store = useStudioSessionStore();
@@ -95,10 +87,10 @@ function onRenameKeydown(event: KeyboardEvent) {
 </script>
 
 <template>
-  <div class="gap-sm ml-auto flex min-w-0 items-center">
+  <div class="gap-xx-lg flex min-w-0 flex-1 items-center">
     <div
       v-if="store.project"
-      class="min-w-0 max-w-[14rem]"
+      class="min-w-0 max-w-[24rem]"
     >
       <input
         v-if="renaming"
@@ -106,7 +98,7 @@ function onRenameKeydown(event: KeyboardEvent) {
         v-model="nameDraft"
         type="text"
         maxlength="128"
-        class="text-body-sm font-roboto text-on-surface border-on-surface-dim/40 bg-surface-container rounded-x-sm px-xx-sm focus:border-accent h-7 w-full min-w-0 border outline-none"
+        class="text-body-sm text-on-surface border-on-surface-dim px-xxx-sm focus:border-accent h-row w-full min-w-0 border bg-transparent font-sans outline-none"
         :aria-label="t('studio.document.renameProject')"
         :aria-invalid="nameError ? true : undefined"
         @keydown="onRenameKeydown"
@@ -115,7 +107,7 @@ function onRenameKeydown(event: KeyboardEvent) {
       <button
         v-else
         type="button"
-        class="text-body-sm font-roboto text-on-surface hover:text-accent focus-visible:ring-accent rounded-x-sm max-w-full truncate text-left outline-none focus-visible:ring-2"
+        class="text-body-sm text-on-surface hover:text-accent focus-visible:ring-accent focus-visible:ring-offset-surface max-w-full truncate text-left font-sans outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
         :title="t('studio.document.renameProject')"
         @click="startRename"
       >
@@ -135,100 +127,87 @@ function onRenameKeydown(event: KeyboardEvent) {
       </p>
     </div>
 
-    <BaseTextButton
-      :text="t('studio.document.new')"
-      @click="requestNewProject"
-    />
-    <BaseTextButton
-      :text="t('studio.document.open')"
-      @click="requestOpen"
-    />
-    <BaseTextButton
-      :text="t('studio.document.save')"
-      :disabled="!store.project"
-      @click="saveProject"
-    />
-
     <span
       v-if="statusMessage"
-      class="text-body-sm font-roboto text-on-surface-dim truncate"
+      class="text-label text-on-surface-dim truncate font-mono uppercase"
       role="status"
     >
       {{ statusMessage }}
     </span>
 
+    <div class="gap-xx-lg ml-auto flex shrink-0 items-center">
+      <BaseTextButton
+        :text="t('studio.document.new')"
+        @click="requestNewProject"
+      />
+      <BaseTextButton
+        :text="t('studio.document.open')"
+        @click="requestOpen"
+      />
+      <BaseTextButton
+        :text="t('studio.document.save')"
+        :disabled="!store.project"
+        @click="saveProject"
+      />
+    </div>
+
     <AlertDialogRoot v-model:open="confirmOpen">
-      <AlertDialogPortal>
-        <AlertDialogOverlay class="bg-surface/80 fixed inset-0 z-50" />
-        <AlertDialogContent
-          class="border-accent bg-surface-container p-md fixed left-1/2 top-1/2 z-50 w-[min(22rem,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 rounded-sm border shadow-lg outline-none"
-        >
-          <AlertDialogTitle class="text-heading-md text-accent text-center font-display">
-            {{ t('studio.document.discardTitle') }}
-          </AlertDialogTitle>
-          <AlertDialogDescription class="text-body-md text-on-surface mt-sm text-center">
-            {{ t('studio.document.discardMessage') }}
-          </AlertDialogDescription>
-          <div class="mt-md gap-md flex items-center justify-center">
-            <AlertDialogAction as-child>
-              <BaseTextButton
-                :text="t('studio.document.discardConfirm')"
-                class="text-accent"
-                @click="confirmDiscard"
-              />
-            </AlertDialogAction>
-            <AlertDialogCancel as-child>
-              <BaseTextButton :text="t('studio.document.cancel')" />
-            </AlertDialogCancel>
-          </div>
-        </AlertDialogContent>
-      </AlertDialogPortal>
+      <StudioDialog
+        tone="error"
+        :title="t('studio.document.discardTitle')"
+        :description="t('studio.document.discardMessage')"
+      >
+        <template #actions>
+          <AlertDialogAction as-child>
+            <BaseTextButton
+              :text="t('studio.document.discardConfirm')"
+              class="text-accent"
+              @click="confirmDiscard"
+            />
+          </AlertDialogAction>
+          <AlertDialogCancel as-child>
+            <BaseTextButton :text="t('studio.document.cancel')" />
+          </AlertDialogCancel>
+        </template>
+      </StudioDialog>
     </AlertDialogRoot>
 
     <AlertDialogRoot v-model:open="catalogOpen">
-      <AlertDialogPortal>
-        <AlertDialogOverlay class="bg-surface/80 fixed inset-0 z-50" />
-        <AlertDialogContent
-          class="border-accent bg-surface-container p-md fixed left-1/2 top-1/2 z-50 w-[min(24rem,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 rounded-sm border shadow-lg outline-none"
+      <StudioDialog
+        :title="t('studio.document.openTitle')"
+        :sr-description="t('studio.document.openTitle')"
+      >
+        <p
+          v-if="catalog.length === 0"
+          class="text-body-md text-on-surface-dim"
         >
-          <AlertDialogTitle class="text-heading-md text-accent text-center font-display">
-            {{ t('studio.document.openTitle') }}
-          </AlertDialogTitle>
-          <AlertDialogDescription class="sr-only">
-            {{ t('studio.document.openTitle') }}
-          </AlertDialogDescription>
-
-          <p
-            v-if="catalog.length === 0"
-            class="text-body-md text-on-surface mt-sm text-center"
+          {{ t('studio.document.emptyCatalog') }}
+        </p>
+        <ul
+          v-else
+          class="border-line max-h-[32rem] overflow-y-auto border-t"
+        >
+          <li
+            v-for="project in catalog"
+            :key="project.id"
+            class="border-line border-b"
           >
-            {{ t('studio.document.emptyCatalog') }}
-          </p>
-          <ul
-            v-else
-            class="mt-sm max-h-64 space-y-1 overflow-y-auto"
-          >
-            <li
-              v-for="project in catalog"
-              :key="project.id"
+            <button
+              type="button"
+              class="text-body-md text-on-surface hover:bg-surface-container-high hover:text-accent focus-visible:ring-accent px-xxx-sm h-control w-full text-left font-sans outline-none focus-visible:ring-2 focus-visible:ring-inset"
+              @click="openProject(project.id)"
             >
-              <button
-                type="button"
-                class="text-body-md font-roboto text-on-surface hover:bg-surface-container-high rounded-x-sm px-sm py-xx-sm w-full text-left"
-                @click="openProject(project.id)"
-              >
-                {{ project.name }}
-              </button>
-            </li>
-          </ul>
+              {{ project.name }}
+            </button>
+          </li>
+        </ul>
 
-          <div class="mt-md flex justify-center">
-            <AlertDialogCancel as-child>
-              <BaseTextButton :text="t('studio.document.cancel')" />
-            </AlertDialogCancel>
-          </div>
-        </AlertDialogContent>
-      </AlertDialogPortal>
+        <template #actions>
+          <AlertDialogCancel as-child>
+            <BaseTextButton :text="t('studio.document.cancel')" />
+          </AlertDialogCancel>
+        </template>
+      </StudioDialog>
     </AlertDialogRoot>
   </div>
 </template>

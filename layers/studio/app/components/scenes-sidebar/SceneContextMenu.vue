@@ -27,7 +27,7 @@ const emit = defineEmits<{
 const { t } = useI18n();
 
 const itemClass =
-  'cursor-pointer rounded-x-sm px-sm py-xx-sm font-roboto text-body-sm text-on-surface outline-none data-[highlighted]:bg-surface-inverted/10 data-[disabled]:pointer-events-none data-[disabled]:opacity-40';
+  'flex h-control cursor-pointer items-center px-x-sm font-sans text-body-sm text-on-surface outline-none data-[highlighted]:bg-surface-container-high data-[disabled]:pointer-events-none data-[disabled]:text-on-surface-dim';
 </script>
 
 <template>
@@ -38,11 +38,7 @@ const itemClass =
     <ContextMenuPortal>
       <ContextMenuContent
         data-scene-context-menu
-        :class="
-          cn(
-            'border-on-surface-dim/30 bg-surface-container p-x-sm py-tiny z-50 min-w-[12rem] rounded-sm border shadow-lg outline-none',
-          )
-        "
+        :class="cn('border-line bg-surface-container p-tiny z-50 min-w-[20.8rem] border outline-none')"
       >
         <ContextMenuItem
           :class="itemClass"
@@ -58,7 +54,7 @@ const itemClass =
         >
           {{ t('studio.sceneList.delete') }}
         </ContextMenuItem>
-        <ContextMenuSeparator class="my-tiny bg-on-surface-dim/30 h-px" />
+        <ContextMenuSeparator class="my-tiny bg-line h-px" />
         <ContextMenuItem
           :class="itemClass"
           :disabled="!canMoveUp"

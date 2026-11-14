@@ -187,6 +187,7 @@ function rotateCursor(angleDegrees: number): string {
   const arrow = (stroke: string, width: number) =>
     `<g fill='none' stroke='${stroke}' stroke-width='${width}' stroke-linecap='round' stroke-linejoin='round'>` +
     `<path d='M4.2 15.2A11 11 0 0 1 19.8 15.2'/><path d='M4.2 11.2V15.2H8.2'/><path d='M19.8 11.2V15.2H15.8'/></g>`;
+  // Cursor images cannot read CSS variables: surface (#050004) outline, on-surface (white) arrow.
   const svg =
     `<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'>` +
     `<g transform='rotate(${turn} 12 12)'>${arrow('#050004', 4)}${arrow('white', 1.75)}</g></svg>`;
@@ -586,8 +587,7 @@ onBeforeUnmount(() => {
         :cx="handle.x"
         :cy="handle.y"
         :r="HANDLE_RADIUS_PX"
-        fill="white"
-        stroke="#050004"
+        class="fill-on-surface stroke-surface"
         stroke-width="1.5"
       />
     </svg>

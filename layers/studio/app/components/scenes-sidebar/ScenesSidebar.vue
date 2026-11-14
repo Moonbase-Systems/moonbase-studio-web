@@ -126,9 +126,18 @@ function handleKeyDown(event: KeyboardEvent) {
 
 <template>
   <aside class="flex h-full min-h-0 w-full flex-col">
-    <h2 class="text-heading-md text-accent shrink-0 text-center font-medium">
-      {{ t('studio.sceneList.title') }}
-    </h2>
+    <div class="flex shrink-0 items-center justify-between">
+      <h2 class="text-label text-on-surface-dim font-mono font-normal uppercase">
+        {{ t('studio.sceneList.title') }}
+      </h2>
+      <BaseIconButton
+        :label="t('studio.sceneList.add')"
+        class="text-accent hover:text-accent-dim size-row"
+        @click="onAddScene"
+      >
+        <IconPlus />
+      </BaseIconButton>
+    </div>
 
     <div
       ref="listRef"
@@ -167,16 +176,6 @@ function handleKeyDown(event: KeyboardEvent) {
           />
         </div>
       </SceneContextMenu>
-    </div>
-
-    <div class="pt-md flex shrink-0 justify-center">
-      <BaseIconButton
-        :label="t('studio.sceneList.add')"
-        class="text-accent hover:text-accent-dim"
-        @click="onAddScene"
-      >
-        <IconPlus />
-      </BaseIconButton>
     </div>
   </aside>
 </template>

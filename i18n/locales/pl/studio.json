@@ -2,18 +2,18 @@
   "studio": {
     "addPanel": {
       "groups": {
-        "core": "core elements",
-        "interactive": "interactive elements",
-        "layout": "layout elements"
+        "core": "Elementy podstawowe",
+        "interactive": "Elementy interaktywne",
+        "layout": "Elementy układu"
       },
       "options": {
-        "animation": "animation",
-        "audio": "audio source",
-        "browser": "browser asset",
-        "image": "image",
-        "screen": "screen source",
-        "shape": "shape",
-        "text": "text"
+        "animation": "Animacja",
+        "audio": "Źródło audio",
+        "browser": "Przeglądarka",
+        "image": "Obraz",
+        "screen": "Źródło ekranu",
+        "shape": "Kształt",
+        "text": "Tekst"
       }
     },
     "boot": {
@@ -191,6 +191,7 @@
         "browserUrl": "Adres",
         "bypassCache": "Pomiń cache",
         "camera": "Kamera",
+        "crop": "Przycięcie",
         "cursor": "Kursor",
         "effects": "Efekty",
         "file": "Plik",
