@@ -267,7 +267,7 @@ Priorities: **Must** / **Should** / **Could**.
 
 - Given projekt z `audioMixer`
 - When zmieniam master lub kanał
-- Then wartości są w modelu; kanał może mieć `sourceId` lub null
+- Then wartości są w modelu; kanał ma `sourceIds`, `trimDb`, `faderDb`, `pan`, `muted`, `solo` i `monitoring`
 
 **Models:** `AudioMixer`, `AudioChannel`  
 **Priority:** Must  
@@ -415,7 +415,7 @@ Priorities: **Must** / **Should** / **Could**.
 
 - Given aktywny projekt (nawet z historią sesji)
 - When serializuję
-- Then powstaje `ProjectFile` z `formatVersion: 2` i projektem **bez** `history`
+- Then powstaje `ProjectFile` z `formatVersion: 3` i projektem **bez** `history`
 
 **Models:** `ProjectFile`, `Project`  
 **Priority:** Must  

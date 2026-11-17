@@ -118,9 +118,9 @@ Layer order is the index in `scene.elements`. Index 0 is the back. There is no `
 
 `type`: `'camera' | 'screen' | 'image' | 'video' | 'text' | 'shape' | 'browser' | 'audioVisual'` (extensible)
 
-| Field      | Type       | Required                                     |
-| ---------- | ---------- | -------------------------------------------- |
-| `sourceId` | `SourceId` | yes — must match a Source of compatible type |
+| Field      | Type       | Required                                                                            |
+| ---------- | ---------- | ----------------------------------------------------------------------------------- |
+| `sourceId` | `SourceId` | yes — must match a Source of compatible type. `audioVisual` has `channelId` instead |
 
 ### Overlay variant (`type: 'overlay'`)
 
@@ -268,6 +268,8 @@ Distinct from `SceneAnimation`. Assignment: `Scene.settings.defaultTransitionId`
 
 ## AudioMixer
 
+The browser graph that reads this model is [audio-engine.md](./audio-engine.md).
+
 | Field      | Type             | Required |
 | ---------- | ---------------- | -------- |
 | `master`   | `AudioMaster`    | yes      |
@@ -282,17 +284,20 @@ Distinct from `SceneAnimation`. Assignment: `Scene.settings.defaultTransitionId`
 
 ### AudioChannel
 
-| Field      | Type               | Required |
-| ---------- | ------------------ | -------- | ---- |
-| `id`       | `ChannelId`        | yes      |
-| `name`     | `string`           | yes      |
-| `sourceId` | `SourceId \| null` | yes      |
-| `volume`   | `number`           | yes      |
-| `muted`    | `boolean`          | yes      |
-| `solo`     | `boolean`          | yes      |
-| `pan`      | `number`           | yes      | -1…1 |
-| `filters`  | `AudioFilter[]`    | yes      |
-| `effects`  | `AudioEffect[]`    | yes      |
+| Field          | Type                                         | Required | Notes                                                 |
+| -------------- | -------------------------------------------- | -------- | ----------------------------------------------------- |
+| `id`           | `ChannelId`                                  | yes      |                                                       |
+| `name`         | `string`                                     | yes      |                                                       |
+| `sourceIds`    | `SourceId[]`                                 | yes      | one source belongs to one channel; summed before trim |
+| `trimDb`       | `number`                                     | yes      | −24…+24                                               |
+| `faderDb`      | `number`                                     | yes      | −60…+12, unity 0                                      |
+| `pan`          | `number`                                     | yes      | −1…1                                                  |
+| `muted`        | `boolean`                                    | yes      |                                                       |
+| `solo`         | `boolean`                                    | yes      | AFL on the monitor bus only                           |
+| `monitoring`   | `'off' \| 'monitor' \| 'monitor-and-output'` | yes      |                                                       |
+| `syncOffsetMs` | `number`                                     | yes      | −1000…1000 ms, stored, not applied yet                |
+| `filters`      | `AudioFilter[]`                              | yes      |                                                       |
+| `effects`      | `AudioEffect[]`                              | yes      | stored; the insert between trim and fader stays empty |
 
 ### AudioFilter / AudioEffect
 
@@ -332,12 +337,14 @@ Configuration only — no Web Audio nodes in the model.
 
 ```ts
 type ProjectFile = {
-  formatVersion: 2;
+  formatVersion: 3;
   project: Omit<Project, 'history'>;
 };
 ```
 
-On load: migrate `formatVersion: 1` to v2, validate with Zod, attach empty `history: { past: [], future: [], limit }`. Unknown versions fail validation.
+On load: migrate `formatVersion: 1` to v2, then v2 to v3 (project audio channels). A conflicting strip becomes a neutral channel and a session report; the file is not written until the user saves. Validate with Zod, attach empty `history: { past: [], future: [], limit }`. Unknown versions fail validation.
+
+An `audioVisual` layer stores `channelId` and enables that project channel in the scene. The strip lives on the channel.
 
 ---
 
