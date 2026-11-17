@@ -3,7 +3,6 @@ import { z } from 'zod';
 import type { SceneElement } from '../models/scene-element.domain';
 import { portErr } from '../ports/result';
 import {
-  audioSettingsSchema,
   cameraSettingsSchema,
   imageSettingsSchema,
   screenSettingsSchema,
@@ -33,7 +32,7 @@ const settingsSchemaForElement = (element: SceneElement): z.ZodType | null => {
     case 'shape':
       return shapeSettingsSchema;
     case 'audioVisual':
-      return audioSettingsSchema;
+      return emptySettingsSchema;
     case 'browser':
     case 'animation':
       return emptySettingsSchema;

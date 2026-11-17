@@ -21,7 +21,7 @@ describe('projectFileSchema', () => {
     const file = createProjectFileWithSources();
     const element = file.project.scenes[0]!.elements[0]!;
     expect(element.type).not.toBe('overlay');
-    if (element.type === 'overlay') {
+    if (element.type === 'overlay' || element.type === 'audioVisual') {
       throw new Error('expected source-backed element');
     }
     element.sourceId = 'missing-source';

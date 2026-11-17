@@ -1,30 +1,12 @@
-import type { SourceId } from '../ids.domain';
+import type { ChannelId } from '../ids.domain';
 import type { SceneElementBase } from './scene-element-base.domain';
 
-export type AudioMonitoringMode = 'off' | 'monitor' | 'monitor-and-output';
-
-export type AudioElementSettings = {
-  volume: number;
-  muted: boolean;
-  solo: boolean;
-  gainDb: number;
-  pan: number;
-  syncOffsetMs: number;
-  monitoring: AudioMonitoringMode;
-};
+export type AudioElementSettings = Record<string, never>;
 
 export type AudioVisualElement = SceneElementBase & {
   type: 'audioVisual';
-  sourceId: SourceId;
+  channelId: ChannelId;
   settings: AudioElementSettings;
 };
 
-export const createDefaultAudioElementSettings = (): AudioElementSettings => ({
-  volume: 1,
-  muted: false,
-  solo: false,
-  gainDb: 0,
-  pan: 0,
-  syncOffsetMs: 0,
-  monitoring: 'off',
-});
+export const createDefaultAudioElementSettings = (): AudioElementSettings => ({});

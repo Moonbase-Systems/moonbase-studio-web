@@ -1,7 +1,7 @@
 import type { ProjectId } from '../models/ids.domain';
-import type { Project, ProjectFile, ProjectMeta } from '../models/project.domain';
+import type { ProjectFile, ProjectMeta } from '../models/project.domain';
 import { portErr, portOk, type PortResult } from '../ports/result';
-import type { SceneRepository, SceneRepositoryError } from '../ports/scene-repository';
+import type { LoadedProject, SceneRepository, SceneRepositoryError } from '../ports/scene-repository';
 import { parseProjectFile, toProjectFile } from '../serialization/project-file';
 
 export type ProjectFileBackend = {
@@ -16,12 +16,12 @@ const toRepositoryError = (error: unknown): SceneRepositoryError => ({
   message: error instanceof Error ? error.message : 'Project storage failed',
 });
 
-const readProject = (raw: unknown): PortResult<Project, SceneRepositoryError> => {
+const readProject = (raw: unknown): PortResult<LoadedProject, SceneRepositoryError> => {
   const parsed = parseProjectFile(raw);
   if (!parsed.ok) {
     return portErr({ kind: 'validation', issues: parsed.error.issues });
   }
-  return portOk(parsed.project);
+  return portOk({ project: parsed.project, conflicts: parsed.conflicts });
 };
 
 export const createSceneRepository = (backend: ProjectFileBackend): SceneRepository => ({
