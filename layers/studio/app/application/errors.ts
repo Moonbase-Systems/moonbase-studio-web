@@ -1,4 +1,4 @@
-import type { AssetId, ChannelId, ElementId, SceneId, SourceId, TransitionId } from '../models/ids.domain';
+import type { AssetId, ChannelId, EffectId, ElementId, SceneId, SourceId, TransitionId } from '../models/ids.domain';
 import type { PortResult } from '../ports/result';
 
 export type StudioValidationIssue = { path: string; message: string };
@@ -18,6 +18,8 @@ export type StudioError =
   | { kind: 'source-not-found'; sourceId: SourceId }
   | { kind: 'asset-not-found'; assetId: AssetId }
   | { kind: 'channel-not-found'; channelId: ChannelId }
+  | { kind: 'effect-not-found'; effectId: EffectId }
+  | { kind: 'preset-not-found'; presetId: string }
   | { kind: 'transition-not-found'; transitionId: TransitionId }
   | { kind: 'invalid-argument'; message: string; issues?: StudioValidationIssue[] }
   | { kind: 'reference-conflict'; sourceId: SourceId; references: StudioReference[] }

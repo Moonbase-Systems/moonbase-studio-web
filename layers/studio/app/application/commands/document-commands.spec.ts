@@ -112,7 +112,7 @@ describe('project document commands', () => {
     if (!master.ok) {
       return;
     }
-    expect(master.value.project?.audioMixer.master).toEqual({ volume: 0.5, muted: true });
+    expect(master.value.project?.audioMixer.master).toEqual({ volume: 0.5, muted: true, effects: [] });
 
     const added = addAudioChannel(master.value, { name: 'Host', sourceIds: [sourceId] }, ctx);
     expect(added.ok).toBe(true);

@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { animationSourceSettingsSchema } from './animation-source.schema';
+import { audioEffectSchema, audioUserPresetSchema } from './audio-effect.schema';
 import { sceneAnimationSchema } from './scene-animation.schema';
 import { appearanceSchema, transform2DSchema } from './scene-elements/element-shared.schema';
 import { overlayElementSchema, sourceBackedElementSchema } from './scene-elements/scene-element.schema';
@@ -164,15 +165,17 @@ const audioChannelSchema = z.object({
   monitoring: z.enum(['off', 'monitor', 'monitor-and-output']),
   syncOffsetMs: z.number().min(-1000).max(1000),
   filters: z.array(audioFilterOrEffectSchema),
-  effects: z.array(audioFilterOrEffectSchema),
+  effects: z.array(audioEffectSchema),
 });
 
 const audioMixerSchema = z.object({
   master: z.object({
     volume: z.number().min(0).max(1),
     muted: z.boolean(),
+    effects: z.array(audioEffectSchema).default([]),
   }),
   channels: z.array(audioChannelSchema),
+  presets: z.array(audioUserPresetSchema).default([]),
 });
 
 const transitionBaseFields = {
@@ -451,8 +454,24 @@ export const projectFileSchema = z
       }
     }
 
+    const assertUniqueEffectIds = (ids: string[], label: string) => {
+      assertUniqueIds(ids, label, ctx);
+    };
+    assertUniqueEffectIds(
+      project.audioMixer.master.effects.map((effect) => effect.id),
+      'master-effect',
+    );
+    assertUniqueEffectIds(
+      project.audioMixer.presets.map((preset) => preset.id),
+      'audio-preset',
+    );
+
     const claimedSources = new Set<string>();
     for (const channel of project.audioMixer.channels) {
+      assertUniqueEffectIds(
+        channel.effects.map((effect) => effect.id),
+        `channel-effect:${channel.id}`,
+      );
       for (const sourceId of channel.sourceIds) {
         if (!sourceIds.has(sourceId)) {
           ctx.addIssue({
