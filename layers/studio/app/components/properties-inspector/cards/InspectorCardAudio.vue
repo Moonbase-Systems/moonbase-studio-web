@@ -2,11 +2,23 @@
 import { cn } from '~/utils/index';
 
 import { useElementInspectorUpdate } from '../../../composables/useElementInspectorUpdate';
+import { useStudioAudioEngine } from '../../../composables/useStudioAudioEngine';
+import { rawMicrophoneConstraints } from '../../../infrastructure/audio/audio-engine';
+import {
+  type AudioMonitoringMode,
+  FADER_DB_MAX,
+  FADER_DB_MIN,
+  SYNC_OFFSET_MS_MAX,
+  SYNC_OFFSET_MS_MIN,
+  TRIM_DB_MAX,
+  TRIM_DB_MIN,
+} from '../../../models/audio.domain';
 import type { SceneId } from '../../../models/ids.domain';
 import type { AudioVisualElement } from '../../../models/scene-elements';
+import type { AudioSource } from '../../../models/source.domain';
 import { useStudioSessionStore } from '../../../store/studio-session.store';
-import { holdAudioPreviewStream } from '../audio-preview-stream';
 import AudioBalanceSlider from '../AudioBalanceSlider.vue';
+import AudioVolumeSlider from '../AudioVolumeSlider.vue';
 import {
   inspectorChevronClass,
   inspectorControlTextClass,
@@ -27,37 +39,31 @@ const props = defineProps<{
 
 const { t } = useI18n();
 const store = useStudioSessionStore();
-const { applyUpdate, updateSettings } = useElementInspectorUpdate();
+const audioEngine = useStudioAudioEngine();
+const { applyUpdate } = useElementInspectorUpdate();
 
 const open = ref(false);
 const advancedOpen = ref(false);
 const triggerRef = ref<HTMLButtonElement | null>(null);
 const panelStyle = ref<Record<string, string>>({ left: '0px', bottom: '0px', maxHeight: '240px' });
 const inputs = ref<MediaDeviceInfo[]>([]);
-const volumeUnit = ref<'percent' | 'db'>('percent');
 
 const textControlClass = inspectorControlTextClass;
 const labelClass = inspectorLabelClass;
 const rowClass = inspectorRowClass;
 const fieldShellClass = cn(inspectorFieldShellClass, 'min-w-[120px]');
 
-const linkedSource = computed(() => {
-  const result = store.findSource(props.element.sourceId);
-  return result.ok && result.value.type === 'audio' ? result.value : undefined;
+const channel = computed(() => store.project?.audioMixer.channels.find((item) => item.id === props.element.channelId));
+
+const channelSources = computed(() => {
+  const ids = new Set(channel.value?.sourceIds ?? []);
+  return (store.project?.sources.filter((source) => source.type === 'audio' && ids.has(source.id)) ??
+    []) as AudioSource[];
 });
+
+const linkedSource = computed(() => channelSources.value[0]);
 
 const audioSources = computed(() => store.project?.sources.filter((source) => source.type === 'audio') ?? []);
-
-const volumeDraft = computed(() => {
-  const volume = props.element.settings.volume;
-  if (volumeUnit.value === 'percent') {
-    return Math.round(volume * 100);
-  }
-  if (volume <= 0) {
-    return -60;
-  }
-  return Math.round(Math.max(-60, 20 * Math.log10(volume)));
-});
 
 function placePanel() {
   const trigger = triggerRef.value;
@@ -84,7 +90,7 @@ async function refreshInputs() {
     let devices = await navigator.mediaDevices.enumerateDevices();
     let microphones = devices.filter((device) => device.kind === 'audioinput');
     if (microphones.some((device) => device.label === '') && navigator.mediaDevices.getUserMedia) {
-      const probe = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const probe = await navigator.mediaDevices.getUserMedia({ audio: rawMicrophoneConstraints() });
       for (const track of probe.getTracks()) {
         track.stop();
       }
@@ -105,8 +111,43 @@ async function togglePanel() {
   open.value = !open.value;
 }
 
+function patchChannel(changes: Parameters<typeof store.updateAudioChannel>[1]) {
+  const current = channel.value;
+  if (!current) {
+    return;
+  }
+  store.updateAudioChannel(current.id, changes);
+}
+
+async function armSource(source: AudioSource) {
+  if (!source.deviceId || source.deviceId === 'system' || audioEngine.hasArmed(source.id)) {
+    return;
+  }
+  if (!navigator.mediaDevices?.getUserMedia) {
+    return;
+  }
+  const stream = await navigator.mediaDevices.getUserMedia({
+    audio: rawMicrophoneConstraints(source.deviceId),
+  });
+  audioEngine.armStream(source.id, stream);
+}
+
 function selectSource(sourceId: string) {
-  applyUpdate(props.sceneId, props.element.id, { sourceId });
+  const current = channel.value;
+  const project = store.project;
+  if (!current || !project) {
+    return;
+  }
+  const owner = project.audioMixer.channels.find((item) => item.sourceIds.includes(sourceId));
+  if (owner && owner.id !== current.id) {
+    applyUpdate(props.sceneId, props.element.id, { channelId: owner.id });
+  } else if (!owner) {
+    store.assignAudioSource(current.id, sourceId);
+  }
+  const source = project.sources.find((item) => item.id === sourceId);
+  if (source?.type === 'audio') {
+    void armSource(source);
+  }
   open.value = false;
 }
 
@@ -143,7 +184,7 @@ async function pickSystem() {
     }
     const existing = audioSources.value.find((source) => source.deviceId === 'system');
     if (existing) {
-      holdAudioPreviewStream(existing.id, stream);
+      audioEngine.armStream(existing.id, stream);
       selectSource(existing.id);
       return;
     }
@@ -162,25 +203,23 @@ async function pickSystem() {
     if (!created) {
       return;
     }
-    holdAudioPreviewStream(created.id, stream);
+    audioEngine.armStream(created.id, stream);
     selectSource(created.id);
   } catch {
     open.value = false;
   }
 }
 
-function commitVolume(raw: string) {
+function commitFader(raw: string) {
   const value = Number(raw);
   if (!Number.isFinite(value)) {
     return;
   }
-  if (volumeUnit.value === 'percent') {
-    updateSettings(props.sceneId, props.element, { volume: Math.min(1, Math.max(0, value / 100)) });
-    return;
-  }
-  const db = Math.min(0, Math.max(-60, value));
-  const volume = db <= -60 ? 0 : Math.min(1, 10 ** (db / 20));
-  updateSettings(props.sceneId, props.element, { volume });
+  patchChannel({ faderDb: Math.min(FADER_DB_MAX, Math.max(FADER_DB_MIN, value)) });
+}
+
+function setFader(faderDb: number) {
+  patchChannel({ faderDb });
 }
 
 function commitGain(raw: string) {
@@ -188,11 +227,11 @@ function commitGain(raw: string) {
   if (!Number.isFinite(value)) {
     return;
   }
-  updateSettings(props.sceneId, props.element, { gainDb: Math.min(24, Math.max(-24, value)) });
+  patchChannel({ trimDb: Math.min(TRIM_DB_MAX, Math.max(TRIM_DB_MIN, value)) });
 }
 
 function setPan(pan: number) {
-  updateSettings(props.sceneId, props.element, { pan });
+  patchChannel({ pan });
 }
 
 function commitPan(raw: string) {
@@ -200,7 +239,7 @@ function commitPan(raw: string) {
   if (!Number.isFinite(value)) {
     return;
   }
-  updateSettings(props.sceneId, props.element, { pan: Math.min(1, Math.max(-1, value / 100)) });
+  patchChannel({ pan: Math.min(1, Math.max(-1, value / 100)) });
 }
 
 function commitOffset(raw: string) {
@@ -208,7 +247,36 @@ function commitOffset(raw: string) {
   if (!Number.isFinite(value)) {
     return;
   }
-  updateSettings(props.sceneId, props.element, { syncOffsetMs: value });
+  patchChannel({
+    syncOffsetMs: Math.min(SYNC_OFFSET_MS_MAX, Math.max(SYNC_OFFSET_MS_MIN, Math.round(value))),
+  });
+}
+
+function cycleMonitoring() {
+  const order: AudioMonitoringMode[] = ['off', 'monitor', 'monitor-and-output'];
+  const current = channel.value?.monitoring ?? 'off';
+  const next = order[(order.indexOf(current) + 1) % order.length] ?? 'off';
+  patchChannel({ monitoring: next });
+}
+
+async function startFile() {
+  const source = channelSources.value.find((item) => item.assetId);
+  if (!source?.assetId) {
+    return;
+  }
+  const asset = store.project?.assets.find((item) => item.id === source.assetId);
+  if (asset?.location.kind !== 'remoteUrl') {
+    return;
+  }
+  await audioEngine.armFile(source.id, asset.location.url);
+}
+
+function removeGroupedSource(sourceId: string) {
+  const current = channel.value;
+  if (!current) {
+    return;
+  }
+  store.removeAudioSource(current.id, sourceId);
 }
 
 function decorationClass(active: boolean) {
@@ -227,53 +295,70 @@ function decorationClass(active: boolean) {
         :aria-expanded="open"
         @click="togglePanel"
       >
-        <span class="min-w-0 flex-1 truncate text-left">{{ linkedSource?.name ?? element.sourceId }}</span>
+        <span class="min-w-0 flex-1 truncate text-left">{{
+          channelSources.map((source) => source.name).join(', ') || channel?.name
+        }}</span>
         <span :class="cn(inspectorChevronClass, open && 'rotate-180')"> &gt; </span>
+      </button>
+    </div>
+
+    <div
+      v-for="source in channelSources"
+      :key="source.id"
+      :class="rowClass"
+    >
+      <span :class="cn(labelClass, 'truncate')">{{ source.name }}</span>
+      <button
+        type="button"
+        :class="decorationClass(false)"
+        @click="removeGroupedSource(source.id)"
+      >
+        {{ t('studio.properties.labels.removeSource') }}
       </button>
     </div>
 
     <div :class="rowClass">
       <span :class="labelClass">{{ t('studio.properties.fields.volume') }}</span>
-      <BaseInspectorField
-        :model-value="volumeDraft"
-        :suffix="volumeUnit === 'percent' ? '%' : 'dB'"
-        class="w-[72px]"
-        @change="commitVolume"
+      <BaseScrubField
+        compact
+        label=" "
+        field-suffix="horizontal"
+        suffix="dB"
+        field-class="w-[72px]"
+        :model-value="channel?.faderDb ?? 0"
+        :min="FADER_DB_MIN"
+        :max="FADER_DB_MAX"
+        :step="0.5"
+        @change="commitFader"
       />
-      <button
-        type="button"
-        :class="decorationClass(volumeUnit === 'percent')"
-        @click="volumeUnit = 'percent'"
-      >
-        %
-      </button>
-      <button
-        type="button"
-        :class="decorationClass(volumeUnit === 'db')"
-        @click="volumeUnit = 'db'"
-      >
-        dB
-      </button>
+      <AudioVolumeSlider
+        :model-value="channel?.faderDb ?? 0"
+        @change="setFader"
+      />
     </div>
 
     <div :class="rowClass">
       <button
         type="button"
-        :class="decorationClass(element.settings.muted)"
-        :aria-pressed="element.settings.muted"
-        @click="updateSettings(sceneId, element, { muted: !element.settings.muted })"
+        :class="decorationClass(channel?.muted === true)"
+        :aria-pressed="channel?.muted === true"
+        @click="patchChannel({ muted: !(channel?.muted ?? false) })"
       >
         {{ t('studio.properties.labels.mute') }}
       </button>
       <button
         type="button"
-        :class="decorationClass(element.settings.monitoring !== 'off')"
-        :aria-pressed="element.settings.monitoring !== 'off'"
-        @click="
-          updateSettings(sceneId, element, {
-            monitoring: element.settings.monitoring === 'off' ? 'monitor' : 'off',
-          })
-        "
+        :class="decorationClass(channel?.solo === true)"
+        :aria-pressed="channel?.solo === true"
+        @click="patchChannel({ solo: !(channel?.solo ?? false) })"
+      >
+        {{ t('studio.properties.labels.solo') }}
+      </button>
+      <button
+        type="button"
+        :class="decorationClass(channel?.monitoring !== 'off')"
+        :aria-pressed="channel?.monitoring !== 'off'"
+        @click="cycleMonitoring"
       >
         {{ t('studio.properties.labels.monitor') }}
       </button>
@@ -294,35 +379,65 @@ function decorationClass(active: boolean) {
     <template v-if="advancedOpen">
       <div :class="rowClass">
         <span :class="labelClass">{{ t('studio.properties.labels.gain') }}</span>
-        <BaseInspectorField
-          :model-value="element.settings.gainDb"
+        <BaseScrubField
+          compact
+          label=" "
+          field-suffix="horizontal"
           suffix="dB"
-          class="w-[72px]"
+          field-class="w-[88px]"
+          :model-value="channel?.trimDb ?? 0"
+          :min="TRIM_DB_MIN"
+          :max="TRIM_DB_MAX"
+          :step="0.5"
           @change="commitGain"
         />
       </div>
 
       <div :class="rowClass">
         <span :class="labelClass">{{ t('studio.properties.labels.balance') }}</span>
-        <BaseInspectorField
-          :model-value="Math.round(element.settings.pan * 100)"
-          class="w-[64px]"
+        <BaseScrubField
+          compact
+          label=" "
+          field-suffix="horizontal"
+          field-class="w-[64px]"
+          :model-value="Math.round((channel?.pan ?? 0) * 100)"
+          :min="-100"
+          :max="100"
+          :step="1"
           @change="commitPan"
         />
         <AudioBalanceSlider
-          :model-value="element.settings.pan"
+          :model-value="channel?.pan ?? 0"
           @change="setPan"
         />
       </div>
 
       <div :class="rowClass">
         <span :class="labelClass">{{ t('studio.properties.labels.offset') }}</span>
-        <BaseInspectorField
-          :model-value="element.settings.syncOffsetMs"
+        <BaseScrubField
+          compact
+          label=" "
+          field-suffix="horizontal"
           suffix="ms"
-          class="w-[88px]"
+          field-class="w-[96px]"
+          :model-value="channel?.syncOffsetMs ?? 0"
+          :min="SYNC_OFFSET_MS_MIN"
+          :max="SYNC_OFFSET_MS_MAX"
+          :step="1"
           @change="commitOffset"
         />
+      </div>
+      <div
+        v-if="channelSources.some((source) => source.assetId)"
+        :class="rowClass"
+      >
+        <button
+          type="button"
+          :class="decorationClass(false)"
+          @click="startFile"
+        >
+          {{ t('studio.properties.labels.startFile') }}
+        </button>
       </div>
     </template>
 

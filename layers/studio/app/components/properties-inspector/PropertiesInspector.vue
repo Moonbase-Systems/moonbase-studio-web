@@ -24,7 +24,7 @@ const selectedElement = computed(() => {
 
 const linkedSource = computed(() => {
   const element = selectedElement.value;
-  if (!element || element.type === 'overlay') {
+  if (!element || element.type === 'overlay' || element.type === 'audioVisual') {
     return undefined;
   }
   const result = store.findSource(element.sourceId);
