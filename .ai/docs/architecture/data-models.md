@@ -270,17 +270,19 @@ Distinct from `SceneAnimation`. Assignment: `Scene.settings.defaultTransitionId`
 
 The browser graph that reads this model is [audio-engine.md](./audio-engine.md).
 
-| Field      | Type             | Required |
-| ---------- | ---------------- | -------- |
-| `master`   | `AudioMaster`    | yes      |
-| `channels` | `AudioChannel[]` | yes      |
+| Field      | Type                | Required | Notes                                   |
+| ---------- | ------------------- | -------- | --------------------------------------- |
+| `master`   | `AudioMaster`       | yes      | volume, mute, and `effects`             |
+| `channels` | `AudioChannel[]`    | yes      |                                         |
+| `presets`  | `AudioUserPreset[]` | yes      | user library for this project, format 1 |
 
 ### AudioMaster
 
-| Field    | Type      | Required |
-| -------- | --------- | -------- | --- |
-| `volume` | `number`  | yes      | 0–1 |
-| `muted`  | `boolean` | yes      |
+| Field     | Type            | Required | Notes                                       |
+| --------- | --------------- | -------- | ------------------------------------------- |
+| `volume`  | `number`        | yes      | 0–1                                         |
+| `muted`   | `boolean`       | yes      |                                             |
+| `effects` | `AudioEffect[]` | yes      | after the program sum, before master volume |
 
 ### AudioChannel
 
@@ -296,21 +298,16 @@ The browser graph that reads this model is [audio-engine.md](./audio-engine.md).
 | `solo`         | `boolean`                                    | yes      | AFL on the monitor bus only                           |
 | `monitoring`   | `'off' \| 'monitor' \| 'monitor-and-output'` | yes      |                                                       |
 | `syncOffsetMs` | `number`                                     | yes      | −1000…1000 ms, stored, not applied yet                |
-| `filters`      | `AudioFilter[]`                              | yes      |                                                       |
-| `effects`      | `AudioEffect[]`                              | yes      | stored; the insert between trim and fader stays empty |
+| `filters`      | `AudioFilter[]`                              | yes      | kept for older files; the engine does not read them   |
+| `effects`      | `AudioEffect[]`                              | yes      | after trim, before the fader; disabled effects bypass |
 
-### AudioFilter / AudioEffect
+### AudioFilter
 
-Shared envelope + typed params:
+Loose stored record: `id`, `type`, `enabled`, `parameters`. Not part of the browser chain.
 
-| Field        | Type                 | Required |
-| ------------ | -------------------- | -------- |
-| `id`         | `EffectId`           | yes      |
-| `type`       | string discriminant  | yes      |
-| `enabled`    | `boolean`            | yes      |
-| `parameters` | type-specific object | yes      |
+### AudioEffect
 
-Configuration only — no Web Audio nodes in the model.
+`id`, `type`, `name`, `enabled`, and parameters for that type. Types: `eq-band`, `high-pass`, `compressor`, `noise-gate`, `limiter`. No Web Audio nodes in the model. A channel preset copies trim, fader, pan, mute, and the chain. It does not copy `sourceIds`, solo, or monitoring.
 
 ---
 
