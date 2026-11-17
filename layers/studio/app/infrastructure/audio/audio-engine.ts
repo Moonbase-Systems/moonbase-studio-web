@@ -1,5 +1,17 @@
 import { routeChannel, sceneHasSolo } from '../../application/audio-routing';
-import { type AudioMonitoringMode, dbToGain, LEVEL_FLOOR_DB, measureTimeDomain } from '../../models/audio.domain';
+import {
+  type AudioEffect,
+  type AudioMonitoringMode,
+  dbToGain,
+  LEVEL_FLOOR_DB,
+  measureTimeDomain,
+} from '../../models/audio.domain';
+import { curveFromEffect } from './effects/biquad-response';
+import { buildEffect } from './effects/build-effect';
+import { EffectInsert, type EffectInsertHost } from './effects/effect-insert';
+import { applyMonitorSink, type MonitorSinkResult } from './monitor-sink';
+
+export type { MonitorSinkResult } from './monitor-sink';
 
 export type AudioLevelReading = {
   rmsDb: number;
@@ -9,6 +21,8 @@ export type AudioLevelReading = {
 export type AudioLevels = {
   channels: Record<string, AudioLevelReading>;
   master: AudioLevelReading;
+  reductions: Record<string, number>;
+  chainError: string | null;
 };
 
 export type AudioGraphChannel = {
@@ -21,10 +35,11 @@ export type AudioGraphChannel = {
   solo: boolean;
   monitoring: AudioMonitoringMode;
   enabledInScene: boolean;
+  effects: AudioEffect[];
 };
 
 export type AudioGraphSnapshot = {
-  master: { volume: number; muted: boolean };
+  master: { volume: number; muted: boolean; effects: AudioEffect[] };
   channels: AudioGraphChannel[];
 };
 
@@ -48,8 +63,7 @@ type ChannelStrip = {
   sourceIds: string[];
   input: GainNode;
   trim: GainNode;
-  /** Empty insert between trim and fader. Later effects connect here. */
-  effectsInsert: GainNode;
+  insert: EffectInsert;
   fader: GainNode;
   pan: StereoPannerNode;
   mute: GainNode;
@@ -61,7 +75,7 @@ type ChannelStrip = {
 const FLOOR: AudioLevelReading = { rmsDb: LEVEL_FLOOR_DB, peakDb: LEVEL_FLOOR_DB };
 const PEAK_HOLD_MS = 800;
 
-const silent = (): AudioLevels => ({ channels: {}, master: { ...FLOOR } });
+const silent = (): AudioLevels => ({ channels: {}, master: { ...FLOOR }, reductions: {}, chainError: null });
 
 /**
  * One browser audio graph for the studio session.
@@ -76,11 +90,15 @@ export class AudioEngine {
   private masterAnalyser: AnalyserNode | null = null;
   private programDestination: MediaStreamAudioDestinationNode | null = null;
   private monitorInput: GainNode | null = null;
+  private masterInsert: EffectInsert | null = null;
   private readonly channels = new Map<string, ChannelStrip>();
   private readonly armed = new Map<string, ArmedSource>();
   private readonly ballistics = new Map<string, { rms: number; peak: number; peakAt: number }>();
+  private readonly timers: ReturnType<typeof setTimeout>[] = [];
   private samples: Float32Array<ArrayBuffer> | null = null;
   private frame = 0;
+  private chainGeneration = 0;
+  private chainError: string | null = null;
   private listener: ((levels: AudioLevels) => void) | null = null;
 
   setLevelListener(listener: ((levels: AudioLevels) => void) | null): void {
@@ -95,7 +113,23 @@ export class AudioEngine {
     return this.programDestination?.stream ?? null;
   }
 
-  armStream(sourceId: string, stream: MediaStream): void {
+  readCurve(effect: AudioEffect): { frequencies: number[]; magnitudeDb: number[] } | null {
+    if (!this.context || (effect.type !== 'eq-band' && effect.type !== 'high-pass')) {
+      return null;
+    }
+    return curveFromEffect(this.context, effect);
+  }
+
+  /**
+   * Selects the headphone device. The program MediaStreamDestination is left on its own node.
+   * Browsers without setSinkId stay on the default output.
+   */
+  async setMonitorSink(sinkId: string): Promise<MonitorSinkResult> {
+    const context = this.ensureContext();
+    return applyMonitorSink(context, sinkId);
+  }
+
+  armStream(sourceId: string, stream: MediaStream, release?: () => void): void {
     const context = this.ensureContext();
     void context.resume();
     this.releaseSource(sourceId);
@@ -103,11 +137,13 @@ export class AudioEngine {
     this.armed.set(sourceId, {
       node,
       connectedTo: null,
-      release: () => {
-        for (const track of stream.getTracks()) {
-          track.stop();
-        }
-      },
+      release:
+        release ??
+        (() => {
+          for (const track of stream.getTracks()) {
+            track.stop();
+          }
+        }),
     });
     this.connectArmed(sourceId);
   }
@@ -168,6 +204,7 @@ export class AudioEngine {
     }
 
     const anySoloInScene = sceneHasSolo(snapshot.channels);
+    const tasks: Promise<void>[] = [];
     for (const channel of snapshot.channels) {
       const strip = this.channels.get(channel.id);
       if (!strip) {
@@ -185,6 +222,11 @@ export class AudioEngine {
       });
       strip.programSend.gain.value = route.program ? 1 : 0;
       strip.monitorSend.gain.value = route.monitor ? 1 : 0;
+      tasks.push(strip.insert.sync(channel.effects));
+    }
+
+    if (this.masterInsert) {
+      tasks.push(this.masterInsert.sync(snapshot.master.effects));
     }
 
     if (this.masterVolume && this.masterMute) {
@@ -192,17 +234,40 @@ export class AudioEngine {
       this.masterMute.gain.value = snapshot.master.muted ? 0 : 1;
     }
 
+    const generation = ++this.chainGeneration;
+    void Promise.allSettled(tasks).then((results) => {
+      if (generation !== this.chainGeneration) {
+        return;
+      }
+      const failed = results.find((result) => result.status === 'rejected');
+      this.chainError =
+        failed && failed.status === 'rejected'
+          ? failed.reason instanceof Error
+            ? failed.reason.message
+            : 'Effect chain failed'
+          : null;
+    });
+
     this.startMeter();
   }
 
   dispose(): void {
     cancelAnimationFrame(this.frame);
     this.frame = 0;
+    for (const timer of this.timers) {
+      clearTimeout(timer);
+    }
+    this.timers.length = 0;
     for (const sourceId of [...this.armed.keys()]) {
       this.releaseSource(sourceId);
     }
+    for (const strip of this.channels.values()) {
+      this.disconnectStrip(strip);
+    }
     this.channels.clear();
     this.ballistics.clear();
+    this.masterInsert?.dispose();
+    this.masterInsert = null;
     this.masterInput = null;
     this.masterVolume = null;
     this.masterMute = null;
@@ -222,12 +287,14 @@ export class AudioEngine {
     }
     const context = new AudioContext();
     const masterInput = context.createGain();
+    const masterInsert = new EffectInsert(this.insertHost(context));
     const masterVolume = context.createGain();
     const masterMute = context.createGain();
     const masterAnalyser = context.createAnalyser();
     masterAnalyser.fftSize = 2048;
     const programDestination = context.createMediaStreamDestination();
-    masterInput.connect(masterVolume);
+    masterInput.connect(masterInsert.input);
+    masterInsert.output.connect(masterVolume);
     masterVolume.connect(masterMute);
     masterMute.connect(masterAnalyser);
     masterAnalyser.connect(programDestination);
@@ -237,6 +304,7 @@ export class AudioEngine {
 
     this.context = context;
     this.masterInput = masterInput;
+    this.masterInsert = masterInsert;
     this.masterVolume = masterVolume;
     this.masterMute = masterMute;
     this.masterAnalyser = masterAnalyser;
@@ -249,7 +317,7 @@ export class AudioEngine {
   private createStrip(context: AudioContext): ChannelStrip {
     const input = context.createGain();
     const trim = context.createGain();
-    const effectsInsert = context.createGain();
+    const insert = new EffectInsert(this.insertHost(context));
     const fader = context.createGain();
     const pan = context.createStereoPanner();
     const mute = context.createGain();
@@ -260,8 +328,8 @@ export class AudioEngine {
     const sourceIds: string[] = [];
 
     input.connect(trim);
-    trim.connect(effectsInsert);
-    effectsInsert.connect(fader);
+    trim.connect(insert.input);
+    insert.output.connect(fader);
     fader.connect(pan);
     pan.connect(mute);
     mute.connect(analyser);
@@ -270,10 +338,22 @@ export class AudioEngine {
     programSend.connect(this.masterInput!);
     monitorSend.connect(this.monitorInput!);
 
-    return { sourceIds, input, trim, effectsInsert, fader, pan, mute, analyser, programSend, monitorSend };
+    return { sourceIds, input, trim, insert, fader, pan, mute, analyser, programSend, monitorSend };
+  }
+
+  private insertHost(context: AudioContext): EffectInsertHost {
+    return {
+      now: () => context.currentTime,
+      createGain: () => context.createGain(),
+      build: (effect) => buildEffect(context, effect),
+      after: (ms, fn) => {
+        this.timers.push(setTimeout(fn, ms));
+      },
+    };
   }
 
   private disconnectStrip(strip: ChannelStrip): void {
+    strip.insert.dispose();
     strip.input.disconnect();
     strip.programSend.disconnect();
     strip.monitorSend.disconnect();
@@ -318,16 +398,21 @@ export class AudioEngine {
       return;
     }
     const channels: Record<string, AudioLevelReading> = {};
+    const reductions: Record<string, number> = {};
     for (const [id, strip] of this.channels) {
       strip.analyser.getFloatTimeDomainData(this.samples);
       channels[id] = this.applyBallistics(id, measureTimeDomain(this.samples));
+      Object.assign(reductions, strip.insert.reductions());
     }
     let master = { ...FLOOR };
     if (this.masterAnalyser) {
       this.masterAnalyser.getFloatTimeDomainData(this.samples);
       master = this.applyBallistics('master', measureTimeDomain(this.samples));
     }
-    this.listener?.({ channels, master });
+    if (this.masterInsert) {
+      Object.assign(reductions, this.masterInsert.reductions());
+    }
+    this.listener?.({ channels, master, reductions, chainError: this.chainError });
   }
 
   private applyBallistics(id: string, reading: AudioLevelReading): AudioLevelReading {

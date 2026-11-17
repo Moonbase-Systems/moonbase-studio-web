@@ -6,15 +6,19 @@ import {
   type AudioGraphSnapshot,
   type AudioLevels,
   emptyAudioLevels,
+  type MonitorSinkResult,
 } from '../infrastructure/audio/audio-engine';
+import type { AudioEffect } from '../models/audio.domain';
 import { useStudioSessionStore } from '../store/studio-session.store';
 
 export type StudioAudioEngineHandle = {
   levels: AudioLevels;
-  armStream: (sourceId: string, stream: MediaStream) => void;
+  armStream: (sourceId: string, stream: MediaStream, release?: () => void) => void;
   armFile: (sourceId: string, url: string) => Promise<void>;
   hasArmed: (sourceId: string) => boolean;
   getProgramStream: () => MediaStream | null;
+  readCurve: (effect: AudioEffect) => { frequencies: number[]; magnitudeDb: number[] } | null;
+  setMonitorSink: (sinkId: string) => Promise<MonitorSinkResult>;
 };
 
 const StudioAudioEngineKey: InjectionKey<StudioAudioEngineHandle> = Symbol('studio-audio-engine');
@@ -31,7 +35,11 @@ const snapshotFromStore = (
     }
   }
   return {
-    master: project.audioMixer.master,
+    master: {
+      volume: project.audioMixer.master.volume,
+      muted: project.audioMixer.master.muted,
+      effects: project.audioMixer.master.effects,
+    },
     channels: project.audioMixer.channels.map((channel) => ({
       id: channel.id,
       sourceIds: [...channel.sourceIds],
@@ -42,6 +50,7 @@ const snapshotFromStore = (
       solo: channel.solo,
       monitoring: channel.monitoring,
       enabledInScene: enabled.has(channel.id),
+      effects: channel.effects,
     })),
   };
 };
@@ -55,8 +64,8 @@ export function provideStudioAudioEngine(): StudioAudioEngineHandle {
 
   const handle: StudioAudioEngineHandle = {
     levels,
-    armStream: (sourceId, stream) => {
-      engine?.armStream(sourceId, stream);
+    armStream: (sourceId, stream, release) => {
+      engine?.armStream(sourceId, stream, release);
       armedIds.add(sourceId);
     },
     armFile: async (sourceId, url) => {
@@ -68,6 +77,8 @@ export function provideStudioAudioEngine(): StudioAudioEngineHandle {
     },
     hasArmed: (sourceId) => engine?.hasArmed(sourceId) ?? false,
     getProgramStream: () => engine?.getProgramStream() ?? null,
+    readCurve: (effect) => engine?.readCurve(effect) ?? null,
+    setMonitorSink: async (sinkId) => engine?.setMonitorSink(sinkId) ?? { ok: false, reason: 'unsupported' },
   };
 
   onMounted(() => {
@@ -75,6 +86,8 @@ export function provideStudioAudioEngine(): StudioAudioEngineHandle {
     engine = next;
     next.setLevelListener((reading) => {
       levels.master = reading.master;
+      levels.reductions = reading.reductions;
+      levels.chainError = reading.chainError;
       const nextChannels: AudioLevels['channels'] = {};
       for (const [key, value] of Object.entries(reading.channels)) {
         nextChannels[key] = value;
@@ -98,7 +111,7 @@ export function provideStudioAudioEngine(): StudioAudioEngineHandle {
           return;
         }
         if (!current) {
-          engine.sync({ master: { volume: 1, muted: true }, channels: [] });
+          engine.sync({ master: { volume: 1, muted: true, effects: [] }, channels: [] });
           return;
         }
         engine.sync(current.snapshot);
@@ -133,6 +146,8 @@ export function useStudioAudioEngine(): StudioAudioEngineHandle {
       armFile: async () => undefined,
       hasArmed: () => false,
       getProgramStream: () => null,
+      readCurve: () => null,
+      setMonitorSink: async () => ({ ok: false, reason: 'unsupported' }),
     }
   );
 }
