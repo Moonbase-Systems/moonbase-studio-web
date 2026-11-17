@@ -49,7 +49,7 @@ Implemented on the service and the store:
 - `undo` / `redo`, `runTransaction`
 - selection and active scene (`recordHistory: false`)
 
-Save and load go through `createSceneRepository`. The browser adapter stores `ProjectFile` v2 in IndexedDB. `openProject` validates the file, drops history, and resets editor selection.
+Save and load go through `createSceneRepository`. The browser adapter stores `ProjectFile` v3 in IndexedDB. `openProject` validates the file, drops history, and resets editor selection. A v2 file is migrated in memory; conflicting audio strips are reported on the session and block save until that report is dismissed.
 
 ### Isolation
 
@@ -59,7 +59,7 @@ Save and load go through `createSceneRepository`. The browser adapter stores `Pr
 
 | Data                        | Where                                                    |
 | --------------------------- | -------------------------------------------------------- |
-| `Project` without `history` | `ProjectFile` (`formatVersion: 2`) via `SceneRepository` |
+| `Project` without `history` | `ProjectFile` (`formatVersion: 3`) via `SceneRepository` |
 | `history`                   | Memory only                                              |
 | catalog                     | `listProjects()` over saved files                        |
 

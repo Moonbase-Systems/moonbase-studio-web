@@ -29,7 +29,8 @@ erDiagram
 
   AudioMixer ||--|| AudioMaster : master
   AudioMixer ||--o{ AudioChannel : channels
-  AudioChannel }o--o| Source : sourceId
+  AudioChannel }o--o{ Source : sourceIds
+  SceneElement }o--o| AudioChannel : channelId
   AudioChannel ||--o{ AudioFilter : filters
   AudioChannel ||--o{ AudioEffect : effects
 ```
@@ -72,7 +73,7 @@ flowchart LR
   UI["UI components"] --> Session["studioSession store"]
   Session -->|"actions"| Service["createStudioService"]
   Service -->|"commands"| Project["Project + EditorState"]
-  Service -->|"toProjectFile"| ProjectFile["ProjectFile formatVersion 2"]
+  Service -->|"toProjectFile"| ProjectFile["ProjectFile formatVersion 3"]
   ProjectFile -->|"parseProjectFile"| Service
   ProjectFile --> Repository["SceneRepository"]
 ```

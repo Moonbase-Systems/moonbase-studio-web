@@ -66,6 +66,7 @@ Sources and assets are **not** children of a scene. Elements and animations only
 ## Related docs
 
 - [data-models.md](./data-models.md) — field-level model spec
+- [audio-engine.md](./audio-engine.md) — browser mixer graph, monitor, and program stream
 - [stores.md](./stores.md) — `studioSession`
 - [diagrams.md](./diagrams.md) — Mermaid diagrams
 - [decisions.md](./decisions.md) — ADRs

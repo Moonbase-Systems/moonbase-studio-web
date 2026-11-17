@@ -66,12 +66,12 @@
 
 ```ts
 type ProjectFile = {
-  formatVersion: 2;
+  formatVersion: 3;
   project: Omit<Project, 'history'>;
 };
 ```
 
-Validated with Zod on import and on every committed document change. A `formatVersion: 1` file is migrated to v2 by `migrateProjectFile` before validation. Unknown versions fail validation.
+Validated with Zod on import and on every committed document change. `migrateProjectFile` upgrades v1 to v2, then v2 to v3, before validation. Unknown versions fail validation. The v3 step folds per-scene audio strips into project channels; conflicts stay in the session until the operator dismisses them, and the file is not written by the migration itself.
 
 **Why:** Cookie Pinia is unsuitable for large scene graphs. Explicit versioning enables safe schema changes. The browser `SceneRepository` stores this file in IndexedDB. Bridge loads the same document without editor state or history.
 
@@ -89,7 +89,7 @@ Validated with Zod on import and on every committed document change. A `formatVe
 
 **Decision:** `moonbase-studio-web` is the editor of the project document.
 
-- **Standalone.** Edit, undo, and save work with Bridge stopped. The editor preview draws the active scene in the browser. It is not Program Output.
+- **Standalone.** Edit, undo, and save work with Bridge stopped. The editor preview draws the active scene in the browser. It is not Program Output. The browser does run a project audio graph for monitoring and a program `MediaStream`; that graph is specified in [audio-engine.md](./audio-engine.md) and is not the Bridge mix.
 - **Connected.** A downloaded process for Windows and Linux, MoonBase Bridge (Rust, no operator window, x64 and arm64, same features on both systems), loads the whole project and renders one Program Output. FFmpeg publishes that same picture and the program mix over RTMP. The transport is not WebRTC.
 - **AI.** A separate module, MoonBase AI, reads camera frames, including cameras that are not on Program, and returns a score with a camera id and a reason. It does not write the project and does not open devices. A recommendation reaches Bridge as a command. Failure of the module does not stop RTMP.
 
