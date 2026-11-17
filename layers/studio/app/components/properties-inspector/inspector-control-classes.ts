@@ -23,7 +23,7 @@ export const inspectorRowClass =
 /** Outlined field shell for dropdown triggers and text inputs. */
 export const inspectorFieldShellClass = cn(
   inspectorControlTextClass,
-  'flex h-row min-w-0 items-center gap-xxx-sm border border-line bg-transparent px-xxx-sm transition-colors duration-short hover:border-on-surface-dim focus-within:border-accent disabled:cursor-not-allowed disabled:border-dashed disabled:text-on-surface-dim disabled:hover:border-line',
+  'appearance-none flex h-row min-w-0 items-center gap-xxx-sm border border-line bg-surface px-xxx-sm transition-colors duration-short hover:border-on-surface-dim focus-within:border-accent disabled:cursor-not-allowed disabled:border-dashed disabled:text-on-surface-dim disabled:hover:border-line',
   inspectorFocusRingClass,
 );
 
@@ -34,7 +34,7 @@ export const inspectorChevronClass = 'font-mono text-label text-on-surface-dim t
 export function inspectorToggleClass(active: boolean, disabled = false) {
   return cn(
     inspectorControlTextClass,
-    'flex h-row min-w-row items-center justify-center border px-xxx-sm transition-colors duration-short',
+    'appearance-none flex h-row min-w-row items-center justify-center border bg-surface px-xxx-sm transition-colors duration-short',
     inspectorFocusRingClass,
     active ? 'border-accent text-accent' : 'border-line text-on-surface hover:bg-surface-container-high',
     disabled && 'cursor-not-allowed border-dashed text-on-surface-dim hover:bg-transparent',
