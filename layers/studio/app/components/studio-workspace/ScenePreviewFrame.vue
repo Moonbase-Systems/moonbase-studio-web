@@ -1,19 +1,19 @@
 <script setup lang="ts">
 import { useStudioCompositionEngine } from '../../composables/useCompositionEngine';
-import { useSceneAudioLevel } from '../../composables/useSceneAudioLevel';
+import { useStudioAudioEngine } from '../../composables/useStudioAudioEngine';
+import { normalizeLevelDb } from '../../models/audio.domain';
+import type { AudioVisualElement } from '../../models/scene-elements/audio-element.domain';
 import { useStudioSessionStore } from '../../store/studio-session.store';
 import PreviewSignalField from './PreviewSignalField.vue';
 import SceneTransformOverlay from './SceneTransformOverlay.vue';
 
-const FLOOR_DB = -60;
-
 const store = useStudioSessionStore();
 const { t } = useI18n();
 const compositionEngine = useStudioCompositionEngine();
+const audioEngine = useStudioAudioEngine();
 const { host, isReady, lastError } = compositionEngine;
 
 const activeScene = computed(() => store.activeScene ?? undefined);
-const { levels } = useSceneAudioLevel(activeScene);
 
 function onEmptyPreviewPointerDown(event: PointerEvent) {
   const target = event.target;
@@ -53,21 +53,38 @@ const renderFailed = computed(() => lastError.value?.kind === 'render-failed');
 
 const audioChannels = computed(() => {
   const scene = activeScene.value;
-  if (!scene) {
+  const project = store.project;
+  if (!scene || !project) {
     return [];
   }
-  return scene.elements
-    .filter((element) => element.type === 'audioVisual')
-    .map((element) => {
-      const db = levels[element.id] ?? FLOOR_DB;
-      const normalized = Math.max(0, Math.min(1, (db - FLOOR_DB) / -FLOOR_DB));
+  const enabled = new Set(
+    scene.elements
+      .filter((element): element is AudioVisualElement => element.type === 'audioVisual' && element.visibility)
+      .map((element) => element.channelId),
+  );
+  return project.audioMixer.channels
+    .filter((channel) => enabled.has(channel.id))
+    .map((channel) => {
+      const reading = audioEngine.levels.channels[channel.id];
+      const db = reading?.rmsDb ?? -60;
       return {
-        id: element.id,
-        label: element.name,
-        value: normalized,
+        id: channel.id,
+        label: channel.name,
+        value: normalizeLevelDb(db),
+        peak: normalizeLevelDb(reading?.peakDb ?? -60),
         readout: String(Math.round(db)),
       };
     });
+});
+
+const masterMeter = computed(() => {
+  const reading = audioEngine.levels.master;
+  const db = reading?.rmsDb ?? -60;
+  return {
+    value: normalizeLevelDb(db),
+    peak: normalizeLevelDb(reading?.peakDb ?? -60),
+    readout: String(Math.round(db)),
+  };
 });
 
 watch([() => store.activeScene, isReady], ([scene, ready]) => {
@@ -140,20 +157,24 @@ watch([() => store.activeScene, isReady], ([scene, ready]) => {
         <span class="text-label text-on-surface-dim font-mono uppercase">
           {{ t('studio.preview.mixer') }}
         </span>
-        <div
-          v-if="audioChannels.length > 0"
-          class="gap-md flex items-end"
-        >
+        <div class="gap-md flex items-end">
           <BaseLevelMeter
             v-for="channel in audioChannels"
             :key="channel.id"
             :value="channel.value"
+            :peak="channel.peak"
             :label="channel.label"
             :readout="channel.readout"
           />
+          <BaseLevelMeter
+            :value="masterMeter.value"
+            :peak="masterMeter.peak"
+            :label="t('studio.preview.master')"
+            :readout="masterMeter.readout"
+          />
         </div>
         <p
-          v-else
+          v-if="audioChannels.length === 0"
           class="text-body-sm text-on-surface-dim font-sans"
         >
           {{ t('studio.preview.mixerEmpty') }}

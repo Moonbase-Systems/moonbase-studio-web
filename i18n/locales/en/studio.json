@@ -16,6 +16,15 @@
         "text": "Text"
       }
     },
+    "audioMigration": {
+      "body": "Some sources were used in more than one scene with different strips. Each of them is now one channel at neutral settings: trim 0 dB, fader 0 dB, pan in the center, unmute, solo off, and monitoring off. Check those channels before saving.",
+      "channelVote": "Mixer channel {name}",
+      "dismiss": "I have reviewed this",
+      "monitoringOff": "monitoring is off until you turn it back on",
+      "saveBlocked": "Review the audio migration report before saving the project.",
+      "title": "Audio settings need review",
+      "vote": "{place}: fader {fader} dB, monitoring {monitoring}"
+    },
     "boot": {
       "engine": "Starting preview",
       "failed": "Studio failed to start. Refresh the page to try again.",
@@ -63,6 +72,7 @@
     },
     "preview": {
       "heading": "Preview · {width} × {height}",
+      "master": "Master",
       "metrics": {
         "bitrate": "Bitrate",
         "bitrateUnit": "kb/s",
@@ -222,13 +232,16 @@
         "offset": "Offset",
         "refreshInterval": "Refresh",
         "refreshOnActivate": "On activate",
+        "removeSource": "Remove",
         "rotation": "Rotation",
         "screen": "Screen",
         "shape": "Shape",
         "size": "Size",
         "solo": "Solo",
+        "solo": "Solo",
         "source": "Source",
         "space": "Space",
+        "startFile": "Start file",
         "strike": "Strikethrough",
         "style": "Style",
         "systemSource": "System source",

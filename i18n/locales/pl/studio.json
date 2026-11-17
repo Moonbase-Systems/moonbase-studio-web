@@ -16,6 +16,15 @@
         "text": "Tekst"
       }
     },
+    "audioMigration": {
+      "body": "Niektóre źródła były w kilku scenach z różnymi paskami. Każde z nich jest teraz jednym kanałem o neutralnych ustawieniach: trim 0 dB, fader 0 dB, panorama na środku, bez wyciszenia, bez solo i z monitoringiem wyłączonym. Sprawdź te kanały, zanim zapiszesz projekt.",
+      "channelVote": "Kanał miksera {name}",
+      "dismiss": "Sprawdziłem te ustawienia",
+      "monitoringOff": "monitoring jest wyłączony, dopóki go nie włączysz",
+      "saveBlocked": "Zanim zapiszesz projekt, przeczytaj raport migracji audio.",
+      "title": "Ustawienia audio wymagają sprawdzenia",
+      "vote": "{place}: fader {fader} dB, monitoring {monitoring}"
+    },
     "boot": {
       "engine": "Uruchamianie podglądu",
       "failed": "Nie udało się uruchomić studia. Odśwież stronę, aby spróbować ponownie.",
@@ -63,6 +72,7 @@
     },
     "preview": {
       "heading": "Podgląd · {width} × {height}",
+      "master": "Master",
       "metrics": {
         "bitrate": "Bitrate",
         "bitrateUnit": "kb/s",
@@ -222,13 +232,16 @@
         "offset": "Przesunięcie",
         "refreshInterval": "Odświeżanie",
         "refreshOnActivate": "Przy aktywacji",
+        "removeSource": "Usuń",
         "rotation": "Obrót",
         "screen": "Ekran",
         "shape": "Kształt",
         "size": "Rozmiar",
         "solo": "Solo",
+        "solo": "Solo",
         "source": "Źródło",
         "space": "Odstęp",
+        "startFile": "Odtwórz plik",
         "strike": "Skreślenie",
         "style": "Styl",
         "systemSource": "Źródło systemowe",

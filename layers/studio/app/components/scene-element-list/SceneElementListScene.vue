@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { buildSceneListRootsForDisplay, groupMemberIdsForDisplay } from '../../application/scene-list-tree';
-import { useSceneAudioLevel } from '../../composables/useSceneAudioLevel';
 import { useSceneElementActions } from '../../composables/useSceneElementActions';
 import { type SceneDropTarget, useSceneListInteraction } from '../../composables/useSceneListInteraction';
+import { useStudioAudioEngine } from '../../composables/useStudioAudioEngine';
 import type { ElementId, GroupId } from '../../models/ids.domain';
 import type { Scene } from '../../models/scene.domain';
 import type { SceneElementType } from '../../models/scene-element.domain';
@@ -43,21 +43,13 @@ const openGroups = reactive<Record<string, boolean>>({});
 const listRef = ref<HTMLElement | null>(null);
 
 const sceneState = computed(() => store.project?.scenes.find((item) => item.id === props.scene.id));
-const { levels } = useSceneAudioLevel(sceneState);
+const audioEngine = useStudioAudioEngine();
 
-const audioLevels = computed(() => {
-  const next: Record<string, number> = {};
-  for (const [id, value] of Object.entries(levels)) {
-    next[id] = value;
-  }
-  return next;
-});
-
-function audioLevel(element: { id: string; type: string }) {
-  if (element.type !== 'audioVisual') {
+function audioLevel(element: { id: string; type: string; channelId?: string }) {
+  if (element.type !== 'audioVisual' || !element.channelId) {
     return undefined;
   }
-  return audioLevels.value[element.id];
+  return audioEngine.levels.channels[element.channelId]?.rmsDb ?? -60;
 }
 
 const interaction = useSceneListInteraction(props.scene.id, () => sceneState.value);
