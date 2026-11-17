@@ -27,3 +27,6 @@ logs
 .env
 .env.*
 !.env.example
+
+# Skills installed locally by `uipro init` (not part of the app)
+.cursor/skills/
