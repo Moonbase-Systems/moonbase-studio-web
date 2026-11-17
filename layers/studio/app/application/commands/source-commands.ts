@@ -44,14 +44,19 @@ const collectSourceReferences = (session: StudioSession, sourceId: SourceId): St
 
   for (const scene of project.scenes) {
     for (const element of scene.elements) {
-      if (element.type !== 'overlay' && element.sourceId === sourceId) {
+      if (element.type === 'audioVisual') {
+        const channel = project.audioMixer.channels.find((item) => item.id === element.channelId);
+        if (channel?.sourceIds.includes(sourceId)) {
+          references.push({ kind: 'layer', sceneId: scene.id, layerId: element.id });
+        }
+      } else if (element.type !== 'overlay' && element.sourceId === sourceId) {
         references.push({ kind: 'layer', sceneId: scene.id, layerId: element.id });
       }
     }
   }
 
   for (const channel of project.audioMixer.channels) {
-    if (channel.sourceId === sourceId) {
+    if (channel.sourceIds.includes(sourceId)) {
       references.push({ kind: 'audio-channel', channelId: channel.id });
     }
   }

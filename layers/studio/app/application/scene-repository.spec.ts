@@ -44,15 +44,16 @@ describe('createSceneRepository', () => {
     expect(saved.ok).toBe(true);
 
     const stored = backend.records.get(project.id) as ProjectFile;
-    expect(stored.formatVersion).toBe(2);
+    expect(stored.formatVersion).toBe(3);
     expect(stored.project).not.toHaveProperty('history');
 
     const loaded = await repository.loadProject(project.id);
     expect(loaded.ok).toBe(true);
     if (loaded.ok) {
-      expect(loaded.value.name).toBe(project.name);
-      expect(loaded.value.history.past).toEqual([]);
-      expect(loaded.value.history.future).toEqual([]);
+      expect(loaded.value.project.name).toBe(project.name);
+      expect(loaded.value.project.history.past).toEqual([]);
+      expect(loaded.value.project.history.future).toEqual([]);
+      expect(loaded.value.conflicts).toEqual([]);
     }
   });
 

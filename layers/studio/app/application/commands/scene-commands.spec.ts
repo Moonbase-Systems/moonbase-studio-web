@@ -55,8 +55,15 @@ describe('scene commands', () => {
       expect(copiedElement?.type).not.toBe('overlay');
       expect(originalElement).toBeDefined();
       expect(copiedElement).toBeDefined();
-      if (originalElement!.type !== 'overlay' && copiedElement!.type !== 'overlay') {
-        expect(copiedElement!.sourceId).toBe(originalElement!.sourceId);
+      if (
+        originalElement &&
+        copiedElement &&
+        originalElement.type !== 'overlay' &&
+        copiedElement.type !== 'overlay' &&
+        originalElement.type !== 'audioVisual' &&
+        copiedElement.type !== 'audioVisual'
+      ) {
+        expect(copiedElement.sourceId).toBe(originalElement.sourceId);
       }
       expect(copy.elements[0]?.transform).not.toBe(session.project!.scenes[0]!.elements[0]?.transform);
       expect(session.editor.activeSceneId).toBe(copy.id);

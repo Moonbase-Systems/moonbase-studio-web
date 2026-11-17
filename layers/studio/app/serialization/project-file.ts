@@ -2,9 +2,10 @@ import { createEmptyHistory } from '../models/history.domain';
 import type { Project, ProjectFile } from '../models/project.domain';
 import { defaultAnimationFormat } from '../models/source.domain';
 import { projectFileSchema } from '../schemas/project-file.schema';
+import { type AudioMigrationConflict, migrateProjectFileV2ToV3 } from './audio-migration';
 import { migrateProjectFileV1ToV2 } from './project-file-migrate-v1-v2';
 
-export const CURRENT_PROJECT_FILE_FORMAT_VERSION = 2 as const;
+export const CURRENT_PROJECT_FILE_FORMAT_VERSION = 3 as const;
 
 export type ProjectFileParseError = {
   kind: 'validation';
@@ -12,23 +13,30 @@ export type ProjectFileParseError = {
 };
 
 export type ProjectFileParseResult =
-  | { ok: true; project: Project; file: ProjectFile }
+  | { ok: true; project: Project; file: ProjectFile; conflicts: AudioMigrationConflict[] }
   | { ok: false; error: ProjectFileParseError };
 
 /**
- * v1 files are upgraded to v2 (crop on element, per-type settings, extended transform, effect names).
+ * v1 files are upgraded to v2, then v2 files to v3 (project audio channels).
+ * Conflicts are returned beside the file and are not written back by this step.
  */
-export const migrateProjectFile = (raw: unknown): unknown => {
+export const migrateProjectFile = (raw: unknown): { file: unknown; conflicts: AudioMigrationConflict[] } => {
   if (raw === null || typeof raw !== 'object' || Array.isArray(raw)) {
-    return raw;
+    return { file: raw, conflicts: [] };
   }
 
+  let current: unknown = raw;
   const candidate = raw as { formatVersion?: unknown };
   if (candidate.formatVersion === 1) {
-    return migrateProjectFileV1ToV2(raw);
+    current = migrateProjectFileV1ToV2(raw);
   }
 
-  return raw;
+  const upgraded = current as { formatVersion?: unknown };
+  if (upgraded && typeof upgraded === 'object' && upgraded.formatVersion === 2) {
+    return migrateProjectFileV2ToV3(current);
+  }
+
+  return { file: current, conflicts: [] };
 };
 
 export const toProjectFile = (project: Project): ProjectFile => {
@@ -45,7 +53,7 @@ export const serializeProjectFile = (project: Project): string => {
 
 export const parseProjectFile = (input: unknown): ProjectFileParseResult => {
   const migrated = migrateProjectFile(typeof input === 'string' ? safeJsonParse(input) : input);
-  const parsed = projectFileSchema.safeParse(migrated);
+  const parsed = projectFileSchema.safeParse(migrated.file);
 
   if (!parsed.success) {
     return {
@@ -71,7 +79,7 @@ export const parseProjectFile = (input: unknown): ProjectFileParseResult => {
     history: createEmptyHistory(),
   };
 
-  return { ok: true, project, file };
+  return { ok: true, project, file, conflicts: migrated.conflicts };
 };
 
 const safeJsonParse = (value: string): unknown => {

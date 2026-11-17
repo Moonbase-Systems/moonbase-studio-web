@@ -18,6 +18,7 @@ import {
   addLayer,
   addSource,
   addTransition,
+  assignAudioSource,
   clearSelection,
   closeProject,
   createGroupFromElements,
@@ -40,6 +41,7 @@ import {
   redo,
   removeAsset,
   removeAudioChannel,
+  removeAudioSource,
   removeElementsFromGroup,
   removeLayer,
   removeLayers,
@@ -334,6 +336,12 @@ export const createStudioService = (deps: { state: StudioSessionState; context?:
 
     updateAudioChannel: (channelId: ChannelId, changes: AudioChannelChanges) =>
       run((session, context) => updateAudioChannel(session, channelId, changes, context)),
+
+    assignAudioSource: (channelId: ChannelId, sourceId: SourceId) =>
+      run((session, context) => assignAudioSource(session, channelId, sourceId, context)),
+
+    removeAudioSource: (channelId: ChannelId, sourceId: SourceId) =>
+      run((session, context) => removeAudioSource(session, channelId, sourceId, context)),
 
     removeAudioChannel: (channelId: ChannelId) =>
       run((session, context) => removeAudioChannel(session, channelId, context)),

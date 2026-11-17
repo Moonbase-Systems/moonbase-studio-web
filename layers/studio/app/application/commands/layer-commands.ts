@@ -1,5 +1,6 @@
+import { channelOwningSource, createDefaultAudioChannel } from '../../models/audio.domain';
 import type { Appearance, ElementCrop, ElementEffect, Transform2D } from '../../models/common.domain';
-import type { ElementId, SceneId, SourceId } from '../../models/ids.domain';
+import type { ChannelId, ElementId, SceneId, SourceId } from '../../models/ids.domain';
 import {
   createSourceBackedElement,
   elementTypeForSource,
@@ -34,6 +35,7 @@ const ALLOWED_LAYER_UPDATE_KEYS = new Set([
   'settings',
   'content',
   'sourceId',
+  'channelId',
 ]);
 
 export type LayerUpdateChanges = {
@@ -47,6 +49,7 @@ export type LayerUpdateChanges = {
   settings?: Record<string, unknown>;
   content?: OverlayContent;
   sourceId?: SourceId;
+  channelId?: ChannelId;
 };
 
 const assertUniqueEffectIds = (effects: ElementEffect[]): StudioResult<void> => {
@@ -160,13 +163,23 @@ const applyLayerUpdate = (element: SceneElement, changes: LayerUpdateChanges): S
   }
 
   if (changes.sourceId !== undefined) {
-    if (element.type === 'overlay') {
+    if (element.type === 'overlay' || element.type === 'audioVisual') {
       return portErr({
         kind: 'invalid-argument',
-        message: 'overlay layers have no source',
+        message: 'This layer has no source to replace',
       });
     }
     element.sourceId = changes.sourceId;
+  }
+
+  if (changes.channelId !== undefined) {
+    if (element.type !== 'audioVisual') {
+      return portErr({
+        kind: 'invalid-argument',
+        message: 'channelId can only be updated on audio layers',
+      });
+    }
+    element.channelId = changes.channelId;
   }
 
   return { ok: true, value: undefined };
@@ -202,6 +215,21 @@ export const addLayer = (
     session,
     (project) => {
       const scene = project.scenes.find((item) => item.id === sceneId)!;
+      let channelId: ChannelId | undefined;
+      if (source.type === 'audio') {
+        const existing = channelOwningSource(project.audioMixer.channels, source.id);
+        if (existing) {
+          channelId = existing.id;
+        } else {
+          const created = createDefaultAudioChannel({
+            id: ctx.generateId(),
+            name: options?.name ?? source.name,
+            sourceIds: [source.id],
+          });
+          project.audioMixer.channels.push(created);
+          channelId = created.id;
+        }
+      }
       const element = createSourceBackedElement({
         id: elementId,
         source,
@@ -212,6 +240,7 @@ export const addLayer = (
           ...options?.transform,
         },
         appearance: options?.appearance,
+        channelId,
       });
       scene.elements.push(element);
     },
@@ -435,11 +464,23 @@ export const updateLayer = (
     }
   }
 
-  if (changes.sourceId !== undefined) {
-    if (existing.type === 'overlay') {
+  if (changes.channelId !== undefined) {
+    if (existing.type !== 'audioVisual') {
       return portErr({
         kind: 'invalid-argument',
-        message: 'overlay layers have no source',
+        message: 'channelId can only be updated on audio layers',
+      });
+    }
+    if (!session.project.audioMixer.channels.some((channel) => channel.id === changes.channelId)) {
+      return portErr({ kind: 'channel-not-found', channelId: changes.channelId });
+    }
+  }
+
+  if (changes.sourceId !== undefined) {
+    if (existing.type === 'overlay' || existing.type === 'audioVisual') {
+      return portErr({
+        kind: 'invalid-argument',
+        message: 'This layer has no source to replace',
       });
     }
     const nextSource = session.project.sources.find((item) => item.id === changes.sourceId);

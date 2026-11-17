@@ -114,7 +114,7 @@ describe('project document commands', () => {
     }
     expect(master.value.project?.audioMixer.master).toEqual({ volume: 0.5, muted: true });
 
-    const added = addAudioChannel(master.value, { name: 'Host', sourceId }, ctx);
+    const added = addAudioChannel(master.value, { name: 'Host', sourceIds: [sourceId] }, ctx);
     expect(added.ok).toBe(true);
     if (!added.ok) {
       return;
@@ -137,7 +137,7 @@ describe('project document commands', () => {
 
   it('rejects an audio channel that points at a missing source', () => {
     const { session, ctx } = createSessionWithProject(['p1', 's1']);
-    const added = addAudioChannel(session, { name: 'Host', sourceId: 'missing-source' }, ctx);
+    const added = addAudioChannel(session, { name: 'Host', sourceIds: ['missing-source'] }, ctx);
     expect(added.ok).toBe(false);
     if (!added.ok) {
       expect(added.error.kind).toBe('source-not-found');

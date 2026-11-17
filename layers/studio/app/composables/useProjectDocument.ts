@@ -100,6 +100,10 @@ export function useProjectDocument() {
       statusMessage.value = t('studio.document.saveFailed');
       return;
     }
+    if (store.audioMigrationConflicts.length > 0) {
+      statusMessage.value = t('studio.audioMigration.saveBlocked');
+      return;
+    }
 
     const saved = await repository.saveProject(project);
     if (!saved.ok) {
@@ -118,7 +122,8 @@ export function useProjectDocument() {
       return;
     }
 
-    const opened = store.openProject(loaded.value);
+    store.setAudioMigrationConflicts(loaded.value.conflicts);
+    const opened = store.openProject(loaded.value.project);
     if (!opened.ok) {
       statusMessage.value = t('studio.document.openFailed');
       return;

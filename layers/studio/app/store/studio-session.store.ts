@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia';
-import { computed, shallowRef } from 'vue';
+import { computed, ref, shallowRef } from 'vue';
 
 import { STORE_KEYS } from '../../../core/app/constants/store-keys';
 import type { AssetChanges, AssetDraft } from '../application/commands/asset-commands';
@@ -23,6 +23,7 @@ import { createStudioService } from '../application/studio.service';
 import type { AudioMaster } from '../models/audio.domain';
 import type { AssetId, ChannelId, ElementId, GroupId, SceneId, SourceId, TransitionId } from '../models/ids.domain';
 import type { Project, ProjectType } from '../models/project.domain';
+import type { AudioMigrationConflict } from '../serialization/audio-migration';
 
 const deepFreeze = (value: unknown): void => {
   if (!value || typeof value !== 'object' || Object.isFrozen(value)) {
@@ -36,6 +37,7 @@ const deepFreeze = (value: unknown): void => {
 
 export const useStudioSessionStore = defineStore(STORE_KEYS.STUDIO_SESSION, () => {
   const sessionRef = shallowRef(createEmptyStudioSession());
+  const audioMigrationConflicts = ref<AudioMigrationConflict[]>([]);
 
   const service = createStudioService({
     state: {
@@ -67,6 +69,7 @@ export const useStudioSessionStore = defineStore(STORE_KEYS.STUDIO_SESSION, () =
     isInitialized,
     canUndo,
     canRedo,
+    audioMigrationConflicts,
     initialize: () => service.initialize(),
     undo: () => service.undo(),
     redo: () => service.redo(),
@@ -74,9 +77,21 @@ export const useStudioSessionStore = defineStore(STORE_KEYS.STUDIO_SESSION, () =
     /** Edits between begin and end (a drag on the preview) undo as one step. */
     beginGesture: () => service.beginGesture(),
     endGesture: () => service.endGesture(),
-    createProject: (input?: { name?: string; type?: ProjectType }) => service.createProject(input),
+    createProject: (input?: { name?: string; type?: ProjectType }) => {
+      audioMigrationConflicts.value = [];
+      return service.createProject(input);
+    },
     openProject: (project: Project) => service.openProject(project),
-    closeProject: () => service.closeProject(),
+    setAudioMigrationConflicts: (conflicts: AudioMigrationConflict[]) => {
+      audioMigrationConflicts.value = conflicts;
+    },
+    dismissAudioMigrationConflicts: () => {
+      audioMigrationConflicts.value = [];
+    },
+    closeProject: () => {
+      audioMigrationConflicts.value = [];
+      return service.closeProject();
+    },
     markSaved: () => service.markSaved(),
     setActiveScene: (sceneId: SceneId) => service.setActiveScene(sceneId),
     selectLayer: (layerId: ElementId) => service.selectLayer(layerId),
@@ -148,6 +163,8 @@ export const useStudioSessionStore = defineStore(STORE_KEYS.STUDIO_SESSION, () =
     addAudioChannel: (draft: AudioChannelDraft) => service.addAudioChannel(draft),
     updateAudioChannel: (channelId: ChannelId, changes: AudioChannelChanges) =>
       service.updateAudioChannel(channelId, changes),
+    assignAudioSource: (channelId: ChannelId, sourceId: SourceId) => service.assignAudioSource(channelId, sourceId),
+    removeAudioSource: (channelId: ChannelId, sourceId: SourceId) => service.removeAudioSource(channelId, sourceId),
     removeAudioChannel: (channelId: ChannelId) => service.removeAudioChannel(channelId),
     addTransition: (draft: TransitionDraft) => service.addTransition(draft),
     updateTransition: (transitionId: TransitionId, changes: TransitionChanges) =>

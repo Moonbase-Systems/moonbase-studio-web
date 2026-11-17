@@ -133,8 +133,15 @@ describe('layer commands', () => {
       const second = elements[1];
       expect(first).toBeDefined();
       expect(second).toBeDefined();
-      if (first!.type !== 'overlay' && second!.type !== 'overlay') {
-        expect(second!.sourceId).toBe(first!.sourceId);
+      if (
+        first &&
+        second &&
+        first.type !== 'overlay' &&
+        second.type !== 'overlay' &&
+        first.type !== 'audioVisual' &&
+        second.type !== 'audioVisual'
+      ) {
+        expect(second.sourceId).toBe(first.sourceId);
       }
       expect(elements[1]?.effects).not.toBe(elements[0]?.effects);
       expect(elements[1]?.effects[0]?.id).not.toBe(elements[0]?.effects[0]?.id);

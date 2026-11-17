@@ -97,18 +97,6 @@ export const shapeSettingsSchema = z
   })
   .strict();
 
-export const audioSettingsSchema = z
-  .object({
-    volume: z.number().min(0).max(1),
-    muted: z.boolean(),
-    solo: z.boolean().default(false),
-    gainDb: z.number().min(-24).max(24).default(0),
-    pan: z.number().min(-1).max(1),
-    syncOffsetMs: z.number(),
-    monitoring: z.enum(['off', 'monitor', 'monitor-and-output']),
-  })
-  .strict();
-
 const emptySettingsSchema = z.object({}).strict();
 
 export const sourceBackedElementSchema = z.discriminatedUnion('type', [
@@ -157,8 +145,8 @@ export const sourceBackedElementSchema = z.discriminatedUnion('type', [
   z.object({
     ...sceneElementBaseFields,
     type: z.literal('audioVisual'),
-    sourceId: idSchema,
-    settings: audioSettingsSchema,
+    channelId: idSchema,
+    settings: emptySettingsSchema,
   }),
   z.object({
     ...sceneElementBaseFields,
