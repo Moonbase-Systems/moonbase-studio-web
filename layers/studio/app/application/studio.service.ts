@@ -1,8 +1,10 @@
 import type { AudioMaster } from '../models/audio.domain';
+import type { AudioEffectType } from '../models/audio-effect.domain';
 import type { HistoryEntry } from '../models/history.domain';
 import type {
   AssetId,
   ChannelId,
+  EffectId,
   ElementId,
   GroupId,
   HistoryEntryId,
@@ -14,13 +16,17 @@ import type { Project, ProjectType } from '../models/project.domain';
 import {
   addAsset,
   addAudioChannel,
+  addAudioEffect,
   addElementToGroup,
   addLayer,
   addSource,
   addTransition,
+  applyAudioChannelPreset,
+  applyAudioEffectPreset,
   assignAudioSource,
   clearSelection,
   closeProject,
+  copyAudioEffect,
   createGroupFromElements,
   createProject,
   createScene,
@@ -41,18 +47,26 @@ import {
   redo,
   removeAsset,
   removeAudioChannel,
+  removeAudioEffect,
+  removeAudioPreset,
   removeAudioSource,
   removeElementsFromGroup,
   removeLayer,
   removeLayers,
   removeSource,
   removeTransition,
+  renameAudioEffect,
   renameGroup,
   renameLayer,
   renameScene,
   renameSource,
+  reorderAudioEffect,
+  resetAudioEffectCommand,
+  saveAudioChannelPreset,
+  saveAudioEffectPreset,
   selectLayer,
   setActiveScene,
+  setAudioEffectEnabled,
   setLayerLocked,
   setLayerVisibility,
   setSceneDefaultTransition,
@@ -61,6 +75,7 @@ import {
   updateAnimationSource,
   updateAsset,
   updateAudioChannel,
+  updateAudioEffectParameters,
   updateAudioMaster,
   updateBrowserSource,
   updateLayer,
@@ -68,6 +83,7 @@ import {
   updateTransition,
 } from './commands';
 import type { AssetChanges, AssetDraft } from './commands/asset-commands';
+import type { AudioEffectLocation } from './commands/audio-effect-commands';
 import type { LayerUpdateChanges } from './commands/layer-commands';
 import type { AudioChannelChanges, AudioChannelDraft } from './commands/mixer-commands';
 import type { ProjectChanges } from './commands/project-commands';
@@ -345,6 +361,44 @@ export const createStudioService = (deps: { state: StudioSessionState; context?:
 
     removeAudioChannel: (channelId: ChannelId) =>
       run((session, context) => removeAudioChannel(session, channelId, context)),
+
+    addAudioEffect: (location: AudioEffectLocation, type: AudioEffectType, name?: string) =>
+      run((session, context) => addAudioEffect(session, location, type, context, name)),
+
+    removeAudioEffect: (location: AudioEffectLocation, effectId: EffectId) =>
+      run((session, context) => removeAudioEffect(session, location, effectId, context)),
+
+    setAudioEffectEnabled: (location: AudioEffectLocation, effectId: EffectId, enabled: boolean) =>
+      run((session, context) => setAudioEffectEnabled(session, location, effectId, enabled, context)),
+
+    updateAudioEffectParameters: (location: AudioEffectLocation, effectId: EffectId, parameters: unknown) =>
+      run((session, context) => updateAudioEffectParameters(session, location, effectId, parameters, context)),
+
+    renameAudioEffect: (location: AudioEffectLocation, effectId: EffectId, name: string) =>
+      run((session, context) => renameAudioEffect(session, location, effectId, name, context)),
+
+    reorderAudioEffect: (location: AudioEffectLocation, effectId: EffectId, toIndex: number) =>
+      run((session, context) => reorderAudioEffect(session, location, effectId, toIndex, context)),
+
+    copyAudioEffect: (from: AudioEffectLocation, effectId: EffectId, to: AudioEffectLocation) =>
+      run((session, context) => copyAudioEffect(session, from, effectId, to, context)),
+
+    resetAudioEffect: (location: AudioEffectLocation, effectId: EffectId) =>
+      run((session, context) => resetAudioEffectCommand(session, location, effectId, context)),
+
+    saveAudioChannelPreset: (channelId: ChannelId, name: string) =>
+      run((session, context) => saveAudioChannelPreset(session, channelId, name, context)),
+
+    saveAudioEffectPreset: (location: AudioEffectLocation, effectId: EffectId, name: string) =>
+      run((session, context) => saveAudioEffectPreset(session, location, effectId, name, context)),
+
+    removeAudioPreset: (presetId: string) => run((session, context) => removeAudioPreset(session, presetId, context)),
+
+    applyAudioChannelPreset: (channelId: ChannelId, presetId: string) =>
+      run((session, context) => applyAudioChannelPreset(session, channelId, presetId, context)),
+
+    applyAudioEffectPreset: (location: AudioEffectLocation, effectId: EffectId, presetId: string) =>
+      run((session, context) => applyAudioEffectPreset(session, location, effectId, presetId, context)),
 
     addTransition: (draft: TransitionDraft) => run((session, context) => addTransition(session, draft, context)),
 

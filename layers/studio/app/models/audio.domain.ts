@@ -1,20 +1,18 @@
+import type { AudioEffect } from './audio-effect.domain';
+import type { AudioUserPreset } from './audio-preset.domain';
 import type { ChannelId, EffectId, SourceId } from './ids.domain';
+
+export type { AudioEffect } from './audio-effect.domain';
 
 export type AudioMonitoringMode = 'off' | 'monitor' | 'monitor-and-output';
 
 export type AudioMaster = {
   volume: number;
   muted: boolean;
+  effects: AudioEffect[];
 };
 
 export type AudioFilter = {
-  id: EffectId;
-  type: string;
-  enabled: boolean;
-  parameters: Record<string, unknown>;
-};
-
-export type AudioEffect = {
   id: EffectId;
   type: string;
   enabled: boolean;
@@ -54,6 +52,7 @@ export type AudioChannel = {
 export type AudioMixer = {
   master: AudioMaster;
   channels: AudioChannel[];
+  presets: AudioUserPreset[];
 };
 
 export const createDefaultAudioChannel = (input: {
@@ -76,8 +75,9 @@ export const createDefaultAudioChannel = (input: {
 });
 
 export const createDefaultAudioMixer = (): AudioMixer => ({
-  master: { volume: 1, muted: false },
+  master: { volume: 1, muted: false, effects: [] },
   channels: [],
+  presets: [],
 });
 
 export const dbToGain = (db: number): number => 10 ** (db / 20);

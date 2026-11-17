@@ -1,4 +1,5 @@
 export * from './asset-commands';
+export * from './audio-effect-commands';
 export * from './group-commands';
 export * from './history-commands';
 export * from './layer-commands';

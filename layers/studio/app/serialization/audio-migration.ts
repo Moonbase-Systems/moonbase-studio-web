@@ -282,7 +282,11 @@ export const migrateProjectFileV2ToV3 = (raw: unknown): { file: unknown; conflic
 
   project.audioMixer = {
     ...mixer,
-    master: isRecord(mixer.master) ? mixer.master : { volume: 1, muted: false },
+    master: {
+      ...(isRecord(mixer.master) ? mixer.master : { volume: 1, muted: false }),
+      effects: isRecord(mixer.master) && Array.isArray(mixer.master.effects) ? mixer.master.effects : [],
+    },
+    presets: Array.isArray(mixer.presets) ? mixer.presets : [],
     channels: [...channelBySource.values(), ...keptEmpty],
   };
 

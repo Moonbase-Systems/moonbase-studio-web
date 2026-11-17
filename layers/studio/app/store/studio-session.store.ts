@@ -3,6 +3,7 @@ import { computed, ref, shallowRef } from 'vue';
 
 import { STORE_KEYS } from '../../../core/app/constants/store-keys';
 import type { AssetChanges, AssetDraft } from '../application/commands/asset-commands';
+import type { AudioEffectLocation } from '../application/commands/audio-effect-commands';
 import type { LayerUpdateChanges } from '../application/commands/layer-commands';
 import type { AudioChannelChanges, AudioChannelDraft } from '../application/commands/mixer-commands';
 import type { ProjectChanges } from '../application/commands/project-commands';
@@ -21,7 +22,17 @@ import {
 } from '../application/session';
 import { createStudioService } from '../application/studio.service';
 import type { AudioMaster } from '../models/audio.domain';
-import type { AssetId, ChannelId, ElementId, GroupId, SceneId, SourceId, TransitionId } from '../models/ids.domain';
+import type { AudioEffectType } from '../models/audio-effect.domain';
+import type {
+  AssetId,
+  ChannelId,
+  EffectId,
+  ElementId,
+  GroupId,
+  SceneId,
+  SourceId,
+  TransitionId,
+} from '../models/ids.domain';
 import type { Project, ProjectType } from '../models/project.domain';
 import type { AudioMigrationConflict } from '../serialization/audio-migration';
 
@@ -166,6 +177,30 @@ export const useStudioSessionStore = defineStore(STORE_KEYS.STUDIO_SESSION, () =
     assignAudioSource: (channelId: ChannelId, sourceId: SourceId) => service.assignAudioSource(channelId, sourceId),
     removeAudioSource: (channelId: ChannelId, sourceId: SourceId) => service.removeAudioSource(channelId, sourceId),
     removeAudioChannel: (channelId: ChannelId) => service.removeAudioChannel(channelId),
+    addAudioEffect: (location: AudioEffectLocation, type: AudioEffectType, name?: string) =>
+      service.addAudioEffect(location, type, name),
+    removeAudioEffect: (location: AudioEffectLocation, effectId: EffectId) =>
+      service.removeAudioEffect(location, effectId),
+    setAudioEffectEnabled: (location: AudioEffectLocation, effectId: EffectId, enabled: boolean) =>
+      service.setAudioEffectEnabled(location, effectId, enabled),
+    updateAudioEffectParameters: (location: AudioEffectLocation, effectId: EffectId, parameters: unknown) =>
+      service.updateAudioEffectParameters(location, effectId, parameters),
+    renameAudioEffect: (location: AudioEffectLocation, effectId: EffectId, name: string) =>
+      service.renameAudioEffect(location, effectId, name),
+    reorderAudioEffect: (location: AudioEffectLocation, effectId: EffectId, toIndex: number) =>
+      service.reorderAudioEffect(location, effectId, toIndex),
+    copyAudioEffect: (from: AudioEffectLocation, effectId: EffectId, to: AudioEffectLocation) =>
+      service.copyAudioEffect(from, effectId, to),
+    resetAudioEffect: (location: AudioEffectLocation, effectId: EffectId) =>
+      service.resetAudioEffect(location, effectId),
+    saveAudioChannelPreset: (channelId: ChannelId, name: string) => service.saveAudioChannelPreset(channelId, name),
+    saveAudioEffectPreset: (location: AudioEffectLocation, effectId: EffectId, name: string) =>
+      service.saveAudioEffectPreset(location, effectId, name),
+    removeAudioPreset: (presetId: string) => service.removeAudioPreset(presetId),
+    applyAudioChannelPreset: (channelId: ChannelId, presetId: string) =>
+      service.applyAudioChannelPreset(channelId, presetId),
+    applyAudioEffectPreset: (location: AudioEffectLocation, effectId: EffectId, presetId: string) =>
+      service.applyAudioEffectPreset(location, effectId, presetId),
     addTransition: (draft: TransitionDraft) => service.addTransition(draft),
     updateTransition: (transitionId: TransitionId, changes: TransitionChanges) =>
       service.updateTransition(transitionId, changes),
