@@ -2,6 +2,7 @@
 import { provideStudioCompositionEngine } from '../../composables/useCompositionEngine';
 import { useHistoryShortcuts } from '../../composables/useHistoryShortcuts';
 import { useLayerStackShortcuts } from '../../composables/useLayerStackShortcuts';
+import { provideStudioAudioDevices } from '../../composables/useStudioAudioDevices';
 import { provideStudioAudioEngine } from '../../composables/useStudioAudioEngine';
 import { AppBootScreen } from '../app-boot';
 import { STUDIO_BOOT_REVEAL_KEY } from '../app-boot/studio-boot-chrome';
@@ -14,7 +15,7 @@ import ScenePreviewFrame from './ScenePreviewFrame.vue';
 useHistoryShortcuts();
 useLayerStackShortcuts();
 provideStudioCompositionEngine();
-provideStudioAudioEngine();
+provideStudioAudioDevices(provideStudioAudioEngine());
 
 const studioReveal = useState(STUDIO_BOOT_REVEAL_KEY, () => false);
 
