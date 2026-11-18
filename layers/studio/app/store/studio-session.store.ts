@@ -13,7 +13,7 @@ import type {
   OverlayTriggerChanges,
   OverlayTriggerDraft,
 } from '../application/commands/overlay-sound-commands';
-import type { ProjectChanges } from '../application/commands/project-commands';
+import type { OutputProfileChanges, ProjectChanges } from '../application/commands/project-commands';
 import type {
   AnimationSourceChanges,
   BrowserSourceChanges,
@@ -186,6 +186,9 @@ export const useStudioSessionStore = defineStore(STORE_KEYS.STUDIO_SESSION, () =
     findSource: (sourceId: SourceId) => service.findSource(sourceId),
     removeSource: (sourceId: SourceId) => service.removeSource(sourceId),
     updateProject: (changes: ProjectChanges) => service.updateProject(changes),
+    updateOutputProfile: (changes: OutputProfileChanges) => service.updateOutputProfile(changes),
+    updateOutputProfileName: (name: string) => service.updateOutputProfileName(name),
+    applyOutputPreset: (presetId: string) => service.applyOutputPreset(presetId),
     addAsset: (draft: AssetDraft) => service.addAsset(draft),
     updateAsset: (assetId: AssetId, changes: AssetChanges) => service.updateAsset(assetId, changes),
     removeAsset: (assetId: AssetId) => service.removeAsset(assetId),

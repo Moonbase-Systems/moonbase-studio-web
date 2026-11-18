@@ -28,6 +28,7 @@ import {
   addTransition,
   applyAudioChannelPreset,
   applyAudioEffectPreset,
+  applyOutputPreset,
   assignAudioSource,
   clearSelection,
   closeProject,
@@ -90,6 +91,8 @@ import {
   updateAudioMaster,
   updateBrowserSource,
   updateLayer,
+  updateOutputProfile,
+  updateOutputProfileName,
   updateOverlayBus,
   updateOverlaySound,
   updateOverlayTrigger,
@@ -107,7 +110,7 @@ import type {
   OverlayTriggerChanges,
   OverlayTriggerDraft,
 } from './commands/overlay-sound-commands';
-import type { ProjectChanges } from './commands/project-commands';
+import type { OutputProfileChanges, ProjectChanges } from './commands/project-commands';
 import type { AnimationSourceChanges, BrowserSourceChanges, SourceDefinition } from './commands/source-commands';
 import type { TransitionChanges, TransitionDraft } from './commands/transition-commands';
 import type { CommandContext } from './context';
@@ -370,6 +373,14 @@ export const createStudioService = (deps: { state: StudioSessionState; context?:
     removeSource: (sourceId: SourceId) => run((session, context) => removeSource(session, sourceId, context)),
 
     updateProject: (changes: ProjectChanges) => run((session, context) => updateProject(session, changes, context)),
+
+    updateOutputProfile: (changes: OutputProfileChanges) =>
+      run((session, context) => updateOutputProfile(session, changes, context)),
+
+    updateOutputProfileName: (name: string) =>
+      run((session, context) => updateOutputProfileName(session, name, context)),
+
+    applyOutputPreset: (presetId: string) => run((session, context) => applyOutputPreset(session, presetId, context)),
 
     addAsset: (draft: AssetDraft) => run((session, context) => addAsset(session, draft, context)),
 

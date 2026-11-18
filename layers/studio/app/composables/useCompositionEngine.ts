@@ -4,6 +4,7 @@ import { peekImagePreviewUrl } from '../components/properties-inspector/image-pr
 import { peekScreenPreviewStream } from '../components/properties-inspector/screen-preview-stream';
 import type { PixiCompositionEngineOptions } from '../infrastructure/pixi/pixi-composition-engine';
 import type { ElementId } from '../models/ids.domain';
+import { outputFrame } from '../models/output-profile.domain';
 import type { Scene } from '../models/scene.domain';
 import type { CompositionEngine, CompositionEngineError } from '../ports/composition-engine';
 import { portErr, portOk, type PortResult } from '../ports/result';
@@ -146,7 +147,7 @@ export function provideStudioCompositionEngine(): CompositionEngineHandle {
   const { fitLayersToPicture } = useScreenLayerFraming();
 
   const handle = useCompositionEngine({
-    getCompositionSize: () => store.project?.settings.video ?? { width: 1920, height: 1080 },
+    getCompositionSize: () => outputFrame(store.project),
     getRetainedSceneIds: () => store.project?.scenes.map((scene) => scene.id) ?? [],
     resolveSourceAssetId: (sourceId) => {
       const source = store.project?.sources.find((item) => item.id === sourceId);

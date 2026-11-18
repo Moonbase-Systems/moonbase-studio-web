@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { letterboxComposition } from '../../infrastructure/pixi/composition-geometry';
+import { outputFrame } from '../../models/output-profile.domain';
 import { type Affine, elementAffine, elementsInDrawOrder, multiplyAffine } from '../../playback/scene-element-gesture';
 import {
   browserCropPlacement,
@@ -21,7 +22,7 @@ const root = ref<HTMLDivElement | null>(null);
 type View = { originX: number; originY: number; scale: number };
 const view = ref<View>({ originX: 0, originY: 0, scale: 1 });
 
-const composition = computed(() => store.project?.settings.video ?? { width: 1920, height: 1080 });
+const composition = computed(() => outputFrame(store.project));
 
 function measure(): void {
   const overlay = root.value;
@@ -66,7 +67,7 @@ const frames = computed(() => {
       continue;
     }
     const box = element.transform;
-    const viewport = browserPageViewport(source, project.settings.video);
+    const viewport = browserPageViewport(source, outputFrame(project));
     const layout = browserLayoutSize(viewport.width, viewport.height, browserLayoutZoom(source));
     const placement = browserCropPlacement(box, layout, element.crop);
     const fx = box.flipX ? -1 : 1;
@@ -126,7 +127,7 @@ function adoptExternalCanvases(): void {
     if (source.type !== 'browser') {
       continue;
     }
-    const viewport = browserPageViewport(source, project.settings.video);
+    const viewport = browserPageViewport(source, outputFrame(project));
     if (viewport.width === source.width && viewport.height === source.height) {
       continue;
     }

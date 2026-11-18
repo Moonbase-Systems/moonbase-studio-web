@@ -3,6 +3,7 @@ import { cn } from '~/utils/index';
 
 import { useElementInspectorUpdate } from '../../../composables/useElementInspectorUpdate';
 import type { SceneId } from '../../../models/ids.domain';
+import { outputFrame } from '../../../models/output-profile.domain';
 import type { ScreenElement } from '../../../models/scene-elements';
 import type { ScreenSource, Source } from '../../../models/source.domain';
 import { captureConstraints, projectCaptureFrame } from '../../../playback/screen-capture-constraints';
@@ -140,7 +141,7 @@ async function pickDisplay() {
   picking.value = true;
   open.value = false;
   let stream: MediaStream | null = null;
-  const frame = store.project?.settings.video;
+  const frame = store.project ? outputFrame(store.project) : null;
   try {
     stream = await navigator.mediaDevices.getDisplayMedia({
       video: {

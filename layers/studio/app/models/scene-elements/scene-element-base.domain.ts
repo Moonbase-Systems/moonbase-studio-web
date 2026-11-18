@@ -1,7 +1,7 @@
 import type { Appearance, ElementCrop, ElementEffect, Transform2D } from '../common.domain';
 import { createDefaultElementCrop } from '../common.domain';
 import type { ElementId, GroupId } from '../ids.domain';
-import type { ProjectVideoSettings } from '../project.domain';
+import type { OutputFrame } from '../output-profile.domain';
 
 export type SceneElementBase = {
   id: ElementId;
@@ -15,11 +15,11 @@ export type SceneElementBase = {
   locked: boolean;
 };
 
-export const createDefaultElementTransform = (video: ProjectVideoSettings): Transform2D => ({
+export const createDefaultElementTransform = (frame: Pick<OutputFrame, 'width' | 'height'>): Transform2D => ({
   x: 0,
   y: 0,
-  width: video.width,
-  height: video.height,
+  width: frame.width,
+  height: frame.height,
   scaleX: 1,
   scaleY: 1,
   rotation: 0,
@@ -33,7 +33,7 @@ export const createDefaultElementTransform = (video: ProjectVideoSettings): Tran
 export const createSceneElementBaseFields = (input: {
   id: ElementId;
   name: string;
-  video: ProjectVideoSettings;
+  video: Pick<OutputFrame, 'width' | 'height'>;
   transform?: Partial<Transform2D>;
   appearance?: Partial<Appearance>;
 }): Omit<SceneElementBase, never> => ({

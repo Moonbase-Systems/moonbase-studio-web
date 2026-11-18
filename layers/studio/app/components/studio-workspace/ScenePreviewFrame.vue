@@ -2,6 +2,7 @@
 import { useStudioCompositionEngine } from '../../composables/useCompositionEngine';
 import { useStudioAudioEngine } from '../../composables/useStudioAudioEngine';
 import { channelAudibleInScene, normalizeLevelDb } from '../../models/audio.domain';
+import { outputFrame } from '../../models/output-profile.domain';
 import type { AudioVisualElement } from '../../models/scene-elements/audio-element.domain';
 import { useStudioSessionStore } from '../../store/studio-session.store';
 import PreviewSignalField from './PreviewSignalField.vue';
@@ -40,10 +41,10 @@ function onPreviewPointerDown(event: PointerEvent) {
   root.focus({ preventScroll: true });
 }
 
-const video = computed(() => store.project?.settings.video);
+const frame = computed(() => outputFrame(store.project));
 const aspectValue = computed(() => {
-  const v = video.value;
-  if (!v || v.height === 0 || v.width === 0) {
+  const v = frame.value;
+  if (v.height === 0 || v.width === 0) {
     return 16 / 9;
   }
   return v.width / v.height;
@@ -57,8 +58,8 @@ const frameStyle = computed(() => ({
 
 const resolutionLabel = computed(() =>
   t('studio.preview.heading', {
-    width: video.value?.width ?? 1920,
-    height: video.value?.height ?? 1080,
+    width: frame.value.width,
+    height: frame.value.height,
   }),
 );
 
@@ -111,7 +112,7 @@ const overlayMeter = computed(() => {
   };
 });
 
-watch([() => store.activeScene, () => store.project?.settings.video, isReady], ([scene, , ready]) => {
+watch([() => store.activeScene, () => store.project?.settings.outputProfile, isReady], ([scene, , ready]) => {
   if (scene && ready) {
     void compositionEngine.render(scene);
   }

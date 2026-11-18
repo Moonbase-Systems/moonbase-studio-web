@@ -1,6 +1,7 @@
 import { channelOwningSource, createDefaultAudioChannel } from '../../models/audio.domain';
 import type { Appearance, ElementCrop, ElementEffect, Transform2D } from '../../models/common.domain';
 import type { ChannelId, ElementId, SceneId, SourceId } from '../../models/ids.domain';
+import { outputFrame } from '../../models/output-profile.domain';
 import type { Project } from '../../models/project.domain';
 import {
   createSourceBackedElement,
@@ -252,7 +253,7 @@ export const addLayer = (
         id: elementId,
         source,
         name: options?.name,
-        video: project.settings.video,
+        video: outputFrame(project),
         transform: {
           ...creationFrame(project, source),
           ...options?.transform,

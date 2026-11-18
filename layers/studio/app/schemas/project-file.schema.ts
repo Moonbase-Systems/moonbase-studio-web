@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { animationSourceSettingsSchema } from './animation-source.schema';
 import { audioEffectSchema, audioUserPresetSchema } from './audio-effect.schema';
 import { browserPageUrlSchema, browserZoomSchema } from './browser-source.schema';
+import { outputProfileSchema } from './output-profile.schema';
 import { overlayBusFieldSchema } from './overlay-sound.schema';
 import { sceneAnimationSchema } from './scene-animation.schema';
 import { appearanceSchema, transform2DSchema } from './scene-elements/element-shared.schema';
@@ -228,11 +229,9 @@ const transitionSchema = z.discriminatedUnion('type', [
 
 const projectSettingsSchema = z.object({
   video: z.object({
-    width: z.number().positive(),
-    height: z.number().positive(),
-    frameRate: z.number().positive(),
     colorSpace: z.string().optional(),
   }),
+  outputProfile: outputProfileSchema,
   audio: z.object({
     sampleRate: z.number().positive(),
     channels: z.number().int().positive(),
@@ -319,7 +318,7 @@ const assertGroupMembershipInvariant = (scene: z.infer<typeof sceneSchema>, ctx:
 
 export const projectFileSchema = z
   .object({
-    formatVersion: z.literal(3),
+    formatVersion: z.literal(4),
     project: persistableProjectSchema,
   })
   .superRefine((file, ctx) => {

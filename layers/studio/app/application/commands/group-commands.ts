@@ -1,4 +1,5 @@
 import type { ElementId, GroupId, SceneId } from '../../models/ids.domain';
+import { outputFrame } from '../../models/output-profile.domain';
 import { createSceneGroup, type SceneGroup } from '../../models/scene-group.domain';
 import { portErr } from '../../ports/result';
 import { displayNameSchema } from '../../schemas/display-name.schema';
@@ -64,7 +65,7 @@ export const createGroupFromElements = (
         id: groupId,
         name: options?.name?.trim() || 'Group',
         elementIds: orderedIds,
-        video: project.settings.video,
+        video: outputFrame(project),
       });
       targetScene.groups.push(group);
 
