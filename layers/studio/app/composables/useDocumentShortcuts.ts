@@ -1,9 +1,10 @@
-import type { Ref } from 'vue';
+import { inject, type Ref } from 'vue';
 
 import type { ChannelId } from '../models/ids.domain';
 import type { ShortcutActionId } from '../models/shortcut.domain';
 import { useShortcutStore } from '../store/shortcut.store';
 import { useStudioSessionStore } from '../store/studio-session.store';
+import { STUDIO_RECORDING_GUARD } from './recording-guard';
 
 type Hold = {
   actionId: 'audio.pushToTalk' | 'audio.pushToMute';
@@ -46,6 +47,7 @@ export function useDocumentShortcuts(actions: {
 }) {
   const store = useStudioSessionStore();
   const shortcuts = useShortcutStore();
+  const recordingGuard = inject(STUDIO_RECORDING_GUARD, null);
   let hold: Hold | null = null;
 
   function selectedChannelId(): ChannelId | null {
@@ -182,7 +184,12 @@ export function useDocumentShortcuts(actions: {
         return;
       }
       event.preventDefault();
-      store.removeLayers(sceneId, [...store.selectedLayerIds]);
+      void (async () => {
+        if (recordingGuard && !(await recordingGuard.allowActiveSceneChange())) {
+          return;
+        }
+        store.removeLayers(sceneId, [...store.selectedLayerIds]);
+      })();
       return;
     }
     if (shortcuts.matchesKey(event, 'layer.duplicate')) {

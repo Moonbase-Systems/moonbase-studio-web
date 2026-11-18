@@ -1,6 +1,9 @@
+import { inject } from 'vue';
+
 import type { SourceDefinition } from '../application/commands/source-commands';
 import type { ElementId, SceneId } from '../models/ids.domain';
 import { useStudioSessionStore } from '../store/studio-session.store';
+import { STUDIO_RECORDING_GUARD } from './recording-guard';
 
 export function useSceneElementActions() {
   const store = useStudioSessionStore();
@@ -32,7 +35,13 @@ export function useSceneElementActions() {
     return result.ok;
   }
 
-  function removeElement(sceneId: SceneId, layerId: ElementId): boolean {
+  const guard = inject(STUDIO_RECORDING_GUARD, null);
+
+  async function removeElement(sceneId: SceneId, layerId: ElementId): Promise<boolean> {
+    const scene = store.activeScene;
+    if (scene?.id === sceneId && guard && !(await guard.allowActiveSceneChange())) {
+      return false;
+    }
     const result = store.removeLayer(sceneId, layerId);
     return result.ok;
   }
