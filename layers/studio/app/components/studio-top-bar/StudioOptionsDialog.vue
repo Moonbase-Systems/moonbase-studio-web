@@ -15,6 +15,7 @@ import { useStudioSessionStore } from '../../store/studio-session.store';
 import { OPTION_FIELD_CATALOG, type OptionFieldSpec } from './studio-option-catalog';
 import StudioOptionField from './StudioOptionField.vue';
 import StudioOutputFormatSection from './StudioOutputFormatSection.vue';
+import StudioRecordingSection from './StudioRecordingSection.vue';
 
 const open = defineModel<boolean>({ required: true });
 
@@ -306,6 +307,32 @@ function onAssetChange(event: Event) {
               >
                 <p
                   v-if="showsFieldGroup('picture', index)"
+                  class="text-label text-on-surface-dim mt-lg font-mono uppercase"
+                >
+                  {{ t(row.groupKey) }}
+                </p>
+                <StudioOptionField
+                  :label="t(row.labelKey)"
+                  :off="row.off"
+                  :kind="row.kind"
+                  :text="fieldText(row)"
+                  :checked="row.checked"
+                  :choices="fieldChoices(row)"
+                />
+              </template>
+            </div>
+
+            <div
+              v-else-if="sectionId === 'recording'"
+              class="gap-xxx-sm flex flex-col"
+            >
+              <StudioRecordingSection />
+              <template
+                v-for="(row, index) in fieldRows('recording')"
+                :key="row.id"
+              >
+                <p
+                  v-if="showsFieldGroup('recording', index)"
                   class="text-label text-on-surface-dim mt-lg font-mono uppercase"
                 >
                   {{ t(row.groupKey) }}

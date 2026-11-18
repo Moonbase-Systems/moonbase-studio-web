@@ -1,25 +1,62 @@
 <script setup lang="ts">
 import { AlertDialogAction, AlertDialogCancel, AlertDialogRoot, AlertDialogTrigger } from 'reka-ui';
 
+import { useStudioRecording } from '../../composables/useStudioRecording';
 import StudioDialog from '../studio-dialog/StudioDialog.vue';
 import ProjectDocumentActions from './ProjectDocumentActions.vue';
 
 const { t } = useI18n();
 const localePath = useLocalePath();
+const recording = useStudioRecording();
 
 const open = ref(false);
 /** Bridge is not wired yet — keep transport actions disabled. */
 const bridgeOnline = ref(false);
 
+const elapsedLabel = computed(() => recording.elapsedLabel.value);
+
+const transportState = computed(() => {
+  if (recording.state.value === 'paused') {
+    return 'paused' as const;
+  }
+  if (
+    recording.state.value === 'recording' ||
+    recording.state.value === 'preparing' ||
+    recording.state.value === 'finalizing'
+  ) {
+    return 'live' as const;
+  }
+  return 'idle' as const;
+});
+
+const transportStatus = computed(() => {
+  if (recording.state.value === 'error') {
+    return t('studio.recording.error');
+  }
+  if (transportState.value === 'paused') {
+    return t('studio.transport.statusPaused');
+  }
+  if (transportState.value === 'live') {
+    return t('studio.transport.statusLive');
+  }
+  return t('studio.transport.statusIdle');
+});
+
 const transportLabels = computed(() => ({
   group: t('studio.transport.group'),
-  status: t('studio.transport.statusIdle'),
+  status: transportStatus.value,
   pause: t('studio.transport.pause'),
   resume: t('studio.transport.resume'),
   stop: t('studio.transport.stop'),
   stream: t('studio.transport.stream'),
   record: t('studio.transport.record'),
 }));
+
+function onTransportStart(mode: 'stream' | 'record') {
+  if (mode === 'record') {
+    void recording.start();
+  }
+}
 
 async function leaveToHome() {
   await navigateTo(localePath('/'));
@@ -60,10 +97,14 @@ async function leaveToHome() {
     <ProjectDocumentActions>
       <template #trailing>
         <BaseTransportControl
-          state="idle"
-          time="00:00:00"
+          :state="transportState"
+          :time="elapsedLabel"
           :stream-disabled="!bridgeOnline"
           :labels="transportLabels"
+          @start="onTransportStart"
+          @pause="recording.pause"
+          @resume="recording.resume"
+          @stop="recording.stop"
         />
         <span
           class="bg-line h-xx-lg w-px shrink-0"

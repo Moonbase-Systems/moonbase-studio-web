@@ -496,6 +496,7 @@
         "transformation": "Transformacja",
         "video": "Wideo"
       },
+      "effectInactive": "Nie jest nakładany na kadr",
       "effectsEmpty": "Brak efektów na tym elemencie.",
       "effectsHint": "Obsługiwane typy efektów: {types}",
       "emptySelection": "Wybierz element sceny, aby edytować właściwości.",
@@ -666,6 +667,30 @@
       },
       "title": "Właściwości",
       "validationFailed": "Nie udało się zapisać wartości."
+    },
+    "recording": {
+      "audioBitrate": "Bitrate audio",
+      "bitrate": "Bitrate wideo",
+      "elapsed": "Czas",
+      "empty": "Brak nagrań tego projektu.",
+      "error": "Nagranie nie powiodło się",
+      "fpsHint": "Żądane FPS to wartość profilu. Zmierzone FPS liczy klatki skopiowane na kanwę wyjścia.",
+      "frame": "Kadr",
+      "interrupt": "To zmienia aktywną scenę w trakcie nagrania. Zatrzymać nagranie?",
+      "library": "Nagrania",
+      "measuredFps": "Zmierzone FPS",
+      "mime": "MIME",
+      "noHandle": "Ta przeglądarka nie zachowała uchwytu pliku, więc nagrania nie da się stąd otworzyć ponownie.",
+      "open": "Otwórz",
+      "presets": {
+        "high": "Wysoki",
+        "low": "Niski",
+        "standard": "Standard",
+        "veryHigh": "Bardzo wysoki"
+      },
+      "requestedFps": "Żądane FPS",
+      "state": "Stan",
+      "title": "Nagrywanie"
     },
     "scene": {
       "addElement": "Dodaj element",
