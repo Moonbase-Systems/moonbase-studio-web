@@ -1,6 +1,6 @@
 # Output Frame
 
-Jedna ramka projektu opisuje szerokość, wysokość i liczbę klatek. Edytor ją pokazuje. Przyszłe nagranie i transmisja mają brać ten sam kadr. Output Capture jest kontraktem. Nagrywanie i streaming nie są zaimplementowane.
+Jedna ramka projektu opisuje szerokość, wysokość i liczbę klatek. Edytor ją pokazuje. Lokalne nagranie bierze ten sam kadr. Transmisja RTMP nie jest zaimplementowana.
 
 ## Stan wdrożenia
 
@@ -11,8 +11,21 @@ Wdrożone:
 - `outputFrame(project)` czyta aktywny profil.
 - Plik projektu jest w `formatVersion: 4`. Migracja v3 nadaje `id` profilu jeden raz i zapisuje je w pliku.
 - Ustawienia są w `StudioOptionsDialog`, sekcja Obraz, blok Format wyjścia.
+- Podgląd zostaje bitmapą viewportu. Kanwa wyjścia ma wymiary profilu i nie leży w layoucie edytora. Szczegóły: [output-capture.md](./output-capture.md).
+- Graf rysuje shape, text, image, screen, camera, video, animation, overlay, słupki audio, cut i fade. Browser jest jawną planszą. Blur i prosta maska alfa są nakładane. Reszta efektów jest w inspektorze oznaczona jako nieaktywna.
+- Lokalny zapis opisuje [recording-engine.md](./recording-engine.md).
 
-Jeszcze nie: adaptacja scen (`preserve`, `scale-and-center`, `full-bleed`), rozdzielenie bitmapy Pixi od viewportu, benchmark, Output Capture i Recording Engine. Bitmapa renderera nadal wynika z rozmiaru panelu. Zmiana profilu nie przesuwa istniejących elementów.
+Jeszcze nie: adaptacja scen (`preserve`, `scale-and-center`, `full-bleed`). Zmiana profilu nie przesuwa istniejących elementów. Slide, zoom i dissolve nie mają odtwarzacza. Strona browser nie jest czytana.
+
+## Pomiar RenderTexture
+
+Harness: `layers/studio/app/pages/dev/output-frame-benchmark.vue`. Mierzy czas przepustki `RenderTexture` plus `extract.canvas` dla 720p, 1080p, 1440p i 4K, małej sceny, 200 sprite’ów i jednego filtra, przy małym i dużym viewportcie. Pamięć GPU jest wpisywana tylko wtedy, gdy przeglądarka ją poda.
+
+W tym środowisku pomiar nie został wykonany: brak działającego WebGL w teście jednostkowym. Nie ma tu wymyślonych czasów klatek. Po uruchomieniu strony wynik trzeba wpisać poniżej.
+
+| Przypadek     | Mediana ms | Pamięć GPU |
+| ------------- | ---------- | ---------- |
+| nie zmierzono | —          | —          |
 
 ## Pojęcia
 
@@ -20,8 +33,9 @@ Jeszcze nie: adaptacja scen (`preserve`, `scale-and-center`, `full-bleed`), rozd
 - **Output Profile** — zapisana konfiguracja tej ramki w projekcie. Jedna na projekt. Ma własne `id`.
 - **Output Preset** — niemodyfikowalny szablon, z którego użytkownik wypełnia profil. Nie jest zapisywany jako profil.
 - **Editor Viewport** — prostokąt CSS środkowej sekcji. Nie jest zapisaną rozdzielczością. Dopasowuje kadr i zachowuje proporcje.
-- **Renderer Bitmap** — bufor Pixi. Dziś ma rozmiar hosta razy `devicePixelRatio`. To nie jest Output Profile. Polityka jakości czeka na benchmark. Drugi `Application` nie jest założeniem.
-- **Output Capture** — przyszły odczyt gotowej klatki i istniejącego `getProgramStream()`. Bez implementacji, bez `MediaRecorder`.
+- **Renderer Bitmap** — bufor podglądu. Ma rozmiar hosta razy `devicePixelRatio`. To nie jest Output Profile. Drugi `Application` nie jest używany.
+- **Output Canvas** — kanwa nagrania o wymiarach profilu, poza layoutem edytora. Wypełnia ją kopia `RenderTexture`.
+- **Output Capture** — `captureStream` tej kanwy plus klon `getProgramStream()`. Opis: [output-capture.md](./output-capture.md).
 
 `settings.output.profile` zostaje slotem transmisji. `colorSpace` zostaje w `settings.video`.
 
@@ -56,18 +70,19 @@ Krok rusza tylko przy `formatVersion === 3`. Kopiuje `settings.video.width`, `he
 
 ## Podgląd i nagranie
 
-Piksele programu widoczne w edytorze mają być tymi samymi pikselami przyszłego nagrania. Uchwyty i obrys zostają poza kadrem.
+Piksele programu w grafie są pikselami nagrania. Uchwyty i obrys zostają poza kanwą wyjścia.
 
-- `shape`, `text`, `image`, `screen` są w grafie Pixi.
-- `browser` widać jako iframe i nie wchodzi do grafu. To jedyna luka treści, która blokuje pierwsze wydanie nagrywania.
-- Żywa kamera, wideo, animacja, efekty i transitions nie blokują pierwszego wydania. Wolno je pokazać w podglądzie programu dopiero razem z tą samą treścią w klatce.
+- `shape`, `text`, `image`, `screen`, `camera`, `video`, `animation` i `overlay` są w grafie. Kamera i plik wideo dzielą jeden `HTMLVideoElement` na źródło. Element wideo w grafie jest wyciszony; dźwięk nagrania to Program Mix.
+- `audioVisual` rysuje słupki z analysera Program Mix.
+- `browser` widać jako iframe w edytorze. W kadrze, w prostokącie warstwy, jest plansza „Browser nie wchodzi do nagrania”. Pikseli obcej strony nie czytamy.
+- Blur i maska alfa bez odwrócenia są filtrami Pixi. Pozostałe efekty inspektor oznacza jako nieaktywne.
+- Cut i fade idą zegarem kompozycji. Slide, zoom i dissolve zgłaszają brak odtwarzacza i scena zmienia się od razu.
 
-Dźwięk programu jest gotowy do podpięcia przez istniejące `getProgramStream()`, bez drugiego `AudioContext`.
+Dźwięk nagrania to istniejące `getProgramStream()`, bez drugiego `AudioContext`.
 
 ## Dalsze etapy
 
 1. Adaptacja scen: `preserve`, `scale-and-center`, osobny świadomy `full-bleed`.
-2. Rozdzielenie bitmapy od viewportu bez zmiany dzisiejszego obrazu.
-3. Benchmark 1080p, 1440p i 4K zanim wybierzemy politykę bufora.
-4. Kontrakt Output Capture.
-5. Recording Engine, poza tym dokumentem.
+2. Odtwarzacz slide i zoom, bez dodawania GSAP, jeśli ma zostać w produkcie.
+3. Lokalne strony browser same-origin. Cross-origin zostaje planszą.
+4. RTMP i streaming, poza tym dokumentem.
