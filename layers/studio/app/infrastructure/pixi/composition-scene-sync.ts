@@ -3,6 +3,7 @@ import type { ElementId, GroupId } from '../../models/ids.domain';
 import type { Scene } from '../../models/scene.domain';
 import type { SceneElement } from '../../models/scene-element.domain';
 import type { SceneGroup } from '../../models/scene-group.domain';
+import { BROWSER_PLATE_CAPTION } from './composition-layer';
 
 export type CompositionRoot =
   | { kind: 'element'; element: SceneElement }
@@ -29,8 +30,8 @@ export type SceneSyncPlan = {
   issues: SceneSyncIssue[];
 };
 
-/** Audio layers occupy a slot in `scene.elements` but draw nothing. */
-export const isRenderableElement = (element: SceneElement): boolean => element.type !== 'audioVisual';
+/** Every layer is drawn. Audio-visual layers are level bars, not a silent omission. */
+export const isRenderableElement = (_element: SceneElement): boolean => true;
 
 export const planSceneSync = (scene: Scene, rendered: RenderedSceneIds): SceneSyncPlan => {
   const elementById = new Map(scene.elements.map((element) => [element.id, element]));
@@ -131,7 +132,16 @@ export const elementContentKey = (element: SceneElement, resolvedImageUrl: strin
       const { showCursor: _showCursor, ...drawnSettings } = element.settings;
       return JSON.stringify([element.type, drawnSettings, resolvedImageUrl]);
     }
-    default:
-      return JSON.stringify([element.type, size, element.name]);
+    case 'browser':
+      return JSON.stringify([element.type, size, BROWSER_PLATE_CAPTION]);
+    case 'camera':
+    case 'video':
+      return JSON.stringify([element.type, element.settings, resolvedImageUrl]);
+    case 'animation':
+      return JSON.stringify([element.type, resolvedImageUrl]);
+    case 'overlay':
+      return JSON.stringify([element.type, size, element.overlayKind, element.content]);
+    case 'audioVisual':
+      return JSON.stringify([element.type, size]);
   }
 };

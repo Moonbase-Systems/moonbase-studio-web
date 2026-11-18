@@ -12,6 +12,15 @@ export type CompositionViewport = {
   height: number;
 };
 
+/** Frames copied to the profile-sized output canvas. */
+export type FrameDelivery = {
+  deliveredFrames: number;
+  firstDeliveredAt: number | null;
+  lastDeliveredAt: number | null;
+  width: number;
+  height: number;
+};
+
 /**
  * Renders a scene composition independently of the Vue UI.
  * Implementations must not leak renderer types (e.g. PixiJS) into this contract.
@@ -22,5 +31,10 @@ export type CompositionEngine = {
   resize?(viewport: CompositionViewport): Promise<PortResult<void, CompositionEngineError>>;
   /** Faintly shows the cropped-away picture and its full outline for one element; null hides it. */
   previewCrop?(elementId: ElementId | null): void;
+  /** Profile-sized canvas. It is not part of the editor layout. */
+  getOutputCanvas(): HTMLCanvasElement | null;
+  /** While active, every preview frame is also copied to the output canvas. */
+  setOutputCaptureActive(active: boolean): void;
+  readFrameDelivery(): FrameDelivery;
   dispose(): Promise<PortResult<void, CompositionEngineError>>;
 };
