@@ -11,7 +11,7 @@ import {
   TRIM_DB_MAX,
   TRIM_DB_MIN,
 } from '../../../models/audio.domain';
-import type { SceneId } from '../../../models/ids.domain';
+import type { ChannelId, SceneId } from '../../../models/ids.domain';
 import type { AudioVisualElement } from '../../../models/scene-elements';
 import type { AudioSource } from '../../../models/source.domain';
 import { useStudioSessionStore } from '../../../store/studio-session.store';
@@ -28,8 +28,9 @@ import {
 import InspectorAudioDevices from './InspectorAudioDevices.vue';
 
 const props = defineProps<{
-  sceneId: SceneId;
-  element: AudioVisualElement;
+  channelId: ChannelId;
+  sceneId?: SceneId;
+  element?: AudioVisualElement;
 }>();
 
 const { t } = useI18n();
@@ -42,7 +43,7 @@ const textControlClass = inspectorControlTextClass;
 const labelClass = inspectorLabelClass;
 const rowClass = inspectorRowClass;
 
-const channel = computed(() => store.project?.audioMixer.channels.find((item) => item.id === props.element.channelId));
+const channel = computed(() => store.project?.audioMixer.channels.find((item) => item.id === props.channelId));
 
 const channelSources = computed(() => {
   const ids = new Set(channel.value?.sourceIds ?? []);
@@ -135,6 +136,7 @@ function decorationClass(active: boolean) {
 <template>
   <div class="gap-xxx-sm flex w-full min-w-0 flex-col items-stretch">
     <InspectorAudioDevices
+      :channel-id="channelId"
       :scene-id="sceneId"
       :element="element"
     />

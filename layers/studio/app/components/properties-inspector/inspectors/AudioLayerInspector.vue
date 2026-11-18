@@ -26,13 +26,15 @@ const channel = computed(() => store.project?.audioMixer.channels.find((item) =>
   >
     <template #preview>
       <InspectorAudioPreview
+        v-if="channel"
         class="w-full"
-        :scene-id="sceneId"
-        :element="element"
+        :channel-id="channel.id"
       />
     </template>
     <template #options>
       <InspectorCardAudio
+        v-if="channel"
+        :channel-id="channel.id"
         :scene-id="sceneId"
         :element="element"
       />

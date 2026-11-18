@@ -1112,6 +1112,8 @@ export const createPixiCompositionEngine = (options: PixiCompositionEngineOption
         return drawImage(rt, node, element, url);
       case 'screen':
         return drawScreen(rt, node, element, options.resolveScreenStream(element.sourceId));
+      case 'browser':
+        return Promise.resolve();
       default:
         drawPlaceholder(node.content, element.transform, element.name, element.type);
         return Promise.resolve();

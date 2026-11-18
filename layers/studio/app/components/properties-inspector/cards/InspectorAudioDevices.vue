@@ -4,7 +4,7 @@ import { cn } from '~/utils/index';
 import { useElementInspectorUpdate } from '../../../composables/useElementInspectorUpdate';
 import { useStudioAudioDevices } from '../../../composables/useStudioAudioDevices';
 import type { AudioInputView } from '../../../infrastructure/audio/audio-devices';
-import type { SceneId } from '../../../models/ids.domain';
+import type { ChannelId, SceneId } from '../../../models/ids.domain';
 import type { AudioVisualElement } from '../../../models/scene-elements';
 import type { AudioSource } from '../../../models/source.domain';
 import { useStudioSessionStore } from '../../../store/studio-session.store';
@@ -19,8 +19,9 @@ import {
 import InspectorMarqueeLabel from '../InspectorMarqueeLabel.vue';
 
 const props = defineProps<{
-  sceneId: SceneId;
-  element: AudioVisualElement;
+  channelId: ChannelId;
+  sceneId?: SceneId;
+  element?: AudioVisualElement;
 }>();
 
 const { t } = useI18n();
@@ -28,7 +29,7 @@ const store = useStudioSessionStore();
 const devices = useStudioAudioDevices();
 const { applyUpdate } = useElementInspectorUpdate();
 
-const channel = computed(() => store.project?.audioMixer.channels.find((item) => item.id === props.element.channelId));
+const channel = computed(() => store.project?.audioMixer.channels.find((item) => item.id === props.channelId));
 const open = ref(false);
 const triggerRef = ref<HTMLButtonElement | null>(null);
 const panelStyle = ref<Record<string, string>>({});
@@ -111,7 +112,14 @@ function ensureOnChannel(sourceId: string) {
   }
   const owner = project.audioMixer.channels.find((item) => item.sourceIds.includes(sourceId));
   if (owner && owner.id !== current.id) {
-    applyUpdate(props.sceneId, props.element.id, { channelId: owner.id });
+    if (props.element && props.sceneId) {
+      applyUpdate(props.sceneId, props.element.id, { channelId: owner.id });
+      return;
+    }
+    if (!owner.global) {
+      store.updateAudioChannel(owner.id, { global: true });
+    }
+    store.selectGlobalChannel(owner.id);
     return;
   }
   if (!owner) {

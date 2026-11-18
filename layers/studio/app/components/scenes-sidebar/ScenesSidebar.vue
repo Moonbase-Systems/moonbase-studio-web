@@ -4,6 +4,7 @@ import { displayNameSchema } from '../../schemas/display-name.schema';
 import { useShortcutStore } from '../../store/shortcut.store';
 import { useStudioSessionStore } from '../../store/studio-session.store';
 import { SceneElementListScene } from '../scene-element-list';
+import OverlaySoundList from './OverlaySoundList.vue';
 import SceneContextMenu from './SceneContextMenu.vue';
 
 const store = useStudioSessionStore();
@@ -177,5 +178,6 @@ function handleKeyDown(event: KeyboardEvent) {
         </div>
       </SceneContextMenu>
     </div>
+    <OverlaySoundList />
   </aside>
 </template>
