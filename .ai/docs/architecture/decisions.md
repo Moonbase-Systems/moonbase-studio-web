@@ -36,11 +36,11 @@
 
 ## ADR-005: Browser is a Source, not an Asset
 
-**Decision:** Browser configuration (`url`, `width`, `height`, `refreshSettings`) lives on `Source` with `type: 'browser'`. Placement on a scene is `SceneElement` with `type: 'browser'` and `sourceId`.
+**Decision:** Browser configuration (`url`, `width`, `height`, `refreshSettings`, `audio`) lives on `Source` with `type: 'browser'`. Placement on a scene is `SceneElement` with `type: 'browser'` and `sourceId`. `audio` adds the tab mix to one global channel.
 
 **Why:** Assets are stored files. A browser source is a live URL. Source reuse across scenes follows the same pattern as camera/screen.
 
-**Sizing rule:** Source `width`/`height` define the browser viewport. On-canvas scale/position come from the element `transform`.
+**Sizing rule:** Source `width`/`height` define the browser viewport. On-canvas scale/position come from the element `transform`. The preview paints the page as an iframe, not as a Pixi texture. An external page still stored at the default 500×500 viewport is shown at the project frame. Details are in [browser-layer.md](./browser-layer.md).
 
 ---
 
@@ -98,3 +98,11 @@ Serializable RTMP settings (target, address, key, resolution, frame rate, bitrat
 A studio floor plan and a `deviceId` on a camera position are document data. A `deviceId` is platform-specific, so a project moved between Windows and Linux needs its cameras assigned again. Three.js, a second render path for the stream, and multi-user sync stay out of this repository.
 
 **Why:** The December 2026 scope splits the product across `moonbase-studio-web`, `moonbase-bridge`, and `moonbase-ai`. Putting the runtime in the Nuxt layer would make the document depend on a process the editor must survive without.
+
+---
+
+## ADR-011: Overlay playback is session state
+
+**Decision:** `audioMixer.overlay` stores the bus, the sound library, and the triggers. Voices, decoded buffers, queues, timers, and object URLs are not in `ProjectFile`. Cues are in-memory calls (`dispatchOverlayCue`). Alert messages on `BroadcastChannel` `moonbase-overlay-events` are a developer transport, not project data. A browser source flag `audio` registers one global channel; the `getDisplayMedia` stream for that channel is session state and starts only from a gesture.
+
+**Why:** The document has to open without a device prompt and without a second audio context. The same cue path serves the lab today and a later Bridge or Core publisher. Foreign overlay pages stay inside their iframe and do not become a second mixer.

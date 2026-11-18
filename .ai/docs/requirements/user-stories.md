@@ -207,6 +207,23 @@ Priorities: **Must** / **Should** / **Could**.
 **Priority:** Should  
 **Depends on:** US-OVL-001, US-ASSET-001
 
+### US-OVL-003 — Play a project sound from an alert cue
+
+**Jako** użytkownik **chcę** podpiąć dźwięk z biblioteki projektu pod zdarzenie alertu, **aby** Studio zagrało mój plik, gdy laboratorium albo przyszły publisher wyśle cue.
+
+**Acceptance**
+
+- Given dźwięk nakładki i trigger z `event` równym `follow`, `subscription`, `donation`, `raid`, `cheer`, `chat` albo `custom`
+- When Studio dostaje cue o tej nazwie
+- Then odtwarzanie idzie przez jedną szynę nakładek, bez drugiego `AudioContext`
+- Given strona w obcej domenie osadzona w warstwie przeglądarki
+- When ta strona pokazuje własny alert
+- Then Studio nie dostaje cue, dopóki ktoś nie opublikuje zdarzenia na `moonbase-overlay-events`
+
+**Models:** `OverlaySound`, `OverlayTrigger`, `OverlayBus`  
+**Priority:** Should  
+**Depends on:** US-AUD-004
+
 ---
 
 ## Sources
@@ -255,6 +272,46 @@ Priorities: **Must** / **Should** / **Could**.
 **Priority:** Must  
 **Depends on:** US-SRC-001, US-ELEM-001
 
+### US-SRC-004 — Frame a browser page on the canvas
+
+**Jako** użytkownik **chcę** oglądać stronę w kadrze warstwy i przycinać ją tak jak obraz, **aby** overlay z zewnętrznego adresu trafiał w kompozycję.
+
+**Acceptance**
+
+- Given źródło `browser` z adresem `http` lub `https` i rozmiarem wciąż 500×500
+- When podgląd ma dodatni rozmiar wideo projektu
+- Then iframe używa tego rozmiaru, a zoom strony zostaje 1
+- Given warstwa przeglądarki
+- When trzymam Alt przy krawędzi albo rogu
+- Then krawędź przycina, a róg obraca, tak jak przy obrazie
+
+**Models:** `BrowserSource`, `SceneElement`  
+**Priority:** Must  
+**Depends on:** US-SRC-002
+
+### US-SRC-005 — Hear the browser page on one global channel
+
+**Jako** użytkownik **chcę** włączyć dźwięk warstwy przeglądarki, **aby** miks tej karty wszedł na jeden globalny kanał.
+
+**Acceptance**
+
+- Given źródło `browser`
+- When włączam dźwięk i udostępniam kartę z torem audio
+- Then `audio` jest true, istnieje jedno źródło `deviceId` `moonbase:browser-tab` i jeden kanał `global`
+- When druga warstwa przeglądarki też chce dźwięk
+- Then korzysta z tego samego kanału i tego samego przechwycenia
+- When wyłączam dźwięk na ostatniej takiej warstwie i żadna scena nie używa kanału
+- Then kanał i źródło znikają
+- When anuluję udostępnianie
+- Then flaga zostaje false
+- Given projekt wczytany z `audio: true`
+- When nikt nie kliknął podłączenia
+- Then przeglądarka nie woła `getDisplayMedia`
+
+**Models:** `BrowserSource`, `AudioChannel`, `Source`  
+**Priority:** Must  
+**Depends on:** US-SRC-002, US-AUD-003
+
 ---
 
 ## Audio mixer
@@ -286,6 +343,60 @@ Priorities: **Must** / **Should** / **Could**.
 **Models:** `AudioFilter`, `AudioEffect`  
 **Priority:** Should  
 **Depends on:** US-AUD-001
+
+### US-AUD-003 — Hear an input on every scene
+
+**Jako** użytkownik **chcę** dodać mikrofon albo dźwięk systemu jako dźwięk globalny, **aby** był słyszalny niezależnie od aktywnej sceny.
+
+**Acceptance**
+
+- Given projekt
+- When dodaję takie wejście z listy dźwięków globalnych
+- Then kanał ma `global: true` i jest włączony na każdej scenie
+- When ta sama scena ma warstwę `audioVisual` tego kanału
+- Then jest jeden pasek i jedno przechwycenie, bez podwójnego głosu
+- When zdejmuję kanał z listy globalnej, a scena nadal go wskazuje
+- Then zostaje `global: false` i przechwycenie trwa
+
+**Models:** `AudioChannel`  
+**Priority:** Must  
+**Depends on:** US-AUD-001
+
+### US-AUD-004 — Mix overlay sounds on one bus
+
+**Jako** użytkownik **chcę** trzymać dźwięki nakładek w projekcie i mieszać je jedną szyną, **aby** alerty i pliki nie zakładały drugiego miksera.
+
+**Acceptance**
+
+- Given projekt
+- When dodaję dźwięk z assetu audio i trigger
+- Then `audioMixer.overlay` ma dźwięk, trigger, tłumik, mute, solo, monitoring i politykę zmiany sceny
+- Then plik nie zapisuje głosów, buforów ani kolejek
+- When asset jest użyty przez dźwięk i próbuję go usunąć
+- Then komenda odrzuca usunięcie, a sam dźwięk nie kasuje assetu
+- When zmieniam scenę
+- Then polityka `continue` nic nie gasi, `stop-all-overlay-sounds` gasi wszystko, a `stop-scene-sounds` gasi głosy zapisane z opuszczaną sceną
+
+**Models:** `OverlayBus`, `OverlaySound`, `OverlayTrigger`  
+**Priority:** Must  
+**Depends on:** US-AUD-001, US-ASSET-001
+
+### US-AUD-005 — Play an alert file through the overlay bus
+
+**Jako** użytkownik **chcę**, by plik podany w zdarzeniu alertu zagrał na szynie nakładek, **aby** laboratorium mogło sprawdzić dźwięk bez odtwarzacza w nakładce.
+
+**Acceptance**
+
+- Given alert z `sound.url` na `https`
+- When Studio odbiera zdarzenie
+- Then plik gra raz na szynie, a synchronizacja biblioteki go nie gasi
+- Given pusty adres albo adres `http`
+- Then zdarzenie nie niesie dźwięku albo walidacja odrzuca adres
+- Then strona renderera nie tworzy `AudioContext`
+
+**Models:** `OverlayBus`  
+**Priority:** Should  
+**Depends on:** US-AUD-004, US-OVL-003
 
 ---
 
@@ -454,18 +565,18 @@ Priorities: **Must** / **Should** / **Could**.
 
 ## Coverage map
 
-| Area        | Story IDs        |
-| ----------- | ---------------- |
-| Projects    | US-PROJ-001…003  |
-| Scenes      | US-SCENE-001…003 |
-| Elements    | US-ELEM-001…003  |
-| Groups      | US-GRP-001…002   |
-| Overlays    | US-OVL-001…002   |
-| Sources     | US-SRC-001…003   |
-| Browser     | US-SRC-002       |
-| Audio       | US-AUD-001…002   |
-| Animations  | US-ANIM-001      |
-| Transitions | US-TRANS-001…002 |
-| Assets      | US-ASSET-001…002 |
-| History     | US-HIST-001…002  |
-| Save/Load   | US-SAVE-001…003  |
+| Area        | Story IDs                          |
+| ----------- | ---------------------------------- |
+| Projects    | US-PROJ-001…003                    |
+| Scenes      | US-SCENE-001…003                   |
+| Elements    | US-ELEM-001…003                    |
+| Groups      | US-GRP-001…002                     |
+| Overlays    | US-OVL-001…003                     |
+| Sources     | US-SRC-001…005                     |
+| Browser     | US-SRC-002, US-SRC-004, US-SRC-005 |
+| Audio       | US-AUD-001…005                     |
+| Animations  | US-ANIM-001                        |
+| Transitions | US-TRANS-001…002                   |
+| Assets      | US-ASSET-001…002                   |
+| History     | US-HIST-001…002                    |
+| Save/Load   | US-SAVE-001…003                    |
