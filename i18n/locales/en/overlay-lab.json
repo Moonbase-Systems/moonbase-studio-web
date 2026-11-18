@@ -1,0 +1,204 @@
+{
+  "overlayLab": {
+    "alertIdle": "Nothing is on screen",
+    "alerts": {
+      "chat": "{name} says",
+      "cheer": "{name} cheered",
+      "custom": "{name}",
+      "donation": "{name} donated",
+      "follow": "{name} followed",
+      "raid": "{name} raided",
+      "subscription": "{name} subscribed"
+    },
+    "announcementIdle": "No test has run yet.",
+    "burst": "Burst",
+    "burstSend": "Send burst",
+    "clearQueue": "Clear queue",
+    "connected": "Connected",
+    "disconnected": "Disconnected",
+    "emptyLog": "No entries",
+    "event": {
+      "clear": "Queue clear",
+      "invalid": "Rejected",
+      "renderer": "Renderer",
+      "sent": "Sent"
+    },
+    "fields": {
+      "amount": "Amount",
+      "avatarUrl": "Avatar URL",
+      "currency": "Currency",
+      "displayName": "Display name",
+      "message": "Message",
+      "months": "Months",
+      "plan": "Plan",
+      "soundUrl": "Sound URL",
+      "soundVolume": "Sound volume (dB)",
+      "title": "Title",
+      "username": "Username",
+      "viewers": "Viewers"
+    },
+    "hint": "This panel sends an event. Only Studio starts audio, from a matching trigger or from a file address on the event. This page does not play audio.",
+    "log": {
+      "event-received": "Event received",
+      "monitor-route": "Monitor send",
+      "playback-completed": "Playback completed",
+      "playback-error": "Playback error",
+      "playback-ignored": "Playback ignored",
+      "playback-queued": "Sound queued",
+      "playback-started": "Playback started",
+      "program-route": "Program send",
+      "signal": "Bus signal",
+      "trigger-matched": "Trigger matched",
+      "trigger-miss": "No trigger"
+    },
+    "monitoring": {
+      "monitor": "Phones only",
+      "monitor-and-output": "Phones and program",
+      "off": "Monitor off"
+    },
+    "muted": "Muted",
+    "open": "Open",
+    "openRenderer": "Open renderer",
+    "overlayId": "Overlay id",
+    "overlayMeter": "Overlays",
+    "previewFrame": "Overlay page preview",
+    "programOff": "Program send off",
+    "programOn": "Program send on",
+    "queued": "Queued: {count}",
+    "renderer": "Renderer",
+    "rendererTitle": "Overlay",
+    "resend": "Send again",
+    "rows": {
+      "bus": "Bus",
+      "effects": "Effects",
+      "instances": "Instances",
+      "last": "Last sound",
+      "master": "Master",
+      "monitor": "Monitor",
+      "program": "Program",
+      "queued": "Audio queue"
+    },
+    "run": "Run",
+    "sections": {
+      "audioLog": "Audio log",
+      "diagnostics": "Audio diagnostics",
+      "eventLog": "Event log",
+      "payload": "Event payload",
+      "preview": "Overlay preview",
+      "simulator": "Event simulator",
+      "tests": "Audio tests"
+    },
+    "send": "Send event",
+    "state": {
+      "fail": "Failed",
+      "idle": "Waiting",
+      "manual": "Listen",
+      "pass": "Passed",
+      "running": "Running"
+    },
+    "studio": "Studio",
+    "studioMissing": "Studio is not connected. Open /app in another tab of the same browser.",
+    "tests": {
+      "cooldown": {
+        "expect": "The second shot inside the cooldown is rejected. A cooldown of 0 has to be set on the sound.",
+        "name": "Cooldown"
+      },
+      "effects": {
+        "expect": "An enabled bus effect does not raise a chain error while a voice starts.",
+        "name": "Effects"
+      },
+      "loop": {
+        "expect": "If the sound loops, you confirm by listening that it keeps going.",
+        "name": "Loop"
+      },
+      "master-mute": {
+        "expect": "Studio stores the master mute.",
+        "name": "Master mute"
+      },
+      "master-volume": {
+        "expect": "Studio sets the master volume to 20% and then restores it.",
+        "name": "Master volume"
+      },
+      "max-instances": {
+        "expect": "A burst of eight fills the limit and the rest are ignored or queued.",
+        "name": "Max instances"
+      },
+      "monitoring": {
+        "expect": "Phones-only mode leaves the program send off and the monitor send on.",
+        "name": "Monitoring"
+      },
+      "multiple": {
+        "expect": "Three events start at least two voices, or the policy stops the rest.",
+        "name": "Multiple sounds"
+      },
+      "overlay-mute": {
+        "expect": "The voice starts and the bus meter stays at the floor.",
+        "name": "Overlay bus mute"
+      },
+      "play": {
+        "expect": "Studio finds a trigger and starts a voice. Sending the event alone does not pass.",
+        "name": "Play overlay sound"
+      },
+      "program": {
+        "expect": "Monitor and program are on, and the bus is not muted.",
+        "name": "Program routing"
+      },
+      "rapid": {
+        "expect": "Eight events reach Studio and at least one voice starts.",
+        "name": "Rapid fire"
+      },
+      "restart": {
+        "expect": "Restart keeps at most one voice of that sound.",
+        "name": "Restart policy"
+      },
+      "stop-all": {
+        "expect": "After a voice starts, Stop all leaves zero instances.",
+        "name": "Stop all"
+      }
+    },
+    "title": "Overlay Lab",
+    "transportOff": "BroadcastChannel missing",
+    "transportOn": "BroadcastChannel",
+    "verdict": {
+      "cooldown-missed": "The second shot started despite the cooldown.",
+      "cooldown-rejected": "The second shot was rejected by the cooldown.",
+      "cooldown-unset": "Cooldown is 0. Set it on the sound and run the test again.",
+      "effects-clean": "An effect is enabled and the chain reported no error.",
+      "effects-error": "The effect chain reported an error.",
+      "effects-none": "The bus has no enabled effect. Add one in Studio and run the test again.",
+      "instances-capped": "After the limit filled, later starts were ignored or queued.",
+      "instances-open": "The limit is higher than the burst. Lower the instance limit and run the test again.",
+      "invalid-payload": "The event payload failed validation.",
+      "loop-off": "The sound does not loop. Turn the loop on and confirm by ear.",
+      "loop-on": "The sound loops. Confirm by ear that it does not stop after the first pass.",
+      "master-mute-failed": "Studio did not store the master mute.",
+      "master-muted": "Studio has the master muted.",
+      "master-volume": "Studio has the master volume at 20%.",
+      "master-volume-failed": "The master volume did not reach 20%.",
+      "monitor-failed": "Monitoring did not reach phones only.",
+      "monitor-on": "The monitor send is on and the program send is off.",
+      "multiple-capped": "A later event was ignored by the limit or the policy.",
+      "multiple-short": "Only one playback got through.",
+      "multiple-started": "More than one playback started or was queued.",
+      "mute-failed": "The mute does not match the bus, or the meter still shows a signal.",
+      "mute-silenced": "The voice started and the bus meter stayed at the floor.",
+      "mute-unconfirmed": "The bus is muted, but no voice started, so silence cannot be confirmed.",
+      "no-trace": "No playback trace appeared.",
+      "no-trigger": "Studio received the event, but no enabled trigger matches it.",
+      "playback-error": "Playback returned an error, such as a missing file.",
+      "playback-ignored": "Policy rejected playback.",
+      "playback-queued": "The playback controller queued a voice.",
+      "playback-started": "The playback controller started a voice.",
+      "program-failed": "Program routing did not reach the expected state.",
+      "program-on": "The program send and the monitor send are on.",
+      "rapid-handled": "Every event in the burst reached Studio and at least one voice started.",
+      "rapid-short": "Not every event in the burst came back from Studio.",
+      "restart-grew": "Restart left more than one voice.",
+      "restart-held": "Restart left at most one voice.",
+      "restart-other": "This sound is not set to restart. Set that policy and run the test again.",
+      "stop-failed": "A voice was still active after Stop all.",
+      "stopped": "Stop all left no instances and no queued entry.",
+      "studio-offline": "Studio is disconnected, so the path cannot be measured."
+    }
+  }
+}
