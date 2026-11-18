@@ -134,3 +134,41 @@ flowchart LR
 ```
 
 History is session-scoped on `Project.history` and omitted from `ProjectFile`.
+
+## 6. Overlay cue to the one graph
+
+```mermaid
+sequenceDiagram
+  participant Lab as Overlay lab or renderer
+  participant Port as OverlayEventPort
+  participant Studio as Studio bridge
+  participant Cue as dispatchOverlayCue
+  participant Play as Overlay playback
+  participant Graph as AudioContext
+
+  Lab->>Port: alert on moonbase-overlay-events
+  Port->>Studio: message for any overlay id
+  Studio->>Cue: event is the alert type, scene is the active scene
+  Studio->>Play: playUrl when the alert carries an https sound
+  Cue->>Play: triggers whose event, scene, and element match
+  Play->>Graph: buffer source into the overlay sum
+```
+
+The renderer does not create an audio context. A cross-origin iframe is not on this channel. Registration of a global channel is separate from `getDisplayMedia`: the document can name the tab source while the stream is still closed.
+
+## 7. Browser page on the canvas
+
+```mermaid
+flowchart TD
+  source[BrowserSource url width height zoom audio]
+  source --> external{External http or https still 500 by 500?}
+  external -->|yes| frame[Project video size]
+  external -->|no| stored[Stored width and height]
+  frame --> iframe[Iframe clipped to the layer]
+  stored --> iframe
+  source --> flag{audio true?}
+  flag -->|yes| channel[One global channel deviceId moonbase:browser-tab]
+  flag -->|no| silent[Page stays in the frame]
+  channel --> gesture[getDisplayMedia from the switch or Connect]
+  gesture --> graph[Same AudioContext as the mixer]
+```

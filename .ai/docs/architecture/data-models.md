@@ -186,12 +186,14 @@ Discriminated union on `type`. Shared:
 
 ### BrowserSource (`type: 'browser'`)
 
-| Field             | Type                     | Required | Notes           |
-| ----------------- | ------------------------ | -------- | --------------- |
-| `url`             | `string`                 | yes      | absolute URL    |
-| `width`           | `number`                 | yes      | viewport width  |
-| `height`          | `number`                 | yes      | viewport height |
-| `refreshSettings` | `BrowserRefreshSettings` | yes      |                 |
+| Field             | Type                     | Required | Notes                                                                                                                                                             |
+| ----------------- | ------------------------ | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `url`             | `string`                 | yes      | empty, an http(s) address, or a same-origin path. A new layer starts empty.                                                                                       |
+| `width`           | `number`                 | yes      | page viewport width. A new layer uses 500. An external http(s) page still at that default is shown at the project frame, so overlay widgets keep their positions. |
+| `height`          | `number`                 | yes      | page viewport height. A new layer uses 500. An external page still at that default uses the project frame.                                                        |
+| `zoom`            | `number`                 | no       | page scale inside the layer, 1–4, default 1                                                                                                                       |
+| `audio`           | `boolean`                | no       | default false. When true, this page contributes the tab mix to one global channel                                                                                 |
+| `refreshSettings` | `BrowserRefreshSettings` | yes      |                                                                                                                                                                   |
 
 ```ts
 type BrowserRefreshSettings = {
@@ -201,19 +203,19 @@ type BrowserRefreshSettings = {
 };
 ```
 
-Not an Asset — live URL, not a stored file.
+Not an Asset — live URL, not a stored file. The preview draws the page as an iframe. Layout, crop, and the tab-audio switch are specified in [browser-layer.md](./browser-layer.md).
 
 ### Other source kinds (extensible)
 
-| Type     | Key settings                 |
-| -------- | ---------------------------- |
-| `camera` | `deviceId?`, constraints     |
-| `screen` | `displayId?` / capture hints |
-| `image`  | `assetId`                    |
-| `video`  | `assetId`, loop?             |
-| `text`   | text content, typography     |
-| `shape`  | shapeKind, fill, stroke      |
-| `audio`  | `assetId` or device ref      |
+| Type     | Key settings                                                                                                                                                 |
+| -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `camera` | `deviceId?`, constraints                                                                                                                                     |
+| `screen` | `displayId?` / capture hints                                                                                                                                 |
+| `image`  | `assetId`                                                                                                                                                    |
+| `video`  | `assetId`, loop?                                                                                                                                             |
+| `text`   | text content, typography                                                                                                                                     |
+| `shape`  | shapeKind, fill, stroke                                                                                                                                      |
+| `audio`  | `assetId`, or `deviceId`. `'system'` is one shared system-or-app capture. `'moonbase:browser-tab'` is the one tab mix for browser sources with `audio: true` |
 
 ---
 
@@ -270,11 +272,12 @@ Distinct from `SceneAnimation`. Assignment: `Scene.settings.defaultTransitionId`
 
 The browser graph that reads this model is [audio-engine.md](./audio-engine.md).
 
-| Field      | Type                | Required | Notes                                   |
-| ---------- | ------------------- | -------- | --------------------------------------- |
-| `master`   | `AudioMaster`       | yes      | volume, mute, and `effects`             |
-| `channels` | `AudioChannel[]`    | yes      |                                         |
-| `presets`  | `AudioUserPreset[]` | yes      | user library for this project, format 1 |
+| Field      | Type                | Required | Notes                                                         |
+| ---------- | ------------------- | -------- | ------------------------------------------------------------- |
+| `master`   | `AudioMaster`       | yes      | volume, mute, and `effects`                                   |
+| `channels` | `AudioChannel[]`    | yes      |                                                               |
+| `presets`  | `AudioUserPreset[]` | yes      | user library for this project, format 1                       |
+| `overlay`  | `OverlayBus`        | yes      | project bus for overlay sounds; missing files get the default |
 
 ### AudioMaster
 
@@ -298,6 +301,7 @@ The browser graph that reads this model is [audio-engine.md](./audio-engine.md).
 | `solo`         | `boolean`                                    | yes      | AFL on the monitor bus only                           |
 | `monitoring`   | `'off' \| 'monitor' \| 'monitor-and-output'` | yes      |                                                       |
 | `syncOffsetMs` | `number`                                     | yes      | −1000…1000 ms, stored, not applied yet                |
+| `global`       | `boolean`                                    | yes      | heard on every scene; a scene layer reuses this strip |
 | `filters`      | `AudioFilter[]`                              | yes      | kept for older files; the engine does not read them   |
 | `effects`      | `AudioEffect[]`                              | yes      | after trim, before the fader; disabled effects bypass |
 
@@ -307,7 +311,54 @@ Loose stored record: `id`, `type`, `enabled`, `parameters`. Not part of the brow
 
 ### AudioEffect
 
-`id`, `type`, `name`, `enabled`, and parameters for that type. Types: `eq-band`, `high-pass`, `compressor`, `noise-gate`, `limiter`. No Web Audio nodes in the model. A channel preset copies trim, fader, pan, mute, and the chain. It does not copy `sourceIds`, solo, or monitoring.
+`id`, `type`, `name`, `enabled`, and parameters for that type. Types: `eq-band`, `high-pass`, `compressor`, `noise-gate`, `limiter`. No Web Audio nodes in the model. A channel preset copies trim, fader, pan, mute, and the chain. It does not copy `sourceIds`, solo, or monitoring, and it does not change the overlay bus.
+
+### OverlayBus
+
+One bus for the whole project. Format 3. A file that omits `overlay` gets this default. The bus does not store voices, buffers, or queues.
+
+| Field               | Type                                                             | Required | Notes                                          |
+| ------------------- | ---------------------------------------------------------------- | -------- | ---------------------------------------------- |
+| `faderDb`           | `number`                                                         | yes      | −60…+12, unity 0                               |
+| `muted`             | `boolean`                                                        | yes      | in front of the program and headphone split    |
+| `solo`              | `boolean`                                                        | yes      | headphones only; it does not solo the channels |
+| `monitoring`        | `'off' \| 'monitor' \| 'monitor-and-output'`                     | yes      | same three positions as a channel              |
+| `effects`           | `AudioEffect[]`                                                  | yes      | after the overlay sum, before the fader        |
+| `maxInstances`      | `number`                                                         | yes      | 1…64, default 16                               |
+| `sceneChangePolicy` | `'continue' \| 'stop-scene-sounds' \| 'stop-all-overlay-sounds'` | yes      | default `continue`                             |
+| `sounds`            | `OverlaySound[]`                                                 | yes      |                                                |
+| `triggers`          | `OverlayTrigger[]`                                               | yes      |                                                |
+
+### OverlaySound
+
+| Field           | Type                                          | Required | Notes                           |
+| --------------- | --------------------------------------------- | -------- | ------------------------------- |
+| `id`            | `OverlaySoundId`                              | yes      |                                 |
+| `name`          | `string`                                      | yes      |                                 |
+| `assetId`       | `AssetId`                                     | yes      | must be an audio asset          |
+| `volumeDb`      | `number`                                      | yes      | −24…+12, default 0              |
+| `muted`         | `boolean`                                     | yes      |                                 |
+| `enabled`       | `boolean`                                     | yes      | a disabled sound does not start |
+| `loop`          | `boolean`                                     | yes      |                                 |
+| `startTimeSec`  | `number`                                      | yes      | ≥ 0                             |
+| `endTimeSec`    | `number`                                      | no       | after `startTimeSec`            |
+| `playbackRate`  | `number`                                      | yes      | 0.25…4                          |
+| `maxInstances`  | `number`                                      | yes      | 1…32, default 4                 |
+| `cooldownMs`    | `number`                                      | yes      | 0…60000                         |
+| `restartPolicy` | `'allow' \| 'restart' \| 'ignore' \| 'queue'` | yes      | default `allow`                 |
+
+### OverlayTrigger
+
+| Field       | Type                                                                                                                                                         | Required | Notes                                    |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------- | ---------------------------------------- |
+| `id`        | `OverlayTriggerId`                                                                                                                                           | yes      |                                          |
+| `soundId`   | `OverlaySoundId`                                                                                                                                             | yes      |                                          |
+| `event`     | cue name: `shown`, `hidden`, `animation-start`, `animation-complete`, `interaction`, `custom`, `follow`, `subscription`, `donation`, `raid`, `cheer`, `chat` | yes      | alert names are cue events               |
+| `enabled`   | `boolean`                                                                                                                                                    | yes      |                                          |
+| `sceneId`   | `SceneId`                                                                                                                                                    | no       | when set, the cue must name that scene   |
+| `elementId` | `ElementId`                                                                                                                                                  | no       | when set, the cue must name that element |
+
+Deleting a sound does not delete its asset. Deleting an asset fails while a sound still points at it.
 
 ---
 
