@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { outputFrame } from '../../models/output-profile.domain';
 import type { BrowserElement } from '../../models/scene-elements';
 import {
   browserCropPlacement,
@@ -36,7 +37,7 @@ const frameStyle = computed(() => {
 const pageStyle = computed(() => {
   const box = props.element.transform;
   const linked = source.value;
-  const video = store.project?.settings.video ?? { width: box.width, height: box.height };
+  const video = store.project ? outputFrame(store.project) : { width: box.width, height: box.height };
   const viewport = linked ? browserPageViewport(linked, video) : { width: box.width, height: box.height };
   const layout = browserLayoutSize(viewport.width, viewport.height, linked ? browserLayoutZoom(linked) : undefined);
   const placement = browserCropPlacement(box, layout, props.element.crop);

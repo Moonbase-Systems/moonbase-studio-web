@@ -2,6 +2,7 @@ import { z } from 'zod';
 
 import { createDefaultAudioChannel } from '../../models/audio.domain';
 import type { AssetId, SourceId } from '../../models/ids.domain';
+import { outputFrame } from '../../models/output-profile.domain';
 import type { Project } from '../../models/project.domain';
 import {
   type AnimationEndBehavior,
@@ -225,18 +226,18 @@ export const updateBrowserSource = (
       if (!target || target.type !== 'browser') {
         return;
       }
-      const video = project.settings.video;
+      const frame = outputFrame(project);
       const adoptProjectFrame =
         changes.width === undefined &&
         changes.height === undefined &&
         isExternalBrowserPageUrl(parsed.data.url) &&
         parsed.data.width === BROWSER_FRAME_SIZE &&
         parsed.data.height === BROWSER_FRAME_SIZE &&
-        video.width > 0 &&
-        video.height > 0;
+        frame.width > 0 &&
+        frame.height > 0;
       target.url = parsed.data.url;
-      target.width = adoptProjectFrame ? video.width : parsed.data.width;
-      target.height = adoptProjectFrame ? video.height : parsed.data.height;
+      target.width = adoptProjectFrame ? frame.width : parsed.data.width;
+      target.height = adoptProjectFrame ? frame.height : parsed.data.height;
       target.zoom = parsed.data.zoom;
       target.audio = source.audio;
       target.refreshSettings = parsed.data.refreshSettings;
@@ -251,7 +252,7 @@ export const updateBrowserSource = (
           if (element.transform.width !== BROWSER_FRAME_SIZE || element.transform.height !== BROWSER_FRAME_SIZE) {
             continue;
           }
-          element.transform = { ...element.transform, width: video.width, height: video.height };
+          element.transform = { ...element.transform, width: frame.width, height: frame.height };
         }
       }
     },

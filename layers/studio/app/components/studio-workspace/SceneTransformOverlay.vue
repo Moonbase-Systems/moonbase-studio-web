@@ -4,6 +4,7 @@ import { letterboxComposition } from '../../infrastructure/pixi/composition-geom
 import { isRenderableElement } from '../../infrastructure/pixi/composition-scene-sync';
 import type { ElementCrop, Transform2D } from '../../models/common.domain';
 import type { ElementId, SceneId } from '../../models/ids.domain';
+import { outputFrame } from '../../models/output-profile.domain';
 import type { SceneElement } from '../../models/scene-element.domain';
 import {
   type Affine,
@@ -55,7 +56,7 @@ const root = ref<HTMLDivElement | null>(null);
 type View = { originX: number; originY: number; scale: number };
 const view = ref<View>({ originX: 0, originY: 0, scale: 1 });
 
-const composition = computed(() => store.project?.settings.video ?? { width: 1920, height: 1080 });
+const composition = computed(() => outputFrame(store.project));
 const scene = computed(() => store.activeScene);
 
 function measure(): void {

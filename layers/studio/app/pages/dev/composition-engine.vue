@@ -2,7 +2,7 @@
 import { useCompositionEngine } from '../../composables/useCompositionEngine';
 import type { Transform2D } from '../../models/common.domain';
 import type { AssetId, ElementId, SourceId } from '../../models/ids.domain';
-import type { ProjectVideoSettings } from '../../models/project.domain';
+import type { OutputFrame } from '../../models/output-profile.domain';
 import { createEmptyScene, type Scene } from '../../models/scene.domain';
 import type {
   BrowserElement,
@@ -32,7 +32,7 @@ definePageMeta({
  * In-memory scenes only: nothing here touches the session store, IndexedDB or a user project.
  */
 
-const video: ProjectVideoSettings = { width: 1920, height: 1080, frameRate: 30 };
+const video: OutputFrame = { width: 1920, height: 1080, frameRate: 30 };
 const STEP_DELAY_MS = 900;
 
 const SHAPE_SOURCE: SourceId = 'demo-source-shape';

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import type { ProjectVideoSettings } from '../../models/project.domain';
+import type { OutputFrame } from '../../models/output-profile.domain';
 import { createEmptyScene, type Scene } from '../../models/scene.domain';
 import { createSourceBackedElement, type SceneElement } from '../../models/scene-element.domain';
 import { createSceneGroup } from '../../models/scene-group.domain';
@@ -16,7 +16,7 @@ import {
 } from './composition-geometry';
 import { elementContentKey, planSceneSync, type RenderedSceneIds } from './composition-scene-sync';
 
-const video: ProjectVideoSettings = { width: 1920, height: 1080, frameRate: 30 };
+const video: OutputFrame = { width: 1920, height: 1080, frameRate: 30 };
 const nothingRendered: RenderedSceneIds = { elementIds: new Set(), groupIds: new Set() };
 
 const shapeSource: Source = { id: 'src-shape', name: 'Shape', type: 'shape', shapeKind: 'rect' };

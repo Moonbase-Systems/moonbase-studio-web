@@ -44,7 +44,7 @@ describe('createSceneRepository', () => {
     expect(saved.ok).toBe(true);
 
     const stored = backend.records.get(project.id) as ProjectFile;
-    expect(stored.formatVersion).toBe(3);
+    expect(stored.formatVersion).toBe(4);
     expect(stored.project).not.toHaveProperty('history');
 
     const loaded = await repository.loadProject(project.id);

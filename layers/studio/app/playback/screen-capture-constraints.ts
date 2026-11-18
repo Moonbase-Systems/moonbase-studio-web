@@ -1,4 +1,4 @@
-import type { ProjectVideoSettings } from '../models/project.domain';
+import type { OutputFrame } from '../models/output-profile.domain';
 
 export type CaptureFrame = { width: number; height: number; frameRate: number };
 
@@ -8,15 +8,15 @@ export const BACKGROUND_PREVIEW_FRAME_RATE = 15;
 const evenPixels = (value: number): number => Math.max(2, Math.round(value / 2) * 2);
 
 /** Ceiling that keeps a capture at the project's output size and frame rate. */
-export const projectCaptureFrame = (video: ProjectVideoSettings): CaptureFrame => ({
-  width: evenPixels(video.width),
-  height: evenPixels(video.height),
-  frameRate: Math.max(1, video.frameRate),
+export const projectCaptureFrame = (frame: OutputFrame): CaptureFrame => ({
+  width: evenPixels(frame.width),
+  height: evenPixels(frame.height),
+  frameRate: Math.max(1, frame.frameRate),
 });
 
 /** Smaller ceiling for when nothing is recording and the studio window is in the background. */
-export const backgroundCaptureFrame = (video: ProjectVideoSettings): CaptureFrame => {
-  const project = projectCaptureFrame(video);
+export const backgroundCaptureFrame = (frame: OutputFrame): CaptureFrame => {
+  const project = projectCaptureFrame(frame);
   const scale = Math.min(1, BACKGROUND_PREVIEW_LONG_EDGE / Math.max(project.width, project.height));
   return {
     width: evenPixels(project.width * scale),

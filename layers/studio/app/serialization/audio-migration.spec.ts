@@ -47,15 +47,25 @@ const audioLayer = (input: {
 });
 
 const v2File = () => {
-  const file = structuredClone(createValidProjectFile()) as unknown as {
+  const current = structuredClone(createValidProjectFile());
+  const profile = current.project.settings.outputProfile;
+  const file = current as unknown as {
     formatVersion: number;
     project: {
+      settings: { video: Record<string, unknown>; outputProfile?: unknown };
       sources: unknown[];
       scenes: Array<Record<string, unknown> & { id: string; name: string; elements: unknown[] }>;
       audioMixer: { channels: unknown[] };
     };
   };
   file.formatVersion = 2;
+  file.project.settings.video = {
+    width: profile.width,
+    height: profile.height,
+    frameRate: profile.frameRate,
+    ...(current.project.settings.video.colorSpace ? { colorSpace: current.project.settings.video.colorSpace } : {}),
+  };
+  delete file.project.settings.outputProfile;
   return file;
 };
 
@@ -129,7 +139,7 @@ describe('migrateProjectFileV2ToV3', () => {
     }
     expect(parsed.conflicts).toHaveLength(1);
     expect(parsed.project.audioMixer.channels[0]?.monitoring).toBe('off');
-    expect(parsed.file.formatVersion).toBe(3);
+    expect(parsed.file.formatVersion).toBe(4);
   });
 
   it('ignores a factory mixer channel when scene layers already describe the strip', () => {
