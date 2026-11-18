@@ -73,6 +73,7 @@
         },
         "fader": "Poziom",
         "file": "Plik audio",
+        "fromLibrary": "Z biblioteki",
         "globalSounds": "Dźwięki globalne",
         "instances": "Grają",
         "library": "Dźwięki i triggery",
@@ -238,7 +239,6 @@
         "link": "Łącze"
       },
       "mixer": "Mikser",
-      "mixerEmpty": "Brak warstw audio w tej scenie",
       "onAir": "Na antenie",
       "placeholder": "Podgląd sceny",
       "renderFailed": "Nie udało się narysować sceny.",

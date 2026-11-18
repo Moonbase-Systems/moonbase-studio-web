@@ -3,7 +3,6 @@ import { cn } from '~/utils/index';
 
 import { useStudioAudioEngine } from '../../../composables/useStudioAudioEngine';
 import {
-  type AudioMonitoringMode,
   FADER_DB_MAX,
   FADER_DB_MIN,
   SYNC_OFFSET_MS_MAX,
@@ -101,11 +100,9 @@ function commitOffset(raw: string) {
   });
 }
 
-function cycleMonitoring() {
-  const order: AudioMonitoringMode[] = ['off', 'monitor', 'monitor-and-output'];
+function toggleMonitoring() {
   const current = channel.value?.monitoring ?? 'off';
-  const next = order[(order.indexOf(current) + 1) % order.length] ?? 'off';
-  patchChannel({ monitoring: next });
+  patchChannel({ monitoring: current === 'off' ? 'monitor-and-output' : 'off' });
 }
 
 async function startFile() {
@@ -197,7 +194,7 @@ function decorationClass(active: boolean) {
         type="button"
         :class="decorationClass(channel?.monitoring !== 'off')"
         :aria-pressed="channel?.monitoring !== 'off'"
-        @click="cycleMonitoring"
+        @click="toggleMonitoring"
       >
         {{ t('studio.properties.labels.monitor') }}
       </button>

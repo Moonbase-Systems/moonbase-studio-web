@@ -112,7 +112,7 @@ A source in the project does not open a device. `getUserMedia`, `getDisplayMedia
 
 After a successful start the stream stays for the session. Scene changes only retarget program and monitor sends. The source node is not reconnected when a fader moves. The device closes when the source leaves the project or the engine session ends.
 
-Microphone capture asks the browser to turn off echo cancellation, noise suppression, and automatic gain. Those defaults chop speech and dull the tone.
+Microphone, system, and tab capture ask the browser to turn off echo cancellation, noise suppression, automatic gain, and voice isolation, and to keep the device's own channel count. The same flags are applied again on the live track, which is marked as music. Those defaults chop speech and dull the tone. A capture that is already open keeps its old processing until that device is chosen again.
 
 Device inventory is session state. It is not stored in the project. An unnamed list before permission is a hidden-label state, not a device error. Losing a microphone leaves the source, the channel, and the effects in place. A new `getUserMedia` replaces the stream on that same channel input. `getDisplayMedia` starts only from the button and is never resumed by itself.
 
