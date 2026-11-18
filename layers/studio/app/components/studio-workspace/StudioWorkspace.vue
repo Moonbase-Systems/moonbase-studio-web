@@ -4,6 +4,8 @@ import { useHistoryShortcuts } from '../../composables/useHistoryShortcuts';
 import { useLayerStackShortcuts } from '../../composables/useLayerStackShortcuts';
 import { provideStudioAudioDevices } from '../../composables/useStudioAudioDevices';
 import { provideStudioAudioEngine } from '../../composables/useStudioAudioEngine';
+import { useStudioOverlayEventBridge } from '../../composables/useStudioOverlayEventBridge';
+import { provideStudioOverlayPlayback } from '../../composables/useStudioOverlayPlayback';
 import { AppBootScreen } from '../app-boot';
 import { STUDIO_BOOT_REVEAL_KEY } from '../app-boot/studio-boot-chrome';
 import { PropertiesInspector } from '../properties-inspector';
@@ -15,9 +17,12 @@ import ScenePreviewFrame from './ScenePreviewFrame.vue';
 useHistoryShortcuts();
 useLayerStackShortcuts();
 provideStudioCompositionEngine();
-provideStudioAudioDevices(provideStudioAudioEngine());
-
+const audioEngine = provideStudioAudioEngine();
+provideStudioAudioDevices(audioEngine);
 const studioReveal = useState(STUDIO_BOOT_REVEAL_KEY, () => false);
+
+const playback = provideStudioOverlayPlayback(audioEngine);
+useStudioOverlayEventBridge(audioEngine, playback);
 
 const SIDEBAR_MIN = 220;
 const SIDEBAR_MAX = 560;

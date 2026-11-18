@@ -202,6 +202,39 @@ describe('element creation frames', () => {
     expect(animationLayer.value.project!.scenes[0]!.elements.at(-1)!.transform).toMatchObject({ width: 0, height: 0 });
   });
 
+  it('creates a browser layer at the page size instead of the full frame', () => {
+    const { session, ctx } = openStudio();
+    const sceneId = session.project!.scenes[0]!.id;
+    const sourced = addSource(
+      session,
+      {
+        type: 'browser',
+        name: 'Overlay',
+        url: '',
+        width: 500,
+        height: 500,
+        refreshSettings: { intervalMs: null, refreshOnActivate: true, bypassCache: false },
+      },
+      ctx,
+    );
+    expect(sourced.ok).toBe(true);
+    if (!sourced.ok) {
+      return;
+    }
+
+    const added = addLayer(sourced.value, sceneId, sourced.value.project!.sources.at(-1)!.id, undefined, ctx);
+    expect(added.ok).toBe(true);
+    if (!added.ok) {
+      return;
+    }
+
+    expect(added.value.project!.scenes[0]!.elements.at(-1)!.transform).toMatchObject({
+      width: 500,
+      height: 500,
+      keepAspectRatio: true,
+    });
+  });
+
   it('accepts saved text without a sizing field and rewrites a saved line shape', () => {
     const { sizing: _sizing, ...textWithoutSizing } = createDefaultTextElementSettings('Hi');
     expect(textSettingsSchema.parse(textWithoutSizing).sizing).toBe('dynamic');

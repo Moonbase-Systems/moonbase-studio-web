@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { useStudioCompositionEngine } from '../../composables/useCompositionEngine';
 import { useStudioAudioEngine } from '../../composables/useStudioAudioEngine';
-import { normalizeLevelDb } from '../../models/audio.domain';
+import { channelAudibleInScene, normalizeLevelDb } from '../../models/audio.domain';
 import type { AudioVisualElement } from '../../models/scene-elements/audio-element.domain';
 import { useStudioSessionStore } from '../../store/studio-session.store';
 import PreviewSignalField from './PreviewSignalField.vue';
+import SceneBrowserFrames from './SceneBrowserFrames.vue';
 import SceneTransformOverlay from './SceneTransformOverlay.vue';
 
 const store = useStudioSessionStore();
@@ -63,7 +64,7 @@ const audioChannels = computed(() => {
       .map((element) => element.channelId),
   );
   return project.audioMixer.channels
-    .filter((channel) => enabled.has(channel.id))
+    .filter((channel) => channelAudibleInScene(channel, enabled))
     .map((channel) => {
       const reading = audioEngine.levels.channels[channel.id];
       const db = reading?.rmsDb ?? -60;
@@ -79,6 +80,16 @@ const audioChannels = computed(() => {
 
 const masterMeter = computed(() => {
   const reading = audioEngine.levels.master;
+  const db = reading?.rmsDb ?? -60;
+  return {
+    value: normalizeLevelDb(db),
+    peak: normalizeLevelDb(reading?.peakDb ?? -60),
+    readout: String(Math.round(db)),
+  };
+});
+
+const overlayMeter = computed(() => {
+  const reading = audioEngine.levels.overlay;
   const db = reading?.rmsDb ?? -60;
   return {
     value: normalizeLevelDb(db),
@@ -132,6 +143,10 @@ watch([() => store.activeScene, isReady], ([scene, ready]) => {
           :class="{ invisible: !store.activeScene }"
           data-composition-host
         />
+        <SceneBrowserFrames
+          v-if="!showPlaceholder"
+          :host="host"
+        />
         <span
           v-if="showPlaceholder"
           class="text-body-sm text-on-surface-dim pointer-events-none absolute inset-0 flex items-center justify-center font-sans"
@@ -165,6 +180,12 @@ watch([() => store.activeScene, isReady], ([scene, ready]) => {
             :peak="channel.peak"
             :label="channel.label"
             :readout="channel.readout"
+          />
+          <BaseLevelMeter
+            :value="overlayMeter.value"
+            :peak="overlayMeter.peak"
+            :label="t('studio.audio.overlay.title')"
+            :readout="overlayMeter.readout"
           />
           <BaseLevelMeter
             :value="masterMeter.value"

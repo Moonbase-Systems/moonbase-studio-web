@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { useStudioSessionStore } from '../../store/studio-session.store';
+import GlobalChannelInspector from './GlobalChannelInspector.vue';
 import AnimationLayerInspector from './inspectors/AnimationLayerInspector.vue';
 import AudioLayerInspector from './inspectors/AudioLayerInspector.vue';
 import BrowserLayerInspector from './inspectors/BrowserLayerInspector.vue';
@@ -10,6 +11,7 @@ import ScreenLayerInspector from './inspectors/ScreenLayerInspector.vue';
 import ShapeLayerInspector from './inspectors/ShapeLayerInspector.vue';
 import TextLayerInspector from './inspectors/TextLayerInspector.vue';
 import VideoLayerInspector from './inspectors/VideoLayerInspector.vue';
+import OverlaySoundInspector from './OverlaySoundInspector.vue';
 
 const store = useStudioSessionStore();
 
@@ -29,6 +31,28 @@ const linkedSource = computed(() => {
   }
   const result = store.findSource(element.sourceId);
   return result.ok ? result.value : undefined;
+});
+
+const selectedSound = computed(() => {
+  if (selectedElement.value) {
+    return null;
+  }
+  const id = store.selectedOverlaySoundId;
+  if (!id) {
+    return null;
+  }
+  return store.project?.audioMixer.overlay.sounds.find((sound) => sound.id === id) ?? null;
+});
+
+const selectedGlobalChannel = computed(() => {
+  if (selectedElement.value || selectedSound.value) {
+    return null;
+  }
+  const id = store.selectedGlobalChannelId;
+  if (!id) {
+    return null;
+  }
+  return store.project?.audioMixer.channels.find((channel) => channel.id === id && channel.global) ?? null;
 });
 </script>
 
@@ -91,5 +115,13 @@ const linkedSource = computed(() => {
         :element="selectedElement"
       />
     </template>
+    <OverlaySoundInspector
+      v-else-if="selectedSound"
+      :sound="selectedSound"
+    />
+    <GlobalChannelInspector
+      v-else-if="selectedGlobalChannel"
+      :channel="selectedGlobalChannel"
+    />
   </div>
 </template>

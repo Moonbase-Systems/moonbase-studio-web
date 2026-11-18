@@ -1,7 +1,10 @@
 <script setup lang="ts">
 import { cn } from '~/utils/index';
 
+import { useStudioAudioDevices } from '../../../composables/useStudioAudioDevices';
 import type { BrowserElement } from '../../../models/scene-elements';
+import { BROWSER_TAB_AUDIO_DEVICE_ID } from '../../../models/source.domain';
+import { browserZoom, isExternalBrowserPageUrl } from '../../../schemas/browser-source.schema';
 import { useStudioSessionStore } from '../../../store/studio-session.store';
 import {
   inspectorControlTextClass,
@@ -17,6 +20,7 @@ const props = defineProps<{
 
 const { t } = useI18n();
 const store = useStudioSessionStore();
+const devices = useStudioAudioDevices();
 
 const textControlClass = inspectorControlTextClass;
 const labelClass = inspectorLabelClass;
@@ -28,18 +32,110 @@ const source = computed(() => {
   return linked?.type === 'browser' ? linked : null;
 });
 
+const externalPage = computed(() => isExternalBrowserPageUrl(source.value?.url));
+const pageAudio = computed(() => source.value?.audio === true);
+const hintId = computed(() => (source.value ? `browser-audio-${source.value.id}` : undefined));
+
+function tabAudioSource() {
+  return store.project?.sources.find((item) => item.type === 'audio' && item.deviceId === BROWSER_TAB_AUDIO_DEVICE_ID);
+}
+
+function stopStream(stream: MediaStream | null) {
+  if (!stream) {
+    return;
+  }
+  for (const track of stream.getTracks()) {
+    track.stop();
+  }
+}
+
+function selectTabChannel() {
+  const audio = tabAudioSource();
+  const channel = store.project?.audioMixer.channels.find((item) => audio && item.sourceIds.includes(audio.id));
+  if (channel) {
+    store.selectGlobalChannel(channel.id);
+  }
+}
+
+async function togglePageAudio() {
+  const linked = source.value;
+  if (!linked) {
+    return;
+  }
+  if (linked.audio === true) {
+    store.setBrowserPageAudio(linked.id, false);
+    return;
+  }
+  const stream = devices.browserTabLive ? null : await devices.captureBrowserTab();
+  if (!devices.browserTabLive && !stream) {
+    return;
+  }
+  const result = store.setBrowserPageAudio(linked.id, true);
+  if (!result.ok) {
+    stopStream(stream);
+    return;
+  }
+  const audio = tabAudioSource();
+  if (stream && audio) {
+    devices.attachBrowserTab(audio.id, stream);
+  } else {
+    stopStream(stream);
+  }
+  selectTabChannel();
+}
+
+async function connectPageAudio() {
+  const linked = source.value;
+  if (!linked) {
+    return;
+  }
+  const stream = await devices.captureBrowserTab();
+  if (!stream) {
+    return;
+  }
+  if (!tabAudioSource()) {
+    const healed = store.setBrowserPageAudio(linked.id, true);
+    if (!healed.ok) {
+      stopStream(stream);
+      return;
+    }
+  }
+  const audio = tabAudioSource();
+  if (!audio) {
+    stopStream(stream);
+    return;
+  }
+  devices.attachBrowserTab(audio.id, stream);
+  selectTabChannel();
+}
+
 const urlDraft = ref('');
 const urlFocused = ref(false);
 
 watch(
   () => source.value?.url,
   (url) => {
-    if (!urlFocused.value && url) {
-      urlDraft.value = url;
+    if (!urlFocused.value) {
+      urlDraft.value = url ?? '';
     }
   },
   { immediate: true },
 );
+
+const zoomPercent = computed(() => Math.round(browserZoom(source.value?.zoom) * 100));
+
+function commitZoom(raw: string) {
+  const linked = source.value;
+  const percent = Number(raw);
+  if (!linked || !Number.isFinite(percent)) {
+    return;
+  }
+  const zoom = Math.round(percent) / 100;
+  if (zoom === browserZoom(linked.zoom)) {
+    return;
+  }
+  store.updateBrowserSource(linked.id, { zoom });
+}
 
 function commitUrl() {
   const linked = source.value;
@@ -99,8 +195,16 @@ function toggleClass(active: boolean) {
       <label :class="fieldShellClass">
         <input
           v-model="urlDraft"
-          type="url"
-          :class="cn(textControlClass, 'min-w-0 flex-1 border-0 bg-transparent p-0 outline-none')"
+          type="text"
+          inputmode="url"
+          spellcheck="false"
+          :placeholder="t('studio.properties.labels.browserUrlPlaceholder')"
+          :class="
+            cn(
+              textControlClass,
+              'placeholder:text-on-surface-dim min-w-0 flex-1 border-0 bg-transparent p-0 outline-none',
+            )
+          "
           @focus="urlFocused = true"
           @blur="
             urlFocused = false;
@@ -110,6 +214,47 @@ function toggleClass(active: boolean) {
         />
       </label>
     </div>
+
+    <div :class="rowClass">
+      <button
+        type="button"
+        :class="toggleClass(pageAudio)"
+        :aria-pressed="pageAudio"
+        :aria-describedby="pageAudio ? hintId : undefined"
+        @click="togglePageAudio"
+      >
+        {{ t('studio.properties.labels.browserAudio') }}
+      </button>
+      <button
+        v-if="pageAudio && !devices.browserTabLive"
+        type="button"
+        :class="toggleClass(false)"
+        @click="connectPageAudio"
+      >
+        {{ t('studio.properties.labels.browserAudioConnect') }}
+      </button>
+    </div>
+    <p
+      v-if="pageAudio"
+      :id="hintId"
+      class="text-label text-on-surface-dim"
+    >
+      {{ t('studio.properties.labels.browserAudioHint') }}
+    </p>
+
+    <BaseScrubField
+      v-if="!externalPage"
+      compact
+      :label="t('studio.properties.labels.browserZoom')"
+      field-suffix="horizontal"
+      suffix="%"
+      field-class="w-[72px]"
+      :model-value="zoomPercent"
+      :min="100"
+      :max="400"
+      :step="10"
+      @change="commitZoom"
+    />
 
     <div :class="rowClass">
       <BaseScrubField

@@ -25,7 +25,7 @@ export const sourceContentSize = (project: Project, source: Source): { width: nu
     return positiveSize(asset?.metadata?.width, asset?.metadata?.height);
   }
 
-  if (source.type === 'screen') {
+  if (source.type === 'screen' || source.type === 'browser') {
     return positiveSize(source.width, source.height);
   }
 
