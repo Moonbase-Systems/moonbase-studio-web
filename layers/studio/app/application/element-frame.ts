@@ -44,7 +44,7 @@ export const creationFrame = (project: Project, source: Source): Partial<Transfo
     return measureDynamicTextFrame(createDefaultTextElementSettings(source.content));
   }
 
-  if (type === 'screen' || type === 'image' || type === 'animation') {
+  if (type === 'screen' || type === 'image' || type === 'animation' || type === 'browser') {
     return sourceContentSize(project, source) ?? { width: 0, height: 0 };
   }
 
