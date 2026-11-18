@@ -36,6 +36,7 @@ describe('audio effect schema', () => {
         solo: false,
         monitoring: 'off',
         syncOffsetMs: 0,
+        global: false,
         filters: [{ id: 'legacy', type: 'unknown', enabled: false, parameters: { leftover: true } }],
         effects: [effect],
       },

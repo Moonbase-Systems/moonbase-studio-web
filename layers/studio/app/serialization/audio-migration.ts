@@ -237,6 +237,7 @@ export const migrateProjectFileV2ToV3 = (raw: unknown): { file: unknown; conflic
     channelBySource.set(sourceId, {
       id: channelId,
       name: resolvedName,
+      global: false,
       sourceIds: [sourceId],
       ...strip,
       filters,
@@ -250,6 +251,7 @@ export const migrateProjectFileV2ToV3 = (raw: unknown): { file: unknown; conflic
       id: channel.id,
       name: typeof channel.name === 'string' && channel.name.length > 0 ? channel.name : 'Audio',
       sourceIds: [],
+      global: false,
       ...stripFromChannel(channel),
       filters: Array.isArray(channel.filters) ? channel.filters : [],
       effects: Array.isArray(channel.effects) ? channel.effects : [],
@@ -288,6 +290,20 @@ export const migrateProjectFileV2ToV3 = (raw: unknown): { file: unknown; conflic
     },
     presets: Array.isArray(mixer.presets) ? mixer.presets : [],
     channels: [...channelBySource.values(), ...keptEmpty],
+    overlay:
+      isRecord(mixer.overlay) && Array.isArray(mixer.overlay.sounds) && Array.isArray(mixer.overlay.triggers)
+        ? mixer.overlay
+        : {
+            faderDb: 0,
+            muted: false,
+            solo: false,
+            monitoring: 'off',
+            effects: [],
+            maxInstances: 16,
+            sceneChangePolicy: 'continue',
+            sounds: [],
+            triggers: [],
+          },
   };
 
   file.project = project;

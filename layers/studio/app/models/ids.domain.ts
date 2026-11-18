@@ -7,5 +7,7 @@ export type AssetId = string;
 export type TransitionId = string;
 export type ChannelId = string;
 export type EffectId = string;
+export type OverlaySoundId = string;
+export type OverlayTriggerId = string;
 export type AnimationId = string;
 export type HistoryEntryId = string;

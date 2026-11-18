@@ -2,6 +2,8 @@ import { z } from 'zod';
 
 import { animationSourceSettingsSchema } from './animation-source.schema';
 import { audioEffectSchema, audioUserPresetSchema } from './audio-effect.schema';
+import { browserPageUrlSchema, browserZoomSchema } from './browser-source.schema';
+import { overlayBusFieldSchema } from './overlay-sound.schema';
 import { sceneAnimationSchema } from './scene-animation.schema';
 import { appearanceSchema, transform2DSchema } from './scene-elements/element-shared.schema';
 import { overlayElementSchema, sourceBackedElementSchema } from './scene-elements/scene-element.schema';
@@ -57,9 +59,11 @@ const sourceSchema = z.discriminatedUnion('type', [
   z.object({
     ...sourceBaseFields,
     type: z.literal('browser'),
-    url: z.string().url(),
+    url: browserPageUrlSchema,
     width: z.number().positive(),
     height: z.number().positive(),
+    zoom: browserZoomSchema,
+    audio: z.boolean().default(false),
     refreshSettings: browserRefreshSettingsSchema,
   }),
   z.object({
@@ -164,6 +168,7 @@ const audioChannelSchema = z.object({
   solo: z.boolean(),
   monitoring: z.enum(['off', 'monitor', 'monitor-and-output']),
   syncOffsetMs: z.number().min(-1000).max(1000),
+  global: z.boolean().default(false),
   filters: z.array(audioFilterOrEffectSchema),
   effects: z.array(audioEffectSchema),
 });
@@ -176,6 +181,7 @@ const audioMixerSchema = z.object({
   }),
   channels: z.array(audioChannelSchema),
   presets: z.array(audioUserPresetSchema).default([]),
+  overlay: overlayBusFieldSchema,
 });
 
 const transitionBaseFields = {
@@ -465,6 +471,57 @@ export const projectFileSchema = z
       project.audioMixer.presets.map((preset) => preset.id),
       'audio-preset',
     );
+
+    const overlay = project.audioMixer.overlay;
+    assertUniqueEffectIds(
+      overlay.effects.map((effect) => effect.id),
+      'overlay-effect',
+    );
+    assertUniqueIds(
+      overlay.sounds.map((sound) => sound.id),
+      'overlay-sound',
+      ctx,
+    );
+    assertUniqueIds(
+      overlay.triggers.map((trigger) => trigger.id),
+      'overlay-trigger',
+      ctx,
+    );
+    const soundIds = new Set(overlay.sounds.map((sound) => sound.id));
+    const assetTypes = new Map(project.assets.map((asset) => [asset.id, asset.type]));
+    for (const sound of overlay.sounds) {
+      if (assetTypes.get(sound.assetId) !== 'audio') {
+        ctx.addIssue({
+          code: 'custom',
+          message: `studio.validation.unknownAsset:${sound.assetId}`,
+        });
+      }
+    }
+    for (const trigger of overlay.triggers) {
+      if (!soundIds.has(trigger.soundId)) {
+        ctx.addIssue({
+          code: 'custom',
+          message: `studio.validation.unknownOverlaySound:${trigger.soundId}`,
+        });
+      }
+      if (trigger.sceneId && !project.scenes.some((scene) => scene.id === trigger.sceneId)) {
+        ctx.addIssue({
+          code: 'custom',
+          message: `studio.validation.unknownScene:${trigger.sceneId}`,
+        });
+      }
+      if (trigger.elementId) {
+        const scenes = trigger.sceneId
+          ? project.scenes.filter((scene) => scene.id === trigger.sceneId)
+          : project.scenes;
+        if (!scenes.some((scene) => scene.elements.some((element) => element.id === trigger.elementId))) {
+          ctx.addIssue({
+            code: 'custom',
+            message: `studio.validation.unknownElement:${trigger.elementId}`,
+          });
+        }
+      }
+    }
 
     const claimedSources = new Set<string>();
     for (const channel of project.audioMixer.channels) {

@@ -11,9 +11,12 @@ import type { StudioAudioEngineHandle } from './useStudioAudioEngine';
 export type StudioAudioDeviceHandle = {
   snapshot: AudioDeviceSnapshot;
   systemEnded: boolean;
+  browserTabLive: boolean;
   revealLabels: () => Promise<void>;
   startMicrophone: (sourceId: string, deviceId: string) => Promise<void>;
   armSystemStream: (sourceId: string, stream: MediaStream) => void;
+  captureBrowserTab: () => Promise<MediaStream | null>;
+  attachBrowserTab: (sourceId: string, stream: MediaStream) => void;
 };
 
 const StudioAudioDevicesKey: InjectionKey<StudioAudioDeviceHandle> = Symbol('studio-audio-devices');
@@ -50,7 +53,44 @@ const browserPort = (): AudioDevicePort => ({
 export function provideStudioAudioDevices(engine: StudioAudioEngineHandle): StudioAudioDeviceHandle {
   const snapshot = reactive<AudioDeviceSnapshot>(emptySnapshot());
   const systemEnded = ref(false);
+  const browserTabLive = ref(false);
   let session: AudioDeviceSession | null = null;
+
+  const captureBrowserTab = async (): Promise<MediaStream | null> => {
+    if (!navigator.mediaDevices?.getDisplayMedia) {
+      return null;
+    }
+    const focus = globalThis as { CaptureController?: new () => { setFocusBehavior: (behavior: string) => void } };
+    const controller = focus.CaptureController ? new focus.CaptureController() : undefined;
+    try {
+      controller?.setFocusBehavior('no-focus-change');
+    } catch {
+      // The focus hint is optional. Capture still starts from this click.
+    }
+    let stream: MediaStream;
+    try {
+      stream = await navigator.mediaDevices.getDisplayMedia({
+        video: true,
+        audio: { suppressLocalAudioPlayback: true, restrictOwnAudio: true },
+        preferCurrentTab: true,
+        selfBrowserSurface: 'include',
+        ...(controller ? { controller } : {}),
+      } as DisplayMediaStreamOptions);
+    } catch {
+      return null;
+    }
+    for (const track of stream.getVideoTracks()) {
+      track.stop();
+    }
+    const audible = stream.getAudioTracks().filter((track) => track.readyState === 'live');
+    if (audible.length === 0) {
+      for (const track of stream.getTracks()) {
+        track.stop();
+      }
+      return null;
+    }
+    return stream;
+  };
 
   const apply = (next: AudioDeviceSnapshot) => {
     snapshot.permission = next.permission;
@@ -76,6 +116,9 @@ export function provideStudioAudioDevices(engine: StudioAudioEngineHandle): Stud
     get systemEnded() {
       return systemEnded.value;
     },
+    get browserTabLive() {
+      return browserTabLive.value;
+    },
     revealLabels: async () => {
       await session?.revealLabels();
     },
@@ -98,6 +141,25 @@ export function provideStudioAudioDevices(engine: StudioAudioEngineHandle): Stud
       }
       engine.armStream(sourceId, stream);
     },
+    captureBrowserTab,
+    attachBrowserTab: (sourceId, stream) => {
+      let active = true;
+      for (const track of stream.getAudioTracks()) {
+        track.addEventListener('ended', () => {
+          if (active) {
+            browserTabLive.value = false;
+          }
+        });
+      }
+      engine.armStream(sourceId, stream, () => {
+        active = false;
+        browserTabLive.value = false;
+        for (const track of stream.getTracks()) {
+          track.stop();
+        }
+      });
+      browserTabLive.value = true;
+    },
   });
 
   provide(StudioAudioDevicesKey, handle);
@@ -109,9 +171,12 @@ export function useStudioAudioDevices(): StudioAudioDeviceHandle {
     inject(StudioAudioDevicesKey, null) ?? {
       snapshot: reactive(emptySnapshot()),
       systemEnded: false,
+      browserTabLive: false,
       revealLabels: async () => undefined,
       startMicrophone: async () => undefined,
       armSystemStream: () => undefined,
+      captureBrowserTab: async () => null,
+      attachBrowserTab: () => undefined,
     }
   );
 }

@@ -30,11 +30,17 @@ import type { CommandContext } from '../context';
 import type { StudioResult } from '../errors';
 import type { StudioSession } from '../session';
 
-export type AudioEffectLocation = { scope: 'channel'; channelId: ChannelId } | { scope: 'master' };
+export type AudioEffectLocation =
+  | { scope: 'channel'; channelId: ChannelId }
+  | { scope: 'master' }
+  | { scope: 'overlay' };
 
 const readChain = (project: Project, location: AudioEffectLocation): StudioResult<AudioEffect[]> => {
   if (location.scope === 'master') {
     return { ok: true, value: project.audioMixer.master.effects };
+  }
+  if (location.scope === 'overlay') {
+    return { ok: true, value: project.audioMixer.overlay.effects };
   }
   const channel = project.audioMixer.channels.find((item) => item.id === location.channelId);
   if (!channel) {
@@ -46,6 +52,10 @@ const readChain = (project: Project, location: AudioEffectLocation): StudioResul
 const writeChain = (project: Project, location: AudioEffectLocation, effects: AudioEffect[]): void => {
   if (location.scope === 'master') {
     project.audioMixer.master.effects = effects;
+    return;
+  }
+  if (location.scope === 'overlay') {
+    project.audioMixer.overlay.effects = effects;
     return;
   }
   const channel = project.audioMixer.channels.find((item) => item.id === location.channelId);

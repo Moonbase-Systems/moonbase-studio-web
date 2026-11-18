@@ -40,11 +40,18 @@ export type BrowserRefreshSettings = {
   bypassCache: boolean;
 };
 
+/** One shared input for every browser layer that includes page audio. The browser can only hand over the tab mix. */
+export const BROWSER_TAB_AUDIO_DEVICE_ID = 'moonbase:browser-tab';
+
 export type BrowserSource = SourceBase & {
   type: 'browser';
   url: string;
   width: number;
   height: number;
+  /** 1 shows the page at `width`×`height`. Higher values enlarge the page inside that same frame. */
+  zoom?: number;
+  /** When true, this page contributes the tab's audio to one global channel. */
+  audio?: boolean;
   refreshSettings: BrowserRefreshSettings;
 };
 

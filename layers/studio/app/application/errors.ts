@@ -1,4 +1,14 @@
-import type { AssetId, ChannelId, EffectId, ElementId, SceneId, SourceId, TransitionId } from '../models/ids.domain';
+import type {
+  AssetId,
+  ChannelId,
+  EffectId,
+  ElementId,
+  OverlaySoundId,
+  OverlayTriggerId,
+  SceneId,
+  SourceId,
+  TransitionId,
+} from '../models/ids.domain';
 import type { PortResult } from '../ports/result';
 
 export type StudioValidationIssue = { path: string; message: string };
@@ -19,6 +29,8 @@ export type StudioError =
   | { kind: 'asset-not-found'; assetId: AssetId }
   | { kind: 'channel-not-found'; channelId: ChannelId }
   | { kind: 'effect-not-found'; effectId: EffectId }
+  | { kind: 'overlay-sound-not-found'; soundId: OverlaySoundId }
+  | { kind: 'overlay-trigger-not-found'; triggerId: OverlayTriggerId }
   | { kind: 'preset-not-found'; presetId: string }
   | { kind: 'transition-not-found'; transitionId: TransitionId }
   | { kind: 'invalid-argument'; message: string; issues?: StudioValidationIssue[] }

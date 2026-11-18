@@ -8,6 +8,8 @@ import type {
   ElementId,
   GroupId,
   HistoryEntryId,
+  OverlaySoundId,
+  OverlayTriggerId,
   SceneId,
   SourceId,
   TransitionId,
@@ -19,6 +21,8 @@ import {
   addAudioEffect,
   addElementToGroup,
   addLayer,
+  addOverlaySound,
+  addOverlayTrigger,
   addSource,
   addTransition,
   applyAudioChannelPreset,
@@ -53,6 +57,8 @@ import {
   removeElementsFromGroup,
   removeLayer,
   removeLayers,
+  removeOverlaySound,
+  removeOverlayTrigger,
   removeSource,
   removeTransition,
   renameAudioEffect,
@@ -64,9 +70,12 @@ import {
   resetAudioEffectCommand,
   saveAudioChannelPreset,
   saveAudioEffectPreset,
+  selectGlobalChannel,
   selectLayer,
+  selectOverlaySound,
   setActiveScene,
   setAudioEffectEnabled,
+  setBrowserPageAudio,
   setLayerLocked,
   setLayerVisibility,
   setSceneDefaultTransition,
@@ -79,6 +88,9 @@ import {
   updateAudioMaster,
   updateBrowserSource,
   updateLayer,
+  updateOverlayBus,
+  updateOverlaySound,
+  updateOverlayTrigger,
   updateProject,
   updateTransition,
 } from './commands';
@@ -86,6 +98,13 @@ import type { AssetChanges, AssetDraft } from './commands/asset-commands';
 import type { AudioEffectLocation } from './commands/audio-effect-commands';
 import type { LayerUpdateChanges } from './commands/layer-commands';
 import type { AudioChannelChanges, AudioChannelDraft } from './commands/mixer-commands';
+import type {
+  OverlayBusChanges,
+  OverlaySoundChanges,
+  OverlaySoundDraft,
+  OverlayTriggerChanges,
+  OverlayTriggerDraft,
+} from './commands/overlay-sound-commands';
 import type { ProjectChanges } from './commands/project-commands';
 import type { AnimationSourceChanges, BrowserSourceChanges, SourceDefinition } from './commands/source-commands';
 import type { TransitionChanges, TransitionDraft } from './commands/transition-commands';
@@ -236,6 +255,12 @@ export const createStudioService = (deps: { state: StudioSessionState; context?:
 
     selectLayer: (layerId: ElementId) => run((session) => selectLayer(session, layerId), { recordHistory: false }),
 
+    selectOverlaySound: (soundId: OverlaySoundId) =>
+      run((session) => selectOverlaySound(session, soundId), { recordHistory: false }),
+
+    selectGlobalChannel: (channelId: ChannelId) =>
+      run((session) => selectGlobalChannel(session, channelId), { recordHistory: false }),
+
     setSelectedLayers: (layerIds: ElementId[]) =>
       run((session) => setSelectedLayers(session, layerIds), { recordHistory: false }),
 
@@ -329,6 +354,9 @@ export const createStudioService = (deps: { state: StudioSessionState; context?:
     updateBrowserSource: (sourceId: SourceId, changes: BrowserSourceChanges) =>
       run((session, context) => updateBrowserSource(session, sourceId, changes, context)),
 
+    setBrowserPageAudio: (sourceId: SourceId, enabled: boolean) =>
+      run((session, context) => setBrowserPageAudio(session, sourceId, enabled, context)),
+
     updateAnimationSource: (sourceId: SourceId, changes: AnimationSourceChanges) =>
       run((session, context) => updateAnimationSource(session, sourceId, changes, context)),
 
@@ -347,6 +375,26 @@ export const createStudioService = (deps: { state: StudioSessionState; context?:
 
     updateAudioMaster: (changes: Partial<AudioMaster>) =>
       run((session, context) => updateAudioMaster(session, changes, context)),
+
+    updateOverlayBus: (changes: OverlayBusChanges) =>
+      run((session, context) => updateOverlayBus(session, changes, context)),
+
+    addOverlaySound: (draft: OverlaySoundDraft) => run((session, context) => addOverlaySound(session, draft, context)),
+
+    updateOverlaySound: (soundId: OverlaySoundId, changes: OverlaySoundChanges) =>
+      run((session, context) => updateOverlaySound(session, soundId, changes, context)),
+
+    removeOverlaySound: (soundId: OverlaySoundId) =>
+      run((session, context) => removeOverlaySound(session, soundId, context)),
+
+    addOverlayTrigger: (draft: OverlayTriggerDraft) =>
+      run((session, context) => addOverlayTrigger(session, draft, context)),
+
+    updateOverlayTrigger: (triggerId: OverlayTriggerId, changes: OverlayTriggerChanges) =>
+      run((session, context) => updateOverlayTrigger(session, triggerId, changes, context)),
+
+    removeOverlayTrigger: (triggerId: OverlayTriggerId) =>
+      run((session, context) => removeOverlayTrigger(session, triggerId, context)),
 
     addAudioChannel: (draft: AudioChannelDraft) => run((session, context) => addAudioChannel(session, draft, context)),
 

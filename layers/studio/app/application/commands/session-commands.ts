@@ -1,6 +1,6 @@
 import { createEmptyEditorState } from '../../models/editor.domain';
 import { createEmptyHistory } from '../../models/history.domain';
-import type { ElementId, SceneId } from '../../models/ids.domain';
+import type { ChannelId, ElementId, OverlaySoundId, SceneId } from '../../models/ids.domain';
 import { createEmptyProject, type Project, type ProjectType } from '../../models/project.domain';
 import { portErr, portOk } from '../../ports/result';
 import { assertInitialized, sessionWithoutDirty } from '../command-utils';
@@ -136,6 +136,8 @@ export const setSelectedLayers = (session: StudioSession, layerIds: ElementId[])
     ...session.editor,
     selectedElementIds: validIds,
     selectedGroupIds: [],
+    selectedOverlaySoundId: validIds.length > 0 ? null : session.editor.selectedOverlaySoundId,
+    selectedGlobalChannelId: validIds.length > 0 ? null : session.editor.selectedGlobalChannelId,
   };
 
   return portOk(sessionWithoutDirty(session, editor));
@@ -163,6 +165,8 @@ export const selectLayer = (session: StudioSession, layerId: ElementId): StudioR
     ...session.editor,
     selectedElementIds: [layerId],
     selectedGroupIds: [],
+    selectedOverlaySoundId: null,
+    selectedGlobalChannelId: null,
   };
 
   return portOk(sessionWithoutDirty(session, editor));
@@ -178,6 +182,57 @@ export const clearSelection = (session: StudioSession): StudioResult<StudioSessi
     ...session.editor,
     selectedElementIds: [],
     selectedGroupIds: [],
+    selectedOverlaySoundId: null,
+    selectedGlobalChannelId: null,
+  };
+
+  return portOk(sessionWithoutDirty(session, editor));
+};
+
+/** Selection changes do not mark the project dirty. Clears the layer selection. */
+export const selectOverlaySound = (session: StudioSession, soundId: OverlaySoundId): StudioResult<StudioSession> => {
+  const ready = assertInitialized(session);
+  if (!ready.ok) {
+    return ready;
+  }
+  if (!session.project) {
+    return portErr({ kind: 'no-project' });
+  }
+  if (!session.project.audioMixer.overlay.sounds.some((sound) => sound.id === soundId)) {
+    return portErr({ kind: 'overlay-sound-not-found', soundId });
+  }
+
+  const editor = {
+    ...session.editor,
+    selectedElementIds: [],
+    selectedGroupIds: [],
+    selectedOverlaySoundId: soundId,
+    selectedGlobalChannelId: null,
+  };
+
+  return portOk(sessionWithoutDirty(session, editor));
+};
+
+/** Selection changes do not mark the project dirty. Clears the layer and clip selection. */
+export const selectGlobalChannel = (session: StudioSession, channelId: ChannelId): StudioResult<StudioSession> => {
+  const ready = assertInitialized(session);
+  if (!ready.ok) {
+    return ready;
+  }
+  if (!session.project) {
+    return portErr({ kind: 'no-project' });
+  }
+  const channel = session.project.audioMixer.channels.find((item) => item.id === channelId);
+  if (!channel || !channel.global) {
+    return portErr({ kind: 'channel-not-found', channelId });
+  }
+
+  const editor = {
+    ...session.editor,
+    selectedElementIds: [],
+    selectedGroupIds: [],
+    selectedOverlaySoundId: null,
+    selectedGlobalChannelId: channelId,
   };
 
   return portOk(sessionWithoutDirty(session, editor));
