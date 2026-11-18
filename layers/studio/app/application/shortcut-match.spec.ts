@@ -80,4 +80,16 @@ describe('shortcut-match', () => {
   it('matches mod+click for selection toggle', () => {
     expect(matchesShortcutPointer(mouseEvent({ ctrlKey: true }), pointerBinding('selection.toggle'))).toBe(true);
   });
+
+  it('keeps each key chord on one binding', () => {
+    const seen = new Set<string>();
+    for (const item of KEYBOARD_SHORTCUT_BINDINGS) {
+      if (item.kind !== 'key') {
+        continue;
+      }
+      const chord = `${[...(item.binding.modifiers ?? [])].sort().join('+')}:${item.binding.key}`;
+      expect(seen.has(chord), chord).toBe(false);
+      seen.add(chord);
+    }
+  });
 });
