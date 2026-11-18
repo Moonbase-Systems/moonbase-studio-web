@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
+import { channelAudibleInScene } from '../../models/audio.domain';
 import { createSessionWithProject } from '../../test-utils/studio-session-fixtures';
 import { addLayer } from './layer-commands';
 import { addAudioChannel, assignAudioSource, updateAudioChannel } from './mixer-commands';
 import { createScene } from './scene-commands';
+import { selectGlobalChannel, setActiveScene } from './session-commands';
 import { addSource } from './source-commands';
 
 describe('audio channel membership', () => {
@@ -105,5 +107,59 @@ describe('audio channel membership', () => {
     const channelId = added.value.project!.audioMixer.channels[0]!.id;
     const updated = updateAudioChannel(added.value, channelId, { syncOffsetMs: 5000 }, ctx);
     expect(updated.ok).toBe(false);
+  });
+
+  it('keeps a global input audible on every scene and reuses that channel for a scene layer', () => {
+    const { session, ctx } = createSessionWithProject(['p', 's1', 'src', 'ch', 's2', 'el']);
+    const sourced = addSource(session, { type: 'audio', name: 'Mic', deviceId: 'mic-1' }, ctx);
+    expect(sourced.ok).toBe(true);
+    if (!sourced.ok || !sourced.value.project) {
+      return;
+    }
+    const sourceId = sourced.value.project.sources[0]!.id;
+    const added = addAudioChannel(sourced.value, { name: 'Mic', sourceIds: [sourceId], global: true }, ctx);
+    expect(added.ok).toBe(true);
+    if (!added.ok || !added.value.project) {
+      return;
+    }
+    const channel = added.value.project.audioMixer.channels[0]!;
+    expect(channel.global).toBe(true);
+    expect(channelAudibleInScene(channel, new Set())).toBe(true);
+
+    const selected = selectGlobalChannel(added.value, channel.id);
+    expect(selected.ok).toBe(true);
+    if (!selected.ok) {
+      return;
+    }
+    const second = createScene(selected.value, 'Scene 2', ctx);
+    expect(second.ok).toBe(true);
+    if (!second.ok || !second.value.project) {
+      return;
+    }
+    const moved = setActiveScene(second.value, second.value.project.scenes[1]!.id);
+    expect(moved.ok).toBe(true);
+    if (!moved.ok || !moved.value.project) {
+      return;
+    }
+    expect(moved.value.editor.selectedGlobalChannelId).toBe(channel.id);
+
+    const layered = addLayer(moved.value, moved.value.project.scenes[1]!.id, sourceId, undefined, ctx);
+    expect(layered.ok).toBe(true);
+    if (!layered.ok || !layered.value.project) {
+      return;
+    }
+    expect(layered.value.project.audioMixer.channels).toHaveLength(1);
+    expect(layered.value.project.audioMixer.channels[0]?.global).toBe(true);
+    expect(layered.value.editor.selectedGlobalChannelId).toBeNull();
+
+    const hidden = updateAudioChannel(layered.value, channel.id, { global: false }, ctx);
+    expect(hidden.ok).toBe(true);
+    if (!hidden.ok || !hidden.value.project) {
+      return;
+    }
+    const sceneChannel = hidden.value.project.audioMixer.channels[0]!;
+    expect(sceneChannel.global).toBe(false);
+    expect(channelAudibleInScene(sceneChannel, new Set([sceneChannel.id]))).toBe(true);
+    expect(channelAudibleInScene(sceneChannel, new Set())).toBe(false);
   });
 });

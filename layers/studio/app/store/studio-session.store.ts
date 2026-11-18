@@ -6,6 +6,13 @@ import type { AssetChanges, AssetDraft } from '../application/commands/asset-com
 import type { AudioEffectLocation } from '../application/commands/audio-effect-commands';
 import type { LayerUpdateChanges } from '../application/commands/layer-commands';
 import type { AudioChannelChanges, AudioChannelDraft } from '../application/commands/mixer-commands';
+import type {
+  OverlayBusChanges,
+  OverlaySoundChanges,
+  OverlaySoundDraft,
+  OverlayTriggerChanges,
+  OverlayTriggerDraft,
+} from '../application/commands/overlay-sound-commands';
 import type { ProjectChanges } from '../application/commands/project-commands';
 import type {
   AnimationSourceChanges,
@@ -29,6 +36,8 @@ import type {
   EffectId,
   ElementId,
   GroupId,
+  OverlaySoundId,
+  OverlayTriggerId,
   SceneId,
   SourceId,
   TransitionId,
@@ -65,6 +74,8 @@ export const useStudioSessionStore = defineStore(STORE_KEYS.STUDIO_SESSION, () =
   const activeScene = computed(() => getActiveScene(sessionRef.value));
   const selectedLayerId = computed(() => getSelectedLayerId(sessionRef.value));
   const selectedLayerIds = computed(() => sessionRef.value.editor.selectedElementIds);
+  const selectedOverlaySoundId = computed(() => sessionRef.value.editor.selectedOverlaySoundId);
+  const selectedGlobalChannelId = computed(() => sessionRef.value.editor.selectedGlobalChannelId);
   const isDirty = computed(() => sessionRef.value.isDirty);
   const isInitialized = computed(() => sessionRef.value.isInitialized);
   const canUndo = computed(() => (sessionRef.value.project?.history.past.length ?? 0) > 0);
@@ -76,6 +87,8 @@ export const useStudioSessionStore = defineStore(STORE_KEYS.STUDIO_SESSION, () =
     activeScene,
     selectedLayerId,
     selectedLayerIds,
+    selectedOverlaySoundId,
+    selectedGlobalChannelId,
     isDirty,
     isInitialized,
     canUndo,
@@ -106,6 +119,8 @@ export const useStudioSessionStore = defineStore(STORE_KEYS.STUDIO_SESSION, () =
     markSaved: () => service.markSaved(),
     setActiveScene: (sceneId: SceneId) => service.setActiveScene(sceneId),
     selectLayer: (layerId: ElementId) => service.selectLayer(layerId),
+    selectOverlaySound: (soundId: OverlaySoundId) => service.selectOverlaySound(soundId),
+    selectGlobalChannel: (channelId: ChannelId) => service.selectGlobalChannel(channelId),
     setSelectedLayers: (layerIds: ElementId[]) => service.setSelectedLayers(layerIds),
     clearSelection: () => service.clearSelection(),
     createScene: (name?: string) => service.createScene(name),
@@ -162,6 +177,7 @@ export const useStudioSessionStore = defineStore(STORE_KEYS.STUDIO_SESSION, () =
     renameSource: (sourceId: SourceId, name: string) => service.renameSource(sourceId, name),
     updateBrowserSource: (sourceId: SourceId, changes: BrowserSourceChanges) =>
       service.updateBrowserSource(sourceId, changes),
+    setBrowserPageAudio: (sourceId: SourceId, enabled: boolean) => service.setBrowserPageAudio(sourceId, enabled),
     updateAnimationSource: (sourceId: SourceId, changes: AnimationSourceChanges) =>
       service.updateAnimationSource(sourceId, changes),
     findSource: (sourceId: SourceId) => service.findSource(sourceId),
@@ -171,6 +187,15 @@ export const useStudioSessionStore = defineStore(STORE_KEYS.STUDIO_SESSION, () =
     updateAsset: (assetId: AssetId, changes: AssetChanges) => service.updateAsset(assetId, changes),
     removeAsset: (assetId: AssetId) => service.removeAsset(assetId),
     updateAudioMaster: (changes: Partial<AudioMaster>) => service.updateAudioMaster(changes),
+    updateOverlayBus: (changes: OverlayBusChanges) => service.updateOverlayBus(changes),
+    addOverlaySound: (draft: OverlaySoundDraft) => service.addOverlaySound(draft),
+    updateOverlaySound: (soundId: OverlaySoundId, changes: OverlaySoundChanges) =>
+      service.updateOverlaySound(soundId, changes),
+    removeOverlaySound: (soundId: OverlaySoundId) => service.removeOverlaySound(soundId),
+    addOverlayTrigger: (draft: OverlayTriggerDraft) => service.addOverlayTrigger(draft),
+    updateOverlayTrigger: (triggerId: OverlayTriggerId, changes: OverlayTriggerChanges) =>
+      service.updateOverlayTrigger(triggerId, changes),
+    removeOverlayTrigger: (triggerId: OverlayTriggerId) => service.removeOverlayTrigger(triggerId),
     addAudioChannel: (draft: AudioChannelDraft) => service.addAudioChannel(draft),
     updateAudioChannel: (channelId: ChannelId, changes: AudioChannelChanges) =>
       service.updateAudioChannel(channelId, changes),

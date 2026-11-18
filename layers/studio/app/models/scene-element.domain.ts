@@ -59,6 +59,10 @@ export const createSourceBackedElement = (input: {
     appearance: input.appearance,
   });
 
+  if (input.source.type === 'browser' && input.transform?.keepAspectRatio === undefined) {
+    base.transform = { ...base.transform, keepAspectRatio: true };
+  }
+
   if (input.source.type === 'audio') {
     return {
       ...base,

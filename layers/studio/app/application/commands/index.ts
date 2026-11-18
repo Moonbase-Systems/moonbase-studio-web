@@ -4,6 +4,7 @@ export * from './group-commands';
 export * from './history-commands';
 export * from './layer-commands';
 export * from './mixer-commands';
+export * from './overlay-sound-commands';
 export * from './project-commands';
 export * from './scene-commands';
 export * from './session-commands';

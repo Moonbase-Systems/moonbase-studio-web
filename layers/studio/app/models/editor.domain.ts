@@ -1,4 +1,4 @@
-import type { ElementId, GroupId, SceneId } from './ids.domain';
+import type { ChannelId, ElementId, GroupId, OverlaySoundId, SceneId } from './ids.domain';
 
 /** Ephemeral UI state — not part of ProjectFile. */
 export type EditorTool = 'select' | 'pan' | (string & {});
@@ -18,6 +18,10 @@ export type EditorPanels = {
 export type EditorState = {
   selectedElementIds: ElementId[];
   selectedGroupIds: GroupId[];
+  /** Project overlay sound open in the inspector. Not stored in the project file. */
+  selectedOverlaySoundId: OverlaySoundId | null;
+  /** Global microphone or system input open in the inspector. Not stored in the project file. */
+  selectedGlobalChannelId: ChannelId | null;
   activeSceneId: SceneId | null;
   tool: EditorTool;
   viewport: EditorViewport;
@@ -27,6 +31,8 @@ export type EditorState = {
 export const createEmptyEditorState = (): EditorState => ({
   selectedElementIds: [],
   selectedGroupIds: [],
+  selectedOverlaySoundId: null,
+  selectedGlobalChannelId: null,
   activeSceneId: null,
   tool: 'select',
   viewport: { zoom: 1, panX: 0, panY: 0 },

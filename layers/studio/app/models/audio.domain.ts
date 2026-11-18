@@ -1,6 +1,8 @@
 import type { AudioEffect } from './audio-effect.domain';
 import type { AudioUserPreset } from './audio-preset.domain';
 import type { ChannelId, EffectId, SourceId } from './ids.domain';
+import type { OverlayBus } from './overlay-sound.domain';
+import { createDefaultOverlayBus } from './overlay-sound.domain';
 
 export type { AudioEffect } from './audio-effect.domain';
 
@@ -45,6 +47,8 @@ export type AudioChannel = {
   monitoring: AudioMonitoringMode;
   /** Stored for a later delay stage. The browser graph does not apply it yet. */
   syncOffsetMs: number;
+  /** Heard on every scene. A scene layer for the same source reuses this channel. */
+  global: boolean;
   filters: AudioFilter[];
   effects: AudioEffect[];
 };
@@ -53,6 +57,7 @@ export type AudioMixer = {
   master: AudioMaster;
   channels: AudioChannel[];
   presets: AudioUserPreset[];
+  overlay: OverlayBus;
 };
 
 export const createDefaultAudioChannel = (input: {
@@ -71,6 +76,7 @@ export const createDefaultAudioChannel = (input: {
   monitoring: 'off',
   syncOffsetMs: 0,
   filters: [],
+  global: false,
   effects: [],
 });
 
@@ -78,6 +84,7 @@ export const createDefaultAudioMixer = (): AudioMixer => ({
   master: { volume: 1, muted: false, effects: [] },
   channels: [],
   presets: [],
+  overlay: createDefaultOverlayBus(),
 });
 
 export const dbToGain = (db: number): number => 10 ** (db / 20);
@@ -127,3 +134,9 @@ export const measureTimeDomain = (samples: ArrayLike<number>): { rmsDb: number; 
 
 export const channelOwningSource = (channels: readonly AudioChannel[], sourceId: SourceId): AudioChannel | undefined =>
   channels.find((channel) => channel.sourceIds.includes(sourceId));
+
+/** A global channel stays in the mix when the active scene has no layer for it. */
+export const channelAudibleInScene = (
+  channel: Pick<AudioChannel, 'id' | 'global'>,
+  enabledChannelIds: ReadonlySet<string>,
+): boolean => channel.global || enabledChannelIds.has(channel.id);

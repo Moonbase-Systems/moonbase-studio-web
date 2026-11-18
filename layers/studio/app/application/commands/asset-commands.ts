@@ -54,7 +54,7 @@ const projectUsesAsset = (project: Project, assetId: AssetId): boolean => {
     }
   }
 
-  return false;
+  return project.audioMixer.overlay.sounds.some((sound) => sound.assetId === assetId);
 };
 
 export const addAsset = (

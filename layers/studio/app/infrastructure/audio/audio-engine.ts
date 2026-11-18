@@ -1,4 +1,4 @@
-import { routeChannel, sceneHasSolo } from '../../application/audio-routing';
+import { routeChannel, routeOverlayBus, sceneHasSolo } from '../../application/audio-routing';
 import {
   type AudioEffect,
   type AudioMonitoringMode,
@@ -10,6 +10,8 @@ import { curveFromEffect } from './effects/biquad-response';
 import { buildEffect } from './effects/build-effect';
 import { EffectInsert, type EffectInsertHost } from './effects/effect-insert';
 import { applyMonitorSink, type MonitorSinkResult } from './monitor-sink';
+import { OverlayBufferCache } from './overlay-buffer-cache';
+import { attachOverlayVoice, type OverlayVoiceGain, type OverlayVoiceSource, rampOverlayGain } from './overlay-voice';
 
 export type { MonitorSinkResult } from './monitor-sink';
 
@@ -23,6 +25,7 @@ export type AudioLevels = {
   master: AudioLevelReading;
   reductions: Record<string, number>;
   chainError: string | null;
+  overlay: AudioLevelReading;
 };
 
 export type AudioGraphChannel = {
@@ -41,6 +44,35 @@ export type AudioGraphChannel = {
 export type AudioGraphSnapshot = {
   master: { volume: number; muted: boolean; effects: AudioEffect[] };
   channels: AudioGraphChannel[];
+  overlay: {
+    faderDb: number;
+    muted: boolean;
+    solo: boolean;
+    monitoring: AudioMonitoringMode;
+    effects: AudioEffect[];
+  };
+};
+
+export type OverlayInstanceStart = {
+  instanceId: string;
+  buffer: AudioBuffer;
+  volumeDb: number;
+  muted: boolean;
+  loop: boolean;
+  playbackRate: number;
+  startTimeSec: number;
+  endTimeSec?: number;
+};
+
+/** Program send joins the master input. Monitor send joins the headphone sum. Neither is the program stream. */
+export const connectOverlaySends = (
+  programSend: { connect: (node: AudioNode) => void },
+  monitorSend: { connect: (node: AudioNode) => void },
+  masterInput: AudioNode,
+  monitorInput: AudioNode,
+): void => {
+  programSend.connect(masterInput);
+  monitorSend.connect(monitorInput);
 };
 
 type ArmedSource = {
@@ -75,7 +107,13 @@ type ChannelStrip = {
 const FLOOR: AudioLevelReading = { rmsDb: LEVEL_FLOOR_DB, peakDb: LEVEL_FLOOR_DB };
 const PEAK_HOLD_MS = 800;
 
-const silent = (): AudioLevels => ({ channels: {}, master: { ...FLOOR }, reductions: {}, chainError: null });
+const silent = (): AudioLevels => ({
+  channels: {},
+  master: { ...FLOOR },
+  overlay: { ...FLOOR },
+  reductions: {},
+  chainError: null,
+});
 
 /**
  * One browser audio graph for the studio session.
@@ -93,6 +131,16 @@ export class AudioEngine {
   private masterInsert: EffectInsert | null = null;
   private readonly channels = new Map<string, ChannelStrip>();
   private readonly armed = new Map<string, ArmedSource>();
+  private overlayInput: GainNode | null = null;
+  private overlayInsert: EffectInsert | null = null;
+  private overlayFader: GainNode | null = null;
+  private overlayMute: GainNode | null = null;
+  private overlayAnalyser: AnalyserNode | null = null;
+  private overlayProgram: GainNode | null = null;
+  private overlayMonitor: GainNode | null = null;
+  private overlayEnded: ((instanceId: string) => void) | null = null;
+  private readonly overlayVoices = new Map<string, { stop: () => void; gain: GainNode }>();
+  private readonly overlayCache = new OverlayBufferCache<AudioBuffer>((url) => this.decodeOverlayUrl(url));
   private readonly ballistics = new Map<string, { rms: number; peak: number; peakAt: number }>();
   private readonly timers: ReturnType<typeof setTimeout>[] = [];
   private samples: Float32Array<ArrayBuffer> | null = null;
@@ -118,6 +166,70 @@ export class AudioEngine {
       return null;
     }
     return curveFromEffect(this.context, effect);
+  }
+
+  setOverlayEndedListener(listener: ((instanceId: string) => void) | null): void {
+    this.overlayEnded = listener;
+  }
+
+  loadOverlayBuffer(cacheKey: string, url: string): Promise<AudioBuffer> {
+    return this.overlayCache.load(cacheKey, url);
+  }
+
+  retainOverlayBuffers(keep: ReadonlySet<string>): void {
+    this.overlayCache.retain(keep);
+  }
+
+  startOverlayInstance(request: OverlayInstanceStart): void {
+    const context = this.ensureContext();
+    this.stopOverlayInstance(request.instanceId);
+    const source = context.createBufferSource();
+    const gain = context.createGain();
+    const voice = attachOverlayVoice({
+      source: source as unknown as OverlayVoiceSource,
+      gain: gain as unknown as OverlayVoiceGain,
+      destination: this.overlayInput,
+      buffer: request.buffer,
+      volumeDb: request.volumeDb,
+      muted: request.muted,
+      loop: request.loop,
+      playbackRate: request.playbackRate,
+      startTimeSec: request.startTimeSec,
+      endTimeSec: request.endTimeSec,
+      now: context.currentTime,
+      onEnded: () => {
+        this.overlayVoices.delete(request.instanceId);
+        this.overlayEnded?.(request.instanceId);
+      },
+    });
+    this.overlayVoices.set(request.instanceId, { stop: voice.stop, gain });
+  }
+
+  stopOverlayInstance(instanceId: string): void {
+    const voice = this.overlayVoices.get(instanceId);
+    if (!voice) {
+      return;
+    }
+    this.overlayVoices.delete(instanceId);
+    voice.stop();
+  }
+
+  setOverlayInstanceGain(instanceId: string, volumeDb: number, muted: boolean): void {
+    const voice = this.overlayVoices.get(instanceId);
+    if (!voice || !this.context) {
+      return;
+    }
+    rampOverlayGain(voice.gain.gain, muted ? 0 : dbToGain(volumeDb), this.context.currentTime);
+  }
+
+  private async decodeOverlayUrl(url: string): Promise<AudioBuffer> {
+    const context = this.ensureContext();
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error('Audio asset failed to load');
+    }
+    const bytes = await response.arrayBuffer();
+    return context.decodeAudioData(bytes.slice(0));
   }
 
   /**
@@ -234,6 +346,19 @@ export class AudioEngine {
       this.masterMute.gain.value = snapshot.master.muted ? 0 : 1;
     }
 
+    if (this.overlayFader && this.overlayMute && this.overlayProgram && this.overlayMonitor && this.overlayInsert) {
+      rampOverlayGain(this.overlayFader.gain, dbToGain(snapshot.overlay.faderDb), context.currentTime);
+      rampOverlayGain(this.overlayMute.gain, snapshot.overlay.muted ? 0 : 1, context.currentTime);
+      const overlayRoute = routeOverlayBus({
+        monitoring: snapshot.overlay.monitoring,
+        solo: snapshot.overlay.solo,
+        anyChannelSolo: anySoloInScene,
+      });
+      this.overlayProgram.gain.value = overlayRoute.program ? 1 : 0;
+      this.overlayMonitor.gain.value = overlayRoute.monitor ? 1 : 0;
+      tasks.push(this.overlayInsert.sync(snapshot.overlay.effects));
+    }
+
     const generation = ++this.chainGeneration;
     void Promise.allSettled(tasks).then((results) => {
       if (generation !== this.chainGeneration) {
@@ -268,6 +393,20 @@ export class AudioEngine {
     this.ballistics.clear();
     this.masterInsert?.dispose();
     this.masterInsert = null;
+    this.overlayEnded = null;
+    for (const voice of this.overlayVoices.values()) {
+      voice.stop();
+    }
+    this.overlayVoices.clear();
+    this.overlayCache.retain(new Set());
+    this.overlayInsert?.dispose();
+    this.overlayInsert = null;
+    this.overlayInput = null;
+    this.overlayFader = null;
+    this.overlayMute = null;
+    this.overlayAnalyser = null;
+    this.overlayProgram = null;
+    this.overlayMonitor = null;
     this.masterInput = null;
     this.masterVolume = null;
     this.masterMute = null;
@@ -304,6 +443,22 @@ export class AudioEngine {
 
     this.context = context;
     this.masterInput = masterInput;
+    const overlayInput = context.createGain();
+    const overlayInsert = new EffectInsert(this.insertHost(context));
+    const overlayFader = context.createGain();
+    const overlayMute = context.createGain();
+    const overlayAnalyser = context.createAnalyser();
+    overlayAnalyser.fftSize = 2048;
+    const overlayProgram = context.createGain();
+    const overlayMonitor = context.createGain();
+    overlayInput.connect(overlayInsert.input);
+    overlayInsert.output.connect(overlayFader);
+    overlayFader.connect(overlayMute);
+    overlayMute.connect(overlayAnalyser);
+    overlayAnalyser.connect(overlayProgram);
+    overlayAnalyser.connect(overlayMonitor);
+    connectOverlaySends(overlayProgram, overlayMonitor, masterInput, monitorInput);
+
     this.masterInsert = masterInsert;
     this.masterVolume = masterVolume;
     this.masterMute = masterMute;
@@ -311,6 +466,13 @@ export class AudioEngine {
     this.programDestination = programDestination;
     this.monitorInput = monitorInput;
     this.samples = new Float32Array(masterAnalyser.fftSize);
+    this.overlayInput = overlayInput;
+    this.overlayInsert = overlayInsert;
+    this.overlayFader = overlayFader;
+    this.overlayMute = overlayMute;
+    this.overlayAnalyser = overlayAnalyser;
+    this.overlayProgram = overlayProgram;
+    this.overlayMonitor = overlayMonitor;
     return context;
   }
 
@@ -412,7 +574,15 @@ export class AudioEngine {
     if (this.masterInsert) {
       Object.assign(reductions, this.masterInsert.reductions());
     }
-    this.listener?.({ channels, master, reductions, chainError: this.chainError });
+    let overlay = { ...FLOOR };
+    if (this.overlayAnalyser) {
+      this.overlayAnalyser.getFloatTimeDomainData(this.samples);
+      overlay = this.applyBallistics('overlay', measureTimeDomain(this.samples));
+    }
+    if (this.overlayInsert) {
+      Object.assign(reductions, this.overlayInsert.reductions());
+    }
+    this.listener?.({ channels, master, overlay, reductions, chainError: this.chainError });
   }
 
   private applyBallistics(id: string, reading: AudioLevelReading): AudioLevelReading {

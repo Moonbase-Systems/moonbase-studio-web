@@ -7,8 +7,10 @@ import {
   type AudioLevels,
   emptyAudioLevels,
   type MonitorSinkResult,
+  type OverlayInstanceStart,
 } from '../infrastructure/audio/audio-engine';
-import type { AudioEffect } from '../models/audio.domain';
+import { type AudioEffect, channelAudibleInScene } from '../models/audio.domain';
+import { createDefaultOverlayBus } from '../models/overlay-sound.domain';
 import { useStudioSessionStore } from '../store/studio-session.store';
 
 export type StudioAudioEngineHandle = {
@@ -19,6 +21,12 @@ export type StudioAudioEngineHandle = {
   getProgramStream: () => MediaStream | null;
   readCurve: (effect: AudioEffect) => { frequencies: number[]; magnitudeDb: number[] } | null;
   setMonitorSink: (sinkId: string) => Promise<MonitorSinkResult>;
+  loadOverlayBuffer: (cacheKey: string, url: string) => Promise<AudioBuffer>;
+  retainOverlayBuffers: (keep: ReadonlySet<string>) => void;
+  startOverlayInstance: (request: OverlayInstanceStart) => void;
+  stopOverlayInstance: (instanceId: string) => void;
+  setOverlayInstanceGain: (instanceId: string, volumeDb: number, muted: boolean) => void;
+  setOverlayEndedListener: (listener: ((instanceId: string) => void) | null) => void;
 };
 
 const StudioAudioEngineKey: InjectionKey<StudioAudioEngineHandle> = Symbol('studio-audio-engine');
@@ -49,9 +57,16 @@ const snapshotFromStore = (
       muted: channel.muted,
       solo: channel.solo,
       monitoring: channel.monitoring,
-      enabledInScene: enabled.has(channel.id),
+      enabledInScene: channelAudibleInScene(channel, enabled),
       effects: channel.effects,
     })),
+    overlay: {
+      faderDb: project.audioMixer.overlay.faderDb,
+      muted: project.audioMixer.overlay.muted,
+      solo: project.audioMixer.overlay.solo,
+      monitoring: project.audioMixer.overlay.monitoring,
+      effects: project.audioMixer.overlay.effects,
+    },
   };
 };
 
@@ -61,6 +76,7 @@ export function provideStudioAudioEngine(): StudioAudioEngineHandle {
   const armedIds = new Set<string>();
   let engine: AudioEngine | null = null;
   let stopWatch: (() => void) | null = null;
+  let endedListener: ((instanceId: string) => void) | null = null;
 
   const handle: StudioAudioEngineHandle = {
     levels,
@@ -79,13 +95,30 @@ export function provideStudioAudioEngine(): StudioAudioEngineHandle {
     getProgramStream: () => engine?.getProgramStream() ?? null,
     readCurve: (effect) => engine?.readCurve(effect) ?? null,
     setMonitorSink: async (sinkId) => engine?.setMonitorSink(sinkId) ?? { ok: false, reason: 'unsupported' },
+    loadOverlayBuffer: async (cacheKey, url) => {
+      if (!engine) {
+        throw new Error('Audio engine is not running');
+      }
+      return engine.loadOverlayBuffer(cacheKey, url);
+    },
+    retainOverlayBuffers: (keep) => engine?.retainOverlayBuffers(keep),
+    startOverlayInstance: (request) => engine?.startOverlayInstance(request),
+    stopOverlayInstance: (instanceId) => engine?.stopOverlayInstance(instanceId),
+    setOverlayInstanceGain: (instanceId, volumeDb, muted) =>
+      engine?.setOverlayInstanceGain(instanceId, volumeDb, muted),
+    setOverlayEndedListener: (listener) => {
+      endedListener = listener;
+      engine?.setOverlayEndedListener(listener);
+    },
   };
 
   onMounted(() => {
     const next = new AudioEngine();
     engine = next;
+    next.setOverlayEndedListener(endedListener);
     next.setLevelListener((reading) => {
       levels.master = reading.master;
+      levels.overlay = reading.overlay;
       levels.reductions = reading.reductions;
       levels.chainError = reading.chainError;
       const nextChannels: AudioLevels['channels'] = {};
@@ -111,7 +144,18 @@ export function provideStudioAudioEngine(): StudioAudioEngineHandle {
           return;
         }
         if (!current) {
-          engine.sync({ master: { volume: 1, muted: true, effects: [] }, channels: [] });
+          const idle = createDefaultOverlayBus();
+          engine.sync({
+            master: { volume: 1, muted: true, effects: [] },
+            channels: [],
+            overlay: {
+              faderDb: idle.faderDb,
+              muted: true,
+              solo: idle.solo,
+              monitoring: idle.monitoring,
+              effects: [],
+            },
+          });
           return;
         }
         engine.sync(current.snapshot);
@@ -148,6 +192,14 @@ export function useStudioAudioEngine(): StudioAudioEngineHandle {
       getProgramStream: () => null,
       readCurve: () => null,
       setMonitorSink: async () => ({ ok: false, reason: 'unsupported' }),
+      loadOverlayBuffer: async () => {
+        throw new Error('Audio engine is not running');
+      },
+      retainOverlayBuffers: () => undefined,
+      startOverlayInstance: () => undefined,
+      stopOverlayInstance: () => undefined,
+      setOverlayInstanceGain: () => undefined,
+      setOverlayEndedListener: () => undefined,
     }
   );
 }

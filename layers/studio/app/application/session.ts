@@ -63,12 +63,21 @@ export const normalizeEditor = (editor: EditorState, project: Project | null): E
   const activeScene = project.scenes.find((scene) => scene.id === activeSceneId);
   const elementIds = new Set(activeScene?.elements.map((el) => el.id) ?? []);
   const selectedElementIds = editor.selectedElementIds.filter((id) => elementIds.has(id));
+  const soundId = editor.selectedOverlaySoundId;
+  const soundExists = Boolean(soundId && project.audioMixer.overlay.sounds.some((sound) => sound.id === soundId));
+  const soundSelected = selectedElementIds.length === 0 && soundExists;
+  const channelId = editor.selectedGlobalChannelId;
+  const channelLive = Boolean(
+    channelId && project.audioMixer.channels.some((channel) => channel.id === channelId && channel.global),
+  );
 
   return {
     ...editor,
     activeSceneId,
     selectedElementIds,
     selectedGroupIds: [],
+    selectedOverlaySoundId: selectedElementIds.length > 0 || !soundExists ? null : soundId,
+    selectedGlobalChannelId: selectedElementIds.length > 0 || soundSelected || !channelLive ? null : channelId,
   };
 };
 

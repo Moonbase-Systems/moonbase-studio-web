@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { measureTimeDomain, volumeToFaderDb } from '../models/audio.domain';
-import { routeChannel, sceneHasSolo } from './audio-routing';
+import { routeChannel, routeOverlayBus, sceneHasSolo } from './audio-routing';
 
 describe('routeChannel', () => {
   it('sends an enabled channel to the program and keeps monitoring off the headphones', () => {
@@ -83,6 +83,33 @@ describe('routeChannel', () => {
       ]),
     ).toBe(false);
     expect(sceneHasSolo([{ enabledInScene: true, solo: true }])).toBe(true);
+  });
+});
+
+describe('routeOverlayBus', () => {
+  it('keeps the program send and follows channel solo on the headphones', () => {
+    const program = routeOverlayBus({ monitoring: 'off', solo: false, anyChannelSolo: false });
+    expect(program).toEqual({ program: true, monitor: false });
+
+    const withChannelSolo = routeOverlayBus({ monitoring: 'monitor-and-output', solo: false, anyChannelSolo: true });
+    expect(withChannelSolo).toEqual({ program: true, monitor: false });
+
+    const busSolo = routeOverlayBus({ monitoring: 'off', solo: true, anyChannelSolo: false });
+    expect(busSolo).toEqual({ program: true, monitor: true });
+
+    const bothSolo = routeOverlayBus({ monitoring: 'monitor', solo: true, anyChannelSolo: true });
+    expect(bothSolo).toEqual({ program: false, monitor: true });
+  });
+
+  it('does not change a channel route when the overlay bus is not part of the solo count', () => {
+    expect(
+      routeChannel({
+        enabledInScene: true,
+        monitoring: 'monitor-and-output',
+        solo: false,
+        anySoloInScene: false,
+      }),
+    ).toEqual({ program: true, monitor: true });
   });
 });
 

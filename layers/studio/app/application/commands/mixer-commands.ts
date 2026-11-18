@@ -40,6 +40,7 @@ export type AudioChannelDraft = {
   solo?: boolean;
   monitoring?: AudioMonitoringMode;
   syncOffsetMs?: number;
+  global?: boolean;
   filters?: AudioFilter[];
   effects?: AudioEffect[];
 };
@@ -53,6 +54,7 @@ export type AudioChannelChanges = {
   solo?: boolean;
   monitoring?: AudioMonitoringMode;
   syncOffsetMs?: number;
+  global?: boolean;
   filters?: AudioFilter[];
   effects?: AudioEffect[];
 };
@@ -164,6 +166,7 @@ export const addAudioChannel = (
     solo: draft.solo ?? false,
     monitoring: draft.monitoring ?? 'off',
     syncOffsetMs: draft.syncOffsetMs ?? 0,
+    global: draft.global ?? false,
     filters: structuredClone(draft.filters ?? []),
     effects: structuredClone(draft.effects ?? []),
   };
@@ -243,6 +246,9 @@ export const updateAudioChannel = (
       }
       if (changes.filters !== undefined) {
         target.filters = structuredClone(changes.filters);
+      }
+      if (changes.global !== undefined) {
+        target.global = changes.global;
       }
       if (changes.effects !== undefined) {
         target.effects = structuredClone(changes.effects);

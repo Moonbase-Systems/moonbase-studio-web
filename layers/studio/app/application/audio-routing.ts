@@ -14,6 +14,22 @@ export type ChannelRoute = {
 };
 
 /**
+ * Program and monitor sends for the overlay bus, taken after its mute.
+ * Channel solo is the only solo that counts as "someone is solo". The bus solo
+ * is separate: it can put the bus on the headphones without taking channels off them,
+ * and a channel solo takes the bus off the headphones unless the bus is solo too.
+ * Neither solo changes the program send.
+ */
+export const routeOverlayBus = (input: {
+  monitoring: AudioMonitoringMode;
+  solo: boolean;
+  anyChannelSolo: boolean;
+}): ChannelRoute => ({
+  program: input.monitoring !== 'monitor',
+  monitor: input.anyChannelSolo || input.solo ? input.solo : input.monitoring !== 'off',
+});
+
+/**
  * Program and monitor sends, taken after the channel mute.
  * Mute itself is a gain in front of this split, so a muted channel is silent
  * on both buses. Solo never changes the program send.

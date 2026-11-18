@@ -163,4 +163,19 @@ describe('migrateProjectFileV2ToV3', () => {
     expect(parsed.project.audioMixer.channels[0]?.id).toBe('old-channel');
     expect(parsed.project.audioMixer.channels[0]?.monitoring).toBe('monitor');
   });
+
+  it('writes the default overlay bus when a v2 mixer has none', () => {
+    const file = v2File();
+    delete (file.project.audioMixer as { overlay?: unknown }).overlay;
+    const migrated = migrateProjectFileV2ToV3(file);
+    const parsed = parseProjectFile(migrated.file);
+    expect(parsed.ok).toBe(true);
+    if (!parsed.ok) {
+      return;
+    }
+    expect(parsed.project.audioMixer.overlay.sounds).toEqual([]);
+    expect(parsed.project.audioMixer.overlay.triggers).toEqual([]);
+    expect(parsed.project.audioMixer.overlay.maxInstances).toBe(16);
+    expect(parsed.project.audioMixer.overlay.sceneChangePolicy).toBe('continue');
+  });
 });
