@@ -8,7 +8,32 @@ export type ShortcutActionId =
   | 'reorder.up'
   | 'reorder.down'
   | 'selection.toggle'
-  | 'selection.range';
+  | 'selection.range'
+  | 'document.save'
+  | 'document.open'
+  | 'layer.delete'
+  | 'layer.duplicate'
+  | 'scene.create'
+  | 'scene.next'
+  | 'scene.previous'
+  | 'audio.toggleMute'
+  | 'audio.pushToTalk'
+  | 'audio.pushToMute'
+  | 'layer.toggleVisibility'
+  | 'layer.toggleLock'
+  | 'selection.all'
+  | 'layer.nudgeLeft'
+  | 'layer.nudgeRight'
+  | 'layer.nudgeUp'
+  | 'layer.nudgeDown'
+  | 'layer.nudgeLeftCoarse'
+  | 'layer.nudgeRightCoarse'
+  | 'layer.nudgeUpCoarse'
+  | 'layer.nudgeDownCoarse'
+  | 'layer.toFront'
+  | 'layer.toBack'
+  | 'layer.group'
+  | 'layer.ungroup';
 
 export type ShortcutModifier = 'mod' | 'shift' | 'alt' | 'ctrl' | 'meta';
 

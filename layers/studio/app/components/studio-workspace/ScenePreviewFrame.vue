@@ -27,6 +27,19 @@ function onEmptyPreviewPointerDown(event: PointerEvent) {
   store.clearSelection();
 }
 
+function onPreviewPointerDown(event: PointerEvent) {
+  onEmptyPreviewPointerDown(event);
+  const root = event.currentTarget;
+  const target = event.target;
+  if (!(root instanceof HTMLElement) || !(target instanceof Element)) {
+    return;
+  }
+  if (target.closest('input, textarea, select, button, a')) {
+    return;
+  }
+  root.focus({ preventScroll: true });
+}
+
 const video = computed(() => store.project?.settings.video);
 const aspectValue = computed(() => {
   const v = video.value;
@@ -98,7 +111,7 @@ const overlayMeter = computed(() => {
   };
 });
 
-watch([() => store.activeScene, isReady], ([scene, ready]) => {
+watch([() => store.activeScene, () => store.project?.settings.video, isReady], ([scene, , ready]) => {
   if (scene && ready) {
     void compositionEngine.render(scene);
   }
@@ -107,9 +120,10 @@ watch([() => store.activeScene, isReady], ([scene, ready]) => {
 
 <template>
   <div
-    class="p-xx-lg gap-xx-lg relative flex h-full min-h-0 flex-col overflow-hidden"
+    class="p-xx-lg gap-xx-lg focus-visible:ring-accent relative flex h-full min-h-0 flex-col overflow-hidden outline-none focus-visible:ring-2 focus-visible:ring-inset"
     data-scene-preview
-    @pointerdown="onEmptyPreviewPointerDown"
+    tabindex="0"
+    @pointerdown="onPreviewPointerDown"
   >
     <div class="gap-md flex shrink-0 flex-wrap items-baseline justify-between">
       <div class="gap-tiny flex min-w-0 flex-col">

@@ -1,8 +1,16 @@
 import { describe, expect, it } from 'vitest';
 
 import { createSessionWithProject } from '../../test-utils/studio-session-fixtures';
+import { addAsset } from './asset-commands';
 import { addLayer } from './layer-commands';
-import { createScene, deleteScene, duplicateScene, moveSceneRelative, renameScene } from './scene-commands';
+import {
+  createScene,
+  deleteScene,
+  duplicateScene,
+  moveSceneRelative,
+  renameScene,
+  setSceneBackground,
+} from './scene-commands';
 import { selectLayer } from './session-commands';
 import { addSource } from './source-commands';
 
@@ -153,6 +161,55 @@ describe('scene commands', () => {
     expect(movedDown.ok).toBe(true);
     if (movedDown.ok) {
       expect(movedDown.value.project!.scenes.map((scene) => scene.id)).toEqual([firstId, secondId]);
+    }
+  });
+
+  it('sets a color background and an image asset, and rejects a missing image', () => {
+    const { session, ctx } = createSessionWithProject();
+    const sceneId = session.editor.activeSceneId;
+    expect(sceneId).toBeTruthy();
+    if (!sceneId) {
+      return;
+    }
+
+    const colored = setSceneBackground(session, sceneId, { kind: 'color', color: '#ffffff' }, ctx);
+    expect(colored.ok).toBe(true);
+    if (colored.ok) {
+      expect(colored.value.project?.scenes.find((scene) => scene.id === sceneId)?.background).toEqual({
+        kind: 'color',
+        color: '#ffffff',
+      });
+    }
+
+    const missing = setSceneBackground(session, sceneId, { kind: 'image', assetId: 'missing-asset' }, ctx);
+    expect(missing.ok).toBe(false);
+
+    const added = addAsset(
+      session,
+      {
+        name: 'Plate',
+        type: 'image',
+        location: { kind: 'remoteUrl', url: 'https://example.com/plate.png' },
+        availability: 'available',
+      },
+      ctx,
+    );
+    expect(added.ok).toBe(true);
+    if (!added.ok) {
+      return;
+    }
+    const assetId = added.value.project?.assets[0]?.id;
+    expect(assetId).toBeTruthy();
+    if (!assetId) {
+      return;
+    }
+    const imaged = setSceneBackground(added.value, sceneId, { kind: 'image', assetId }, ctx);
+    expect(imaged.ok).toBe(true);
+    if (imaged.ok) {
+      expect(imaged.value.project?.scenes.find((scene) => scene.id === sceneId)?.background).toEqual({
+        kind: 'image',
+        assetId,
+      });
     }
   });
 });

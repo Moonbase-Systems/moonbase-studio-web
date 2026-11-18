@@ -51,6 +51,20 @@ export const serializeProjectFile = (project: Project): string => {
   return JSON.stringify(toProjectFile(project));
 };
 
+const EXPORT_FILENAME_FALLBACK = 'project';
+
+/** Download payload for the current document. Does not write the catalog or clear the dirty flag. */
+export const projectExportPayload = (project: Project): { filename: string; body: string } => {
+  const safe = project.name
+    .trim()
+    .replace(/[^\p{L}\p{N}._-]+/gu, '-')
+    .replace(/^-+|-+$/g, '');
+  return {
+    filename: `${safe || EXPORT_FILENAME_FALLBACK}.json`,
+    body: serializeProjectFile(project),
+  };
+};
+
 export const parseProjectFile = (input: unknown): ProjectFileParseResult => {
   const migrated = migrateProjectFile(typeof input === 'string' ? safeJsonParse(input) : input);
   const parsed = projectFileSchema.safeParse(migrated.file);

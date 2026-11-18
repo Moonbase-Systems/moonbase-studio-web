@@ -43,6 +43,7 @@ import type {
   TransitionId,
 } from '../models/ids.domain';
 import type { Project, ProjectType } from '../models/project.domain';
+import type { SceneBackground } from '../models/scene.domain';
 import type { AudioMigrationConflict } from '../serialization/audio-migration';
 
 const deepFreeze = (value: unknown): void => {
@@ -171,6 +172,8 @@ export const useStudioSessionStore = defineStore(STORE_KEYS.STUDIO_SESSION, () =
       service.setLayerVisibility(sceneId, layerId, visible),
     setLayerLocked: (sceneId: SceneId, layerId: ElementId, locked: boolean) =>
       service.setLayerLocked(sceneId, layerId, locked),
+    setSceneBackground: (sceneId: SceneId, background: SceneBackground) =>
+      service.setSceneBackground(sceneId, background),
     setSceneDefaultTransition: (sceneId: SceneId, transitionId: TransitionId | null) =>
       service.setSceneDefaultTransition(sceneId, transitionId),
     addSource: (definition: SourceDefinition) => service.addSource(definition),

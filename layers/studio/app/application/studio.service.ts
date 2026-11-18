@@ -15,6 +15,7 @@ import type {
   TransitionId,
 } from '../models/ids.domain';
 import type { Project, ProjectType } from '../models/project.domain';
+import type { SceneBackground } from '../models/scene.domain';
 import {
   addAsset,
   addAudioChannel,
@@ -78,6 +79,7 @@ import {
   setBrowserPageAudio,
   setLayerLocked,
   setLayerVisibility,
+  setSceneBackground,
   setSceneDefaultTransition,
   setSelectedLayers,
   undo,
@@ -342,6 +344,9 @@ export const createStudioService = (deps: { state: StudioSessionState; context?:
 
     setLayerLocked: (sceneId: SceneId, layerId: ElementId, locked: boolean) =>
       run((session, context) => setLayerLocked(session, sceneId, layerId, locked, context)),
+
+    setSceneBackground: (sceneId: SceneId, background: SceneBackground) =>
+      run((session, context) => setSceneBackground(session, sceneId, background, context)),
 
     setSceneDefaultTransition: (sceneId: SceneId, transitionId: TransitionId | null) =>
       run((session, context) => setSceneDefaultTransition(session, sceneId, transitionId, context)),

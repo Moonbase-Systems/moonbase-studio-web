@@ -3,7 +3,10 @@ import { createIndexedDbProjectBackend } from '../infrastructure/indexed-db-proj
 import type { ProjectId } from '../models/ids.domain';
 import type { ProjectMeta } from '../models/project.domain';
 import type { SceneRepositoryError } from '../ports/scene-repository';
+import { projectExportPayload } from '../serialization/project-file';
 import { useStudioSessionStore } from '../store/studio-session.store';
+
+type PendingDocumentAction = { kind: 'switch'; projectId: ProjectId } | null;
 
 export function useProjectDocument() {
   const store = useStudioSessionStore();
@@ -12,9 +15,8 @@ export function useProjectDocument() {
 
   const statusMessage = ref<string | null>(null);
   const catalog = ref<ProjectMeta[]>([]);
-  const catalogOpen = ref(false);
   const confirmOpen = ref(false);
-  const pendingAction = ref<'new' | 'open' | null>(null);
+  const pendingAction = ref<PendingDocumentAction>(null);
 
   watch(
     () => store.isDirty,
@@ -49,49 +51,30 @@ export function useProjectDocument() {
     catalog.value = listed.value;
   }
 
-  function createNewProject() {
-    const created = store.createProject({ name: 'MoonBase' });
-    if (!created.ok) {
-      statusMessage.value = t('studio.document.createFailed');
+  function requestSwitchProject(projectId: ProjectId) {
+    if (projectId === store.project?.id) {
       return;
     }
-    statusMessage.value = null;
-  }
-
-  async function openCatalog() {
-    await refreshCatalog();
-    catalogOpen.value = true;
-  }
-
-  function requestNewProject() {
     if (store.isDirty) {
-      pendingAction.value = 'new';
+      pendingAction.value = { kind: 'switch', projectId };
       confirmOpen.value = true;
       return;
     }
-    createNewProject();
-  }
-
-  function requestOpen() {
-    if (store.isDirty) {
-      pendingAction.value = 'open';
-      confirmOpen.value = true;
-      return;
-    }
-    void openCatalog();
+    void openProject(projectId);
   }
 
   function confirmDiscard() {
     const action = pendingAction.value;
     confirmOpen.value = false;
     pendingAction.value = null;
-    if (action === 'new') {
-      createNewProject();
-      return;
+    if (action?.kind === 'switch') {
+      void openProject(action.projectId);
     }
-    if (action === 'open') {
-      void openCatalog();
-    }
+  }
+
+  function cancelDiscard() {
+    confirmOpen.value = false;
+    pendingAction.value = null;
   }
 
   async function saveProject() {
@@ -115,6 +98,22 @@ export function useProjectDocument() {
     statusMessage.value = marked.ok ? t('studio.document.saved') : t('studio.document.saveFailed');
   }
 
+  function exportProjectFile() {
+    const project = store.project;
+    if (!project || !import.meta.client) {
+      return;
+    }
+    const payload = projectExportPayload(project);
+    const url = URL.createObjectURL(new Blob([payload.body], { type: 'application/json' }));
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = payload.filename;
+    document.body.append(anchor);
+    anchor.click();
+    anchor.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 0);
+  }
+
   async function openProject(id: ProjectId) {
     const loaded = await repository.loadProject(id);
     if (!loaded.ok) {
@@ -129,19 +128,18 @@ export function useProjectDocument() {
       return;
     }
 
-    catalogOpen.value = false;
     statusMessage.value = null;
   }
 
   return {
     statusMessage,
     catalog,
-    catalogOpen,
     confirmOpen,
-    requestNewProject,
-    requestOpen,
+    refreshCatalog,
+    requestSwitchProject,
     confirmDiscard,
+    cancelDiscard,
     saveProject,
-    openProject,
+    exportProjectFile,
   };
 }
