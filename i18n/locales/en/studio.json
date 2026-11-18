@@ -352,6 +352,20 @@
         "target": "Target"
       },
       "off": "Off",
+      "outputFormat": {
+        "frameRate": "Frame rate",
+        "height": "Height",
+        "invalid": "Enter a name and a positive width, height and frame rate.",
+        "name": "Name",
+        "presets": {
+          "portrait-4x5": "Portrait frame",
+          "shorts-1080": "TikTok, YouTube Shorts, Instagram Reels",
+          "square-1080": "Square frame",
+          "youtube-1080p": "Classic landscape"
+        },
+        "title": "Output Format",
+        "width": "Width"
+      },
       "picture": {
         "frameRate": "Frame rate",
         "height": "Height",

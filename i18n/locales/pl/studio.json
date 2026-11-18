@@ -352,6 +352,20 @@
         "target": "Cel"
       },
       "off": "Wył.",
+      "outputFormat": {
+        "frameRate": "Klatki na sekundę",
+        "height": "Wysokość",
+        "invalid": "Podaj nazwę oraz dodatnią szerokość, wysokość i liczbę klatek.",
+        "name": "Nazwa",
+        "presets": {
+          "portrait-4x5": "Format portretowy",
+          "shorts-1080": "TikTok, YouTube Shorts, Instagram Reels",
+          "square-1080": "Format kwadratowy",
+          "youtube-1080p": "Klasyczny format poziomy"
+        },
+        "title": "Format wyjścia",
+        "width": "Szerokość"
+      },
       "picture": {
         "frameRate": "Klatki",
         "height": "Wysokość",
