@@ -14,6 +14,7 @@ import type { ShortcutActionId, ShortcutBinding } from '../../models/shortcut.do
 import { useStudioSessionStore } from '../../store/studio-session.store';
 import { OPTION_FIELD_CATALOG, type OptionFieldSpec } from './studio-option-catalog';
 import StudioOptionField from './StudioOptionField.vue';
+import StudioOutputFormatSection from './StudioOutputFormatSection.vue';
 
 const open = defineModel<boolean>({ required: true });
 
@@ -81,21 +82,6 @@ const BRIDGE_SHORTCUTS = [
 
 const sectionId = ref<SectionId>('transmission');
 
-const drafts = reactive({ width: '', height: '', frameRate: '' });
-
-watch(
-  () => store.project?.settings.video,
-  (video) => {
-    if (!video) {
-      return;
-    }
-    drafts.width = String(video.width);
-    drafts.height = String(video.height);
-    drafts.frameRate = String(video.frameRate);
-  },
-  { immediate: true },
-);
-
 const imageAssets = computed(() => store.project?.assets.filter((asset) => asset.type === 'image') ?? []);
 const background = computed(() => store.activeScene?.background ?? { kind: 'none' as const });
 
@@ -113,8 +99,6 @@ const shortcutRows = computed(() => {
     hold: actionId === 'audio.pushToTalk' || actionId === 'audio.pushToMute',
   }));
 });
-
-const pictureKeys = ['width', 'height', 'frameRate'] as const;
 
 function fieldRows(section: SectionId): OptionFieldSpec[] {
   return OPTION_FIELD_CATALOG.filter((row) => row.section === section);
@@ -135,12 +119,6 @@ function fieldText(row: OptionFieldSpec): string {
   }
   const video = store.project?.settings.video;
   const audio = store.project?.settings.audio;
-  if (row.id === 'outputWidth') {
-    return String(video?.width ?? row.value ?? '');
-  }
-  if (row.id === 'outputHeight') {
-    return String(video?.height ?? row.value ?? '');
-  }
   if (row.id === 'colorSpace') {
     return video?.colorSpace ?? row.value ?? '';
   }
@@ -203,23 +181,6 @@ function arrowLabel(key: string): string {
     default:
       return key.length === 1 ? key.toUpperCase() : key;
   }
-}
-
-function commitPicture(key: 'width' | 'height' | 'frameRate') {
-  const video = store.project?.settings.video;
-  if (!video) {
-    return;
-  }
-  const parsed = Number(drafts[key]);
-  const valid = key === 'frameRate' ? Number.isFinite(parsed) && parsed > 0 : Number.isInteger(parsed) && parsed > 0;
-  if (!valid) {
-    drafts[key] = String(video[key]);
-    return;
-  }
-  if (parsed === video[key]) {
-    return;
-  }
-  store.updateProject({ settings: { video: { [key]: parsed } } });
 }
 
 function setBackgroundKind(kind: 'none' | 'color' | 'image') {
@@ -338,26 +299,7 @@ function onAssetChange(event: Event) {
               v-if="sectionId === 'picture'"
               class="gap-xxx-sm flex flex-col"
             >
-              <p class="text-label text-on-surface-dim font-mono uppercase">
-                {{ t('studio.options.groups.canvas') }}
-              </p>
-              <label
-                v-for="key in pictureKeys"
-                :key="key"
-                class="gap-md flex items-center"
-              >
-                <span class="text-body-sm text-on-surface-dim w-[22rem] shrink-0 font-sans">
-                  {{ t(`studio.options.picture.${key}`) }}
-                </span>
-                <input
-                  v-model="drafts[key]"
-                  :class="[fieldClass, 'tabular-nums']"
-                  inputmode="decimal"
-                  autocomplete="off"
-                  @change="commitPicture(key)"
-                  @keydown.enter="($event.target as HTMLInputElement).blur()"
-                />
-              </label>
+              <StudioOutputFormatSection />
               <template
                 v-for="(row, index) in fieldRows('picture')"
                 :key="row.id"
