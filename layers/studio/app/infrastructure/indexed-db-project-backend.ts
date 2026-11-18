@@ -4,15 +4,27 @@ import type { ProjectFile } from '../models/project.domain';
 
 const DB_NAME = 'moonbase-studio';
 const STORE_NAME = 'projects';
-const DB_VERSION = 1;
+export const RECORDINGS_STORE_NAME = 'recordings';
+const DB_VERSION = 2;
 
-const requestToPromise = <T>(request: IDBRequest<T>): Promise<T> =>
+export const requestToPromise = <T>(request: IDBRequest<T>): Promise<T> =>
   new Promise((resolve, reject) => {
     request.onsuccess = () => resolve(request.result);
     request.onerror = () => reject(request.error ?? new Error('IndexedDB request failed'));
   });
 
-const openDatabase = (): Promise<IDBDatabase> =>
+/** Creates project and recording stores. Recording rows are not part of the project document. */
+export const upgradeStudioDatabase = (database: IDBDatabase): void => {
+  if (!database.objectStoreNames.contains(STORE_NAME)) {
+    database.createObjectStore(STORE_NAME);
+  }
+  if (!database.objectStoreNames.contains(RECORDINGS_STORE_NAME)) {
+    const recordings = database.createObjectStore(RECORDINGS_STORE_NAME, { keyPath: 'id' });
+    recordings.createIndex('projectId', 'projectId', { unique: false });
+  }
+};
+
+export const openStudioDatabase = (): Promise<IDBDatabase> =>
   new Promise((resolve, reject) => {
     if (typeof indexedDB === 'undefined') {
       reject(new Error('IndexedDB is not available'));
@@ -21,14 +33,13 @@ const openDatabase = (): Promise<IDBDatabase> =>
 
     const request = indexedDB.open(DB_NAME, DB_VERSION);
     request.onupgradeneeded = () => {
-      const database = request.result;
-      if (!database.objectStoreNames.contains(STORE_NAME)) {
-        database.createObjectStore(STORE_NAME);
-      }
+      upgradeStudioDatabase(request.result);
     };
     request.onsuccess = () => resolve(request.result);
     request.onerror = () => reject(request.error ?? new Error('IndexedDB open failed'));
   });
+
+const openDatabase = openStudioDatabase;
 
 const withStore = async <T>(
   mode: IDBTransactionMode,
