@@ -6,6 +6,7 @@ import {
   AudioDeviceSession,
   type AudioDeviceSnapshot,
 } from '../infrastructure/audio/audio-devices';
+import { disarmBrowserProcessing, rawTabAudioConstraints } from '../infrastructure/audio/raw-capture';
 import type { StudioAudioEngineHandle } from './useStudioAudioEngine';
 
 export type StudioAudioDeviceHandle = {
@@ -41,7 +42,11 @@ const browserPort = (): AudioDevicePort => ({
       groupId: device.groupId,
     }));
   },
-  getUserMedia: (constraints) => navigator.mediaDevices.getUserMedia(constraints),
+  getUserMedia: async (constraints) => {
+    const stream = await navigator.mediaDevices.getUserMedia(constraints);
+    await disarmBrowserProcessing(stream.getAudioTracks());
+    return stream;
+  },
   addDeviceChangeListener: (listener) => {
     navigator.mediaDevices?.addEventListener('devicechange', listener);
   },
@@ -71,7 +76,7 @@ export function provideStudioAudioDevices(engine: StudioAudioEngineHandle): Stud
     try {
       stream = await navigator.mediaDevices.getDisplayMedia({
         video: true,
-        audio: { suppressLocalAudioPlayback: true, restrictOwnAudio: true },
+        audio: rawTabAudioConstraints(),
         preferCurrentTab: true,
         selfBrowserSurface: 'include',
         ...(controller ? { controller } : {}),
@@ -89,6 +94,7 @@ export function provideStudioAudioDevices(engine: StudioAudioEngineHandle): Stud
       }
       return null;
     }
+    await disarmBrowserProcessing(audible);
     return stream;
   };
 

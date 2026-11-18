@@ -1,11 +1,20 @@
 <script setup lang="ts">
+import { cn } from '~/utils/index';
+
 import { useStudioAudioDevices } from '../../composables/useStudioAudioDevices';
 import type { AudioInputView } from '../../infrastructure/audio/audio-devices';
+import { shortDeviceName } from '../../infrastructure/audio/device-label';
 import { holdOverlayAssetUrl } from '../../infrastructure/audio/overlay-asset-url';
+import { captureSystemAudio } from '../../infrastructure/audio/raw-capture';
 import type { AssetId, ChannelId, SourceId } from '../../models/ids.domain';
 import type { AudioSource } from '../../models/source.domain';
 import { useStudioSessionStore } from '../../store/studio-session.store';
-import { inspectorFocusRingClass, inspectorToggleClass } from '../properties-inspector/inspector-control-classes';
+import {
+  inspectorFocusRingClass,
+  inspectorLabelClass,
+  inspectorMenuItemClass,
+  inspectorToggleClass,
+} from '../properties-inspector/inspector-control-classes';
 import SceneListRow from '../scene-element-list/SceneListRow.vue';
 
 const store = useStudioSessionStore();
@@ -13,6 +22,7 @@ const devices = useStudioAudioDevices();
 const { t } = useI18n();
 
 const adding = ref(false);
+const devicesOpen = ref(false);
 const fileInput = ref<HTMLInputElement | null>(null);
 
 const sounds = computed(() => store.project?.audioMixer.overlay.sounds ?? []);
@@ -37,11 +47,17 @@ function deviceLabel(device: AudioInputView) {
   return device.named ? device.label : t('studio.audio.unnamedDevice');
 }
 
+function closeAdding() {
+  adding.value = false;
+  devicesOpen.value = false;
+}
+
 async function toggleAdding() {
-  adding.value = !adding.value;
-  if (!adding.value) {
+  if (adding.value) {
+    closeAdding();
     return;
   }
+  adding.value = true;
   if (devices.snapshot.labelsHidden || devices.snapshot.permission !== 'granted') {
     try {
       await devices.revealLabels();
@@ -51,17 +67,36 @@ async function toggleAdding() {
   }
 }
 
+function toggleDevices() {
+  devicesOpen.value = !devicesOpen.value;
+}
+
 function selectCreatedSound() {
   const id = store.project?.audioMixer.overlay.sounds.at(-1)?.id;
   if (id) {
     store.selectOverlaySound(id);
   }
-  adding.value = false;
+  closeAdding();
 }
 
 function selectGlobal(channelId: ChannelId) {
   store.selectGlobalChannel(channelId);
-  adding.value = false;
+  closeAdding();
+}
+
+function takenAudioNames() {
+  const taken = new Set<string>();
+  for (const source of store.project?.sources ?? []) {
+    if (source.type === 'audio' && source.name.trim().length > 0) {
+      taken.add(source.name.trim());
+    }
+  }
+  for (const channel of store.project?.audioMixer.channels ?? []) {
+    if (channel.name.trim().length > 0) {
+      taken.add(channel.name.trim());
+    }
+  }
+  return taken;
 }
 
 function addFromAsset(assetId: AssetId, name: string) {
@@ -133,10 +168,13 @@ async function addMicrophone(device: AudioInputView) {
   if (!project) {
     return;
   }
-  const name = deviceLabel(device).slice(0, 64);
   let source = sourceForDevice(device.deviceId);
   if (!source) {
-    const added = store.addSource({ type: 'audio', name, deviceId: device.deviceId });
+    const added = store.addSource({
+      type: 'audio',
+      name: shortDeviceName(deviceLabel(device), takenAudioNames()),
+      deviceId: device.deviceId,
+    });
     if (!added.ok) {
       return;
     }
@@ -153,26 +191,15 @@ async function addMicrophone(device: AudioInputView) {
       // The session already records permission denied or a start error.
     }
   }
-  publishSource(source.id, name);
+  publishSource(source.id, source.name);
 }
 
 async function addSystemAudio() {
-  if (!navigator.mediaDevices?.getDisplayMedia || !store.project) {
+  if (!store.project) {
     return;
   }
-  let stream: MediaStream;
-  try {
-    stream = await navigator.mediaDevices.getDisplayMedia({ audio: true, video: true });
-  } catch {
-    return;
-  }
-  for (const track of stream.getVideoTracks()) {
-    track.stop();
-  }
-  if (stream.getAudioTracks().length === 0) {
-    for (const track of stream.getTracks()) {
-      track.stop();
-    }
+  const stream = await captureSystemAudio();
+  if (!stream) {
     return;
   }
   const name = t('studio.audio.overlay.systemAudio');
@@ -219,7 +246,7 @@ function removeGlobalChannel(channelId: ChannelId) {
 </script>
 
 <template>
-  <section class="border-line pt-md flex max-h-[50%] min-h-[24rem] shrink-0 flex-col border-t">
+  <section class="border-line pt-md flex max-h-[50%] min-h-[24rem] min-w-0 shrink-0 flex-col border-t">
     <div class="flex shrink-0 items-center justify-between">
       <h2 class="text-label text-on-surface-dim font-mono font-normal uppercase">
         {{ t('studio.audio.overlay.globalSounds') }}
@@ -235,48 +262,79 @@ function removeGlobalChannel(channelId: ChannelId) {
     </div>
 
     <div
-      class="flex min-h-0 flex-1 flex-col overflow-y-auto"
+      class="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto"
       role="listbox"
       :aria-label="t('studio.audio.overlay.globalSounds')"
+      @keydown.esc="devicesOpen = false"
     >
       <div
         v-if="adding"
-        class="gap-xxx-sm py-xxx-sm flex flex-wrap"
+        class="gap-xxx-sm py-xxx-sm flex w-full min-w-0 flex-col"
       >
         <button
           type="button"
-          :class="inspectorToggleClass(false)"
+          :class="cn(inspectorToggleClass(false), 'w-full min-w-0 justify-start')"
           @click="fileInput?.click()"
         >
-          {{ t('studio.audio.overlay.file') }}
-        </button>
-        <button
-          v-for="asset in audioAssets"
-          :key="asset.id"
-          type="button"
-          :class="inspectorToggleClass(false)"
-          class="max-w-full truncate"
-          @click="addFromAsset(asset.id, asset.name)"
-        >
-          {{ asset.name }}
-        </button>
-        <button
-          v-for="device in devices.snapshot.inputs"
-          :key="device.deviceId"
-          type="button"
-          :class="inspectorToggleClass(false)"
-          class="max-w-full truncate"
-          @click="addMicrophone(device)"
-        >
-          {{ deviceLabel(device) }}
+          <span class="min-w-0 truncate">{{ t('studio.audio.overlay.file') }}</span>
         </button>
         <button
           type="button"
-          :class="inspectorToggleClass(false)"
+          :class="cn(inspectorToggleClass(false), 'w-full min-w-0 justify-start')"
           @click="addSystemAudio"
         >
-          {{ t('studio.audio.overlay.systemAudio') }}
+          <span class="min-w-0 truncate">{{ t('studio.audio.overlay.systemAudio') }}</span>
         </button>
+        <button
+          type="button"
+          :class="cn(inspectorToggleClass(devicesOpen), 'w-full min-w-0 justify-start')"
+          :aria-expanded="devicesOpen"
+          @click="toggleDevices"
+        >
+          <span class="min-w-0 flex-1 truncate text-left">{{ t('studio.properties.labels.microphones') }}</span>
+        </button>
+        <div
+          v-if="devicesOpen"
+          class="border-line bg-surface-container flex max-h-[12rem] w-full min-w-0 flex-col overflow-y-auto border"
+          role="group"
+          :aria-label="t('studio.properties.labels.microphones')"
+        >
+          <p :class="cn(inspectorLabelClass, 'bg-surface-container px-xxx-sm py-tiny sticky top-0')">
+            {{ t('studio.properties.labels.microphones') }}
+          </p>
+          <p
+            v-if="devices.snapshot.inputs.length === 0"
+            class="text-body-sm text-on-surface-dim px-xxx-sm font-sans"
+          >
+            {{ t('studio.audio.noInputs') }}
+          </p>
+          <button
+            v-for="device in devices.snapshot.inputs"
+            :key="device.deviceId"
+            type="button"
+            :class="cn(inspectorMenuItemClass(false), 'w-full min-w-0')"
+            @click="addMicrophone(device)"
+          >
+            <span class="min-w-0 flex-1 truncate text-left">{{ deviceLabel(device) }}</span>
+          </button>
+        </div>
+        <div
+          v-if="audioAssets.length > 0"
+          class="flex w-full min-w-0 flex-col"
+        >
+          <p :class="cn(inspectorLabelClass, 'px-xxx-sm py-tiny')">
+            {{ t('studio.audio.overlay.fromLibrary') }}
+          </p>
+          <button
+            v-for="asset in audioAssets"
+            :key="asset.id"
+            type="button"
+            :class="cn(inspectorMenuItemClass(false), 'w-full min-w-0')"
+            @click="addFromAsset(asset.id, asset.name)"
+          >
+            <span class="min-w-0 flex-1 truncate text-left">{{ asset.name }}</span>
+          </button>
+        </div>
         <p
           v-if="statusMessage"
           class="text-body-sm text-on-surface-dim font-sans"
@@ -300,7 +358,7 @@ function removeGlobalChannel(channelId: ChannelId) {
         role="option"
         tabindex="0"
         :aria-selected="store.selectedGlobalChannelId === channel.id"
-        :class="inspectorFocusRingClass"
+        :class="cn(inspectorFocusRingClass, 'min-w-0')"
         @click="store.selectGlobalChannel(channel.id)"
         @keydown.enter.prevent="store.selectGlobalChannel(channel.id)"
         @keydown.space.prevent="store.selectGlobalChannel(channel.id)"
@@ -318,7 +376,7 @@ function removeGlobalChannel(channelId: ChannelId) {
         role="option"
         tabindex="0"
         :aria-selected="store.selectedOverlaySoundId === sound.id"
-        :class="inspectorFocusRingClass"
+        :class="cn(inspectorFocusRingClass, 'min-w-0')"
         @click="store.selectOverlaySound(sound.id)"
         @keydown.enter.prevent="store.selectOverlaySound(sound.id)"
         @keydown.space.prevent="store.selectOverlaySound(sound.id)"

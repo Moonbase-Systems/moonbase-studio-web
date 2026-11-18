@@ -73,6 +73,7 @@
         },
         "fader": "Level",
         "file": "Audio file",
+        "fromLibrary": "From the library",
         "globalSounds": "Global sounds",
         "instances": "Playing",
         "library": "Sounds and triggers",
@@ -238,7 +239,6 @@
         "link": "Link"
       },
       "mixer": "Mixer",
-      "mixerEmpty": "No audio layers in this scene",
       "onAir": "On air",
       "placeholder": "Scene preview",
       "renderFailed": "The scene could not be drawn.",

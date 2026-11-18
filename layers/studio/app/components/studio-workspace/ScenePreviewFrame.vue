@@ -194,12 +194,6 @@ watch([() => store.activeScene, isReady], ([scene, ready]) => {
             :readout="masterMeter.readout"
           />
         </div>
-        <p
-          v-if="audioChannels.length === 0"
-          class="text-body-sm text-on-surface-dim font-sans"
-        >
-          {{ t('studio.preview.mixerEmpty') }}
-        </p>
       </div>
 
       <div class="gap-x-sm ml-auto flex flex-wrap">

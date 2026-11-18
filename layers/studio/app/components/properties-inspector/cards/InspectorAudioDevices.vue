@@ -4,6 +4,7 @@ import { cn } from '~/utils/index';
 import { useElementInspectorUpdate } from '../../../composables/useElementInspectorUpdate';
 import { useStudioAudioDevices } from '../../../composables/useStudioAudioDevices';
 import type { AudioInputView } from '../../../infrastructure/audio/audio-devices';
+import { captureSystemAudio } from '../../../infrastructure/audio/raw-capture';
 import type { ChannelId, SceneId } from '../../../models/ids.domain';
 import type { AudioVisualElement } from '../../../models/scene-elements';
 import type { AudioSource } from '../../../models/source.domain';
@@ -173,47 +174,43 @@ async function pickDevice(device: AudioInputView) {
 }
 
 async function pickSystem() {
-  if (!navigator.mediaDevices?.getDisplayMedia) {
+  const stream = await captureSystemAudio();
+  if (!stream) {
     return;
   }
-  try {
-    const stream = await navigator.mediaDevices.getDisplayMedia({ audio: true, video: true });
-    for (const track of stream.getVideoTracks()) {
+  const project = store.project;
+  const existing = project?.sources.find(
+    (source): source is AudioSource => source.type === 'audio' && source.deviceId === 'system',
+  );
+  if (existing) {
+    devices.armSystemStream(existing.id, stream);
+    ensureOnChannel(existing.id);
+    open.value = false;
+    return;
+  }
+  const added = store.addSource({
+    type: 'audio',
+    name: t('studio.properties.labels.systemSource'),
+    deviceId: 'system',
+  });
+  if (!added.ok) {
+    for (const track of stream.getTracks()) {
       track.stop();
     }
-    const project = store.project;
-    const existing = project?.sources.find(
-      (source): source is AudioSource => source.type === 'audio' && source.deviceId === 'system',
-    );
-    if (existing) {
-      devices.armSystemStream(existing.id, stream);
-      ensureOnChannel(existing.id);
-      open.value = false;
-      return;
-    }
-    const added = store.addSource({
-      type: 'audio',
-      name: t('studio.properties.labels.systemSource'),
-      deviceId: 'system',
-    });
-    if (!added.ok) {
-      for (const track of stream.getTracks()) {
-        track.stop();
-      }
-      return;
-    }
-    const created = store.project?.sources.find(
-      (source): source is AudioSource => source.type === 'audio' && source.deviceId === 'system',
-    );
-    if (!created) {
-      return;
-    }
-    devices.armSystemStream(created.id, stream);
-    ensureOnChannel(created.id);
-    open.value = false;
-  } catch {
-    // The user dismissed the capture prompt. Nothing starts on its own.
+    return;
   }
+  const created = store.project?.sources.find(
+    (source): source is AudioSource => source.type === 'audio' && source.deviceId === 'system',
+  );
+  if (!created) {
+    for (const track of stream.getTracks()) {
+      track.stop();
+    }
+    return;
+  }
+  devices.armSystemStream(created.id, stream);
+  ensureOnChannel(created.id);
+  open.value = false;
 }
 </script>
 

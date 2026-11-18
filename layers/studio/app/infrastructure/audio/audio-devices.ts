@@ -1,4 +1,4 @@
-import { rawMicrophoneConstraints } from './audio-engine';
+import { rawMicrophoneConstraints } from './raw-capture';
 
 export type DeviceTrack = {
   readyState: string;

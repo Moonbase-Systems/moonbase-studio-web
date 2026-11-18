@@ -82,15 +82,6 @@ type ArmedSource = {
   connectedTo: AudioNode | null;
 };
 
-/** Capture the microphone as it is. Browser noise suppression, gain riding and echo cancel chop speech. */
-export const rawMicrophoneConstraints = (deviceId?: string): MediaTrackConstraints => ({
-  ...(deviceId ? { deviceId: { exact: deviceId } } : {}),
-  echoCancellation: false,
-  noiseSuppression: false,
-  autoGainControl: false,
-  channelCount: 1,
-});
-
 type ChannelStrip = {
   sourceIds: string[];
   input: GainNode;
