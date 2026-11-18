@@ -73,7 +73,7 @@ flowchart LR
   UI["UI components"] --> Session["studioSession store"]
   Session -->|"actions"| Service["createStudioService"]
   Service -->|"commands"| Project["Project + EditorState"]
-  Service -->|"toProjectFile"| ProjectFile["ProjectFile formatVersion 3"]
+  Service -->|"toProjectFile"| ProjectFile["ProjectFile formatVersion 4"]
   ProjectFile -->|"parseProjectFile"| Service
   ProjectFile --> Repository["SceneRepository"]
 ```

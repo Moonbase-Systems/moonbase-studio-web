@@ -40,12 +40,13 @@ All models are TypeScript `type`s in `layers/studio/app/models/` and validated b
 
 ## ProjectSettings
 
-| Field         | Type                    | Required | Notes                                       |
-| ------------- | ----------------------- | -------- | ------------------------------------------- |
-| `video`       | `ProjectVideoSettings`  | yes      | resolution, fps, colorSpace                 |
-| `audio`       | `ProjectAudioSettings`  | yes      | sampleRate, channels                        |
-| `output`      | `ProjectOutputSettings` | yes      | output profile; not an open RTMP connection |
-| `preferences` | `ProjectPreferences`    | yes      | editor defaults for this project            |
+| Field           | Type                    | Required | Notes                                   |
+| --------------- | ----------------------- | -------- | --------------------------------------- |
+| `video`         | `ProjectVideoSettings`  | yes      | optional `colorSpace` only              |
+| `outputProfile` | `OutputProfile`         | yes      | the project's single output frame       |
+| `audio`         | `ProjectAudioSettings`  | yes      | sampleRate, channels                    |
+| `output`        | `ProjectOutputSettings` | yes      | transmission slot; not the output frame |
+| `preferences`   | `ProjectPreferences`    | yes      | editor defaults for this project        |
 
 Do not mix with editor state on `studioSession` (selection, open panels).
 
@@ -385,12 +386,12 @@ Deleting a sound does not delete its asset. Deleting an asset fails while a soun
 
 ```ts
 type ProjectFile = {
-  formatVersion: 3;
+  formatVersion: 4;
   project: Omit<Project, 'history'>;
 };
 ```
 
-On load: migrate `formatVersion: 1` to v2, then v2 to v3 (project audio channels). A conflicting strip becomes a neutral channel and a session report; the file is not written until the user saves. Validate with Zod, attach empty `history: { past: [], future: [], limit }`. Unknown versions fail validation.
+On load: migrate `formatVersion: 1` to v2, v2 to v3 (project audio channels), then v3 to v4 (output profile). The v4 step copies `settings.video` width, height and frame rate into `settings.outputProfile` and assigns its id once. A later read of the saved v4 file keeps that id. A conflicting audio strip becomes a neutral channel and a session report; the file is not written until the user saves. Validate with Zod, attach empty `history: { past: [], future: [], limit }`. Unknown versions fail validation.
 
 An `audioVisual` layer stores `channelId` and enables that project channel in the scene. The strip lives on the channel.
 

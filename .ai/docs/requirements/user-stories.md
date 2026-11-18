@@ -526,7 +526,7 @@ Priorities: **Must** / **Should** / **Could**.
 
 - Given aktywny projekt (nawet z historią sesji)
 - When serializuję
-- Then powstaje `ProjectFile` z `formatVersion: 3` i projektem **bez** `history`
+- Then powstaje `ProjectFile` z `formatVersion: 4` i projektem **bez** `history`
 
 **Models:** `ProjectFile`, `Project`  
 **Priority:** Must  

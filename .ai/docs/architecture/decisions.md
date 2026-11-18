@@ -66,12 +66,12 @@
 
 ```ts
 type ProjectFile = {
-  formatVersion: 3;
+  formatVersion: 4;
   project: Omit<Project, 'history'>;
 };
 ```
 
-Validated with Zod on import and on every committed document change. `migrateProjectFile` upgrades v1 to v2, then v2 to v3, before validation. Unknown versions fail validation. The v3 step folds per-scene audio strips into project channels; conflicts stay in the session until the operator dismisses them, and the file is not written by the migration itself.
+Validated with Zod on import and on every committed document change. `migrateProjectFile` upgrades v1 to v2, v2 to v3, then v3 to v4, before validation. Unknown versions fail validation. The v3 step folds per-scene audio strips into project channels; conflicts stay in the session until the operator dismisses them, and the file is not written by the migration itself. The v4 step moves the frame size into `settings.outputProfile` and stores the profile id. Reloading that v4 file does not mint another id.
 
 **Why:** Cookie Pinia is unsuitable for large scene graphs. Explicit versioning enables safe schema changes. The browser `SceneRepository` stores this file in IndexedDB. Bridge loads the same document without editor state or history.
 

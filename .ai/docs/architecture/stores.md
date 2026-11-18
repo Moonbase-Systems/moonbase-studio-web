@@ -61,7 +61,7 @@ Save and load go through `createSceneRepository`. The browser adapter stores `Pr
 
 | Data                        | Where                                                    |
 | --------------------------- | -------------------------------------------------------- |
-| `Project` without `history` | `ProjectFile` (`formatVersion: 3`) via `SceneRepository` |
+| `Project` without `history` | `ProjectFile` (`formatVersion: 4`) via `SceneRepository` |
 | `history`                   | Memory only                                              |
 | catalog                     | `listProjects()` over saved files                        |
 
