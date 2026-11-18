@@ -1,12 +1,13 @@
 import type { InjectionKey, Ref } from 'vue';
 
+import { peekCameraPreviewStream } from '../components/properties-inspector/camera-preview-stream';
 import { peekImagePreviewUrl } from '../components/properties-inspector/image-preview-url';
 import { peekScreenPreviewStream } from '../components/properties-inspector/screen-preview-stream';
 import type { PixiCompositionEngineOptions } from '../infrastructure/pixi/pixi-composition-engine';
 import type { ElementId } from '../models/ids.domain';
 import { outputFrame } from '../models/output-profile.domain';
 import type { Scene } from '../models/scene.domain';
-import type { CompositionEngine, CompositionEngineError } from '../ports/composition-engine';
+import type { CompositionEngine, CompositionEngineError, FrameDelivery } from '../ports/composition-engine';
 import { portErr, portOk, type PortResult } from '../ports/result';
 import { useStudioSessionStore } from '../store/studio-session.store';
 import { useScreenCaptureQuality } from './useScreenCaptureQuality';
@@ -28,6 +29,9 @@ export type CompositionEngineHandle = {
   render(scene: Scene): Promise<EngineResult>;
   /** Faintly shows the cropped-away picture of one element while its crop is dragged; null hides it. */
   previewCrop(elementId: ElementId | null): void;
+  getOutputCanvas(): HTMLCanvasElement | null;
+  setOutputCaptureActive(active: boolean): void;
+  readFrameDelivery(): FrameDelivery;
   dispose(): Promise<EngineResult>;
 };
 
@@ -109,6 +113,26 @@ export function useCompositionEngine(environment: CompositionEngineEnvironment):
     engine?.previewCrop?.(elementId);
   }
 
+  function getOutputCanvas(): HTMLCanvasElement | null {
+    return engine?.getOutputCanvas() ?? null;
+  }
+
+  function setOutputCaptureActive(active: boolean): void {
+    engine?.setOutputCaptureActive(active);
+  }
+
+  function readFrameDelivery(): FrameDelivery {
+    return (
+      engine?.readFrameDelivery() ?? {
+        deliveredFrames: 0,
+        firstDeliveredAt: null,
+        lastDeliveredAt: null,
+        width: 0,
+        height: 0,
+      }
+    );
+  }
+
   async function dispose(): Promise<EngineResult> {
     generation += 1;
     isReady.value = false;
@@ -134,6 +158,9 @@ export function useCompositionEngine(environment: CompositionEngineEnvironment):
     initialize,
     render,
     previewCrop,
+    getOutputCanvas,
+    setOutputCaptureActive,
+    readFrameDelivery,
     dispose,
   };
 }
@@ -141,7 +168,9 @@ export function useCompositionEngine(environment: CompositionEngineEnvironment):
 const STUDIO_COMPOSITION_ENGINE: InjectionKey<CompositionEngineHandle> = Symbol('studio-composition-engine');
 
 /** Studio-wide engine: the boot loader initializes it, ScenePreviewFrame hosts and renders it. */
-export function provideStudioCompositionEngine(): CompositionEngineHandle {
+export function provideStudioCompositionEngine(audio?: {
+  readProgramFrequency: (bins: Uint8Array) => boolean;
+}): CompositionEngineHandle {
   const store = useStudioSessionStore();
   const captureQuality = useScreenCaptureQuality();
   const { fitLayersToPicture } = useScreenLayerFraming();
@@ -161,6 +190,48 @@ export function provideStudioCompositionEngine(): CompositionEngineHandle {
       return asset.location.kind === 'remoteUrl' ? asset.location.url : (peekImagePreviewUrl(asset.id) ?? null);
     },
     resolveScreenStream: (sourceId) => peekScreenPreviewStream(sourceId) ?? null,
+    resolveCameraStream: (sourceId) => peekCameraPreviewStream(sourceId) ?? null,
+    resolveVideoFile: (sourceId) => {
+      const source = store.project?.sources.find((item) => item.id === sourceId);
+      if (!source) {
+        return null;
+      }
+      const assetUrl = (assetId: string | undefined): string | null => {
+        if (!assetId) {
+          return null;
+        }
+        const asset = store.project?.assets.find((item) => item.id === assetId);
+        if (!asset) {
+          return null;
+        }
+        return asset.location.kind === 'remoteUrl' ? asset.location.url : (peekImagePreviewUrl(asset.id) ?? null);
+      };
+      if (source.type === 'video') {
+        return { url: assetUrl(source.assetId), mediaKind: 'video', loop: source.loop ?? false };
+      }
+      if (source.type === 'animation') {
+        return {
+          url: assetUrl(source.assetId),
+          mediaKind: source.mediaKind === 'video' ? 'video' : 'image',
+          loop: source.playbackMode === 'loop',
+        };
+      }
+      return null;
+    },
+    readProgramSpectrum: (bins) => audio?.readProgramFrequency(bins) ?? false,
+    resolveSceneTransition: (sceneId) => {
+      const scene = store.project?.scenes.find((item) => item.id === sceneId);
+      const transitionId = scene?.settings.defaultTransitionId;
+      const transition = store.project?.transitions.find((item) => item.id === transitionId);
+      if (!transition) {
+        return null;
+      }
+      return {
+        type: transition.type,
+        durationMs: transition.durationMs,
+        curve: transition.type === 'fade' ? (transition.settings.curve ?? 'linear') : undefined,
+      };
+    },
     getCapturePreviewFrameRate: () => captureQuality.previewFrameRateCap.value,
     onCapturePicture: (sourceId, picture, change) =>
       fitLayersToPicture(sourceId, picture, change === 'shown' ? 'contain' : 'keep-longest'),

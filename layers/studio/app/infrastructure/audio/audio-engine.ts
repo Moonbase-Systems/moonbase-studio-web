@@ -152,6 +152,30 @@ export class AudioEngine {
     return this.programDestination?.stream ?? null;
   }
 
+  /** Copies the program-mix spectrum into `target`. Does not change the mixer graph. */
+  readProgramFrequency(target: Uint8Array): boolean {
+    const analyser = this.masterAnalyser;
+    if (!analyser) {
+      return false;
+    }
+    const frequency = new Uint8Array(analyser.frequencyBinCount);
+    analyser.getByteFrequencyData(frequency);
+    if (target.length === frequency.length) {
+      target.set(frequency);
+      return true;
+    }
+    for (let index = 0; index < target.length; index += 1) {
+      const start = Math.floor((index / target.length) * frequency.length);
+      const end = Math.max(start + 1, Math.floor(((index + 1) / target.length) * frequency.length));
+      let peak = 0;
+      for (let bin = start; bin < end; bin += 1) {
+        peak = Math.max(peak, frequency[bin] ?? 0);
+      }
+      target[index] = peak;
+    }
+    return true;
+  }
+
   readCurve(effect: AudioEffect): { frequencies: number[]; magnitudeDb: number[] } | null {
     if (!this.context || (effect.type !== 'eq-band' && effect.type !== 'high-pass')) {
       return null;

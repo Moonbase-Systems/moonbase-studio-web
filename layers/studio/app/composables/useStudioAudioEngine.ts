@@ -19,6 +19,7 @@ export type StudioAudioEngineHandle = {
   armFile: (sourceId: string, url: string) => Promise<void>;
   hasArmed: (sourceId: string) => boolean;
   getProgramStream: () => MediaStream | null;
+  readProgramFrequency: (bins: Uint8Array) => boolean;
   readCurve: (effect: AudioEffect) => { frequencies: number[]; magnitudeDb: number[] } | null;
   setMonitorSink: (sinkId: string) => Promise<MonitorSinkResult>;
   loadOverlayBuffer: (cacheKey: string, url: string) => Promise<AudioBuffer>;
@@ -93,6 +94,7 @@ export function provideStudioAudioEngine(): StudioAudioEngineHandle {
     },
     hasArmed: (sourceId) => engine?.hasArmed(sourceId) ?? false,
     getProgramStream: () => engine?.getProgramStream() ?? null,
+    readProgramFrequency: (bins) => engine?.readProgramFrequency(bins) ?? false,
     readCurve: (effect) => engine?.readCurve(effect) ?? null,
     setMonitorSink: async (sinkId) => engine?.setMonitorSink(sinkId) ?? { ok: false, reason: 'unsupported' },
     loadOverlayBuffer: async (cacheKey, url) => {
@@ -190,6 +192,7 @@ export function useStudioAudioEngine(): StudioAudioEngineHandle {
       armFile: async () => undefined,
       hasArmed: () => false,
       getProgramStream: () => null,
+      readProgramFrequency: () => false,
       readCurve: () => null,
       setMonitorSink: async () => ({ ok: false, reason: 'unsupported' }),
       loadOverlayBuffer: async () => {
