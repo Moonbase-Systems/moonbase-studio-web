@@ -154,6 +154,13 @@ defineExpose({
   width: 120px;
   height: 80px;
   transform: translateZ(0);
+
+  /*
+   * Draw the craft larger for the Orbit boot screen. Scaling around the lamp (60, 50 of 120 × 80)
+   * keeps the beam anchor and the sway pivot where the beam math expects them.
+   */
+  scale: 1.4;
+  transform-origin: 50% 62.5%;
 }
 
 @keyframes boot-craft-enter {
