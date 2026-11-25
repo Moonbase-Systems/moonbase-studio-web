@@ -72,6 +72,11 @@ const statusMessage = computed(() => {
   return '';
 });
 
+const systemNeedsCapture = computed(
+  () =>
+    channelSources.value.some((source) => source.deviceId === 'system') && !devices.systemLive && !devices.systemEnded,
+);
+
 function placePanel() {
   const trigger = triggerRef.value;
   if (!trigger) {
@@ -236,6 +241,14 @@ async function pickSystem() {
   >
     {{ statusMessage }}
   </p>
+  <button
+    v-if="systemNeedsCapture"
+    type="button"
+    class="text-body-sm text-on-surface text-left font-sans"
+    @click="pickSystem"
+  >
+    {{ t('studio.audio.systemNotLoaded') }}
+  </button>
 
   <Teleport to="body">
     <button

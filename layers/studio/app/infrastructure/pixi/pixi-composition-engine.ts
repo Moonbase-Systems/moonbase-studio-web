@@ -68,6 +68,8 @@ export type PixiCompositionEngineOptions = {
   resolveAssetUrl: (assetId: AssetId) => string | null;
   /** Live display capture for a screen source, when the user has picked one. */
   resolveScreenStream: (sourceId: SourceId) => MediaStream | null;
+  /** Shown when a saved screen capture was not restored. */
+  missingScreenCaption?: (sourceId: SourceId) => string;
   /** Highest rate the preview redraws captures at; null or omitted redraws on every new capture frame. */
   getCapturePreviewFrameRate?: () => number | null;
   /** Fill inside the project frame when the scene has no background; preview-only by default. */
@@ -1235,7 +1237,12 @@ export const createPixiCompositionEngine = (options: PixiCompositionEngineOption
   ): Promise<void> => {
     const box = { width: element.transform.width, height: element.transform.height };
     if (!stream) {
-      drawPlaceholder(node.content, box, element.name, 'screen unavailable');
+      drawPlaceholder(
+        node.content,
+        box,
+        element.name,
+        options.missingScreenCaption?.(element.sourceId) ?? 'screen unavailable',
+      );
       return Promise.resolve();
     }
 

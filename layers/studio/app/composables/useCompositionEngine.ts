@@ -1,8 +1,8 @@
 import type { InjectionKey, Ref } from 'vue';
 
 import { peekCameraPreviewStream } from '../components/properties-inspector/camera-preview-stream';
-import { peekImagePreviewUrl } from '../components/properties-inspector/image-preview-url';
 import { peekScreenPreviewStream } from '../components/properties-inspector/screen-preview-stream';
+import { sessionUrlForAsset } from '../infrastructure/assets/asset-session';
 import type { PixiCompositionEngineOptions } from '../infrastructure/pixi/pixi-composition-engine';
 import type { ElementId } from '../models/ids.domain';
 import { outputFrame } from '../models/output-profile.domain';
@@ -172,6 +172,7 @@ export function provideStudioCompositionEngine(audio?: {
   readProgramFrequency: (bins: Uint8Array) => boolean;
 }): CompositionEngineHandle {
   const store = useStudioSessionStore();
+  const { t } = useI18n();
   const captureQuality = useScreenCaptureQuality();
   const { fitLayersToPicture } = useScreenLayerFraming();
 
@@ -187,7 +188,14 @@ export function provideStudioCompositionEngine(audio?: {
       if (!asset) {
         return null;
       }
-      return asset.location.kind === 'remoteUrl' ? asset.location.url : (peekImagePreviewUrl(asset.id) ?? null);
+      return sessionUrlForAsset(asset);
+    },
+    missingScreenCaption: (sourceId) => {
+      const source = store.project?.sources.find((item) => item.id === sourceId);
+      if (source?.type === 'screen' && source.width && source.height) {
+        return t('studio.properties.screen.notLoaded');
+      }
+      return t('studio.properties.screen.choose');
     },
     resolveScreenStream: (sourceId) => peekScreenPreviewStream(sourceId) ?? null,
     resolveCameraStream: (sourceId) => peekCameraPreviewStream(sourceId) ?? null,
@@ -204,7 +212,7 @@ export function provideStudioCompositionEngine(audio?: {
         if (!asset) {
           return null;
         }
-        return asset.location.kind === 'remoteUrl' ? asset.location.url : (peekImagePreviewUrl(asset.id) ?? null);
+        return sessionUrlForAsset(asset);
       };
       if (source.type === 'video') {
         return { url: assetUrl(source.assetId), mediaKind: 'video', loop: source.loop ?? false };

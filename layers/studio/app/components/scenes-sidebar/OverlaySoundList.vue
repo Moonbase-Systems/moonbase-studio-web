@@ -2,9 +2,9 @@
 import { cn } from '~/utils/index';
 
 import { useStudioAudioDevices } from '../../composables/useStudioAudioDevices';
+import { holdAssetBlob } from '../../infrastructure/assets/asset-session';
 import type { AudioInputView } from '../../infrastructure/audio/audio-devices';
 import { shortDeviceName } from '../../infrastructure/audio/device-label';
-import { holdOverlayAssetUrl } from '../../infrastructure/audio/overlay-asset-url';
 import { captureSystemAudio } from '../../infrastructure/audio/raw-capture';
 import type { AssetId, ChannelId, SourceId } from '../../models/ids.domain';
 import type { AudioSource } from '../../models/source.domain';
@@ -36,6 +36,11 @@ const statusMessage = computed(() => {
     return t('studio.audio.systemEnded');
   }
   return '';
+});
+
+const systemNeedsCapture = computed(() => {
+  const source = store.project?.sources.find((item) => item.type === 'audio' && item.deviceId === 'system');
+  return Boolean(source) && !devices.systemLive && !devices.systemEnded;
 });
 
 function soundNameFrom(raw: string) {
@@ -111,7 +116,6 @@ function onFileChange(event: Event) {
   if (!file) {
     return;
   }
-  const url = URL.createObjectURL(file);
   const added = store.addAsset({
     name: file.name,
     type: 'audio',
@@ -120,15 +124,13 @@ function onFileChange(event: Event) {
     metadata: { mimeType: file.type || undefined, byteSize: file.size },
   });
   if (!added.ok) {
-    URL.revokeObjectURL(url);
     return;
   }
   const asset = store.project?.assets.at(-1);
   if (!asset || asset.type !== 'audio') {
-    URL.revokeObjectURL(url);
     return;
   }
-  holdOverlayAssetUrl(asset.id, url);
+  holdAssetBlob(asset.id, file, file.type);
   const sound = store.addOverlaySound({ name: soundNameFrom(file.name), assetId: asset.id });
   if (sound.ok) {
     selectCreatedSound();
@@ -267,6 +269,14 @@ function removeGlobalChannel(channelId: ChannelId) {
       :aria-label="t('studio.audio.overlay.globalSounds')"
       @keydown.esc="devicesOpen = false"
     >
+      <button
+        v-if="systemNeedsCapture"
+        type="button"
+        :class="cn(inspectorToggleClass(false), 'w-full min-w-0 justify-start')"
+        @click="addSystemAudio"
+      >
+        <span class="min-w-0 truncate">{{ t('studio.audio.systemNotLoaded') }}</span>
+      </button>
       <div
         v-if="adding"
         class="gap-xxx-sm py-xxx-sm flex w-full min-w-0 flex-col"

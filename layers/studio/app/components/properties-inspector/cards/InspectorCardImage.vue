@@ -2,12 +2,12 @@
 import { cn } from '~/utils/index';
 
 import { useElementInspectorUpdate } from '../../../composables/useElementInspectorUpdate';
+import { holdAssetBlob } from '../../../infrastructure/assets/asset-session';
 import type { FitMode } from '../../../models/common.domain';
 import type { SceneId } from '../../../models/ids.domain';
 import type { ImageElement } from '../../../models/scene-elements';
 import type { ImageSource } from '../../../models/source.domain';
 import { useStudioSessionStore } from '../../../store/studio-session.store';
-import { holdImagePreviewUrl } from '../image-preview-url';
 import {
   inspectorChevronClass,
   inspectorFieldShellClass,
@@ -110,13 +110,15 @@ async function onFile(event: Event) {
     return;
   }
 
-  const url = URL.createObjectURL(file);
-  const size = await readImageSize(url);
+  const preview = URL.createObjectURL(file);
+  const size = await readImageSize(preview);
+  URL.revokeObjectURL(preview);
   const assetIdsBefore = new Set(store.project?.assets.map((asset) => asset.id) ?? []);
   const sourceIdsBefore = new Set(store.project?.sources.map((source) => source.id) ?? []);
   const previousSourceId = props.element.sourceId;
   const previousSource = store.project?.sources.find((source) => source.id === previousSourceId);
   const previousWasPlaceholder = previousSource?.type === 'image' && isPlaceholder(previousSource);
+  let createdAssetId: string | null = null;
 
   const result = store.runTransaction(() => {
     const added = store.addAsset({
@@ -154,14 +156,14 @@ async function onFile(event: Event) {
       return { ok: false as const, error: { kind: 'invalid-state' as const, reason: 'Source was not created' } };
     }
 
-    holdImagePreviewUrl(asset.id, url);
+    createdAssetId = asset.id;
     return store.updateLayer(props.sceneId, props.element.id, { sourceId: source.id });
   });
 
-  if (!result.ok) {
-    URL.revokeObjectURL(url);
+  if (!result.ok || !createdAssetId) {
     return;
   }
+  holdAssetBlob(createdAssetId, file, file.type);
 
   menu.value = null;
   if (previousWasPlaceholder) {

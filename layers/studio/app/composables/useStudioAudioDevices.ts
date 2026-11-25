@@ -1,5 +1,5 @@
 import type { InjectionKey } from 'vue';
-import { inject, onMounted, onScopeDispose, provide, reactive, ref } from 'vue';
+import { inject, onMounted, onScopeDispose, provide, reactive, ref, watch } from 'vue';
 
 import {
   type AudioDevicePort,
@@ -7,11 +7,14 @@ import {
   type AudioDeviceSnapshot,
 } from '../infrastructure/audio/audio-devices';
 import { disarmBrowserProcessing, rawTabAudioConstraints } from '../infrastructure/audio/raw-capture';
+import { microphoneSourcesToResume } from '../playback/microphone-resume';
+import { useStudioSessionStore } from '../store/studio-session.store';
 import type { StudioAudioEngineHandle } from './useStudioAudioEngine';
 
 export type StudioAudioDeviceHandle = {
   snapshot: AudioDeviceSnapshot;
   systemEnded: boolean;
+  systemLive: boolean;
   browserTabLive: boolean;
   revealLabels: () => Promise<void>;
   startMicrophone: (sourceId: string, deviceId: string) => Promise<void>;
@@ -58,8 +61,12 @@ const browserPort = (): AudioDevicePort => ({
 export function provideStudioAudioDevices(engine: StudioAudioEngineHandle): StudioAudioDeviceHandle {
   const snapshot = reactive<AudioDeviceSnapshot>(emptySnapshot());
   const systemEnded = ref(false);
+  const systemLive = ref(false);
   const browserTabLive = ref(false);
   let session: AudioDeviceSession | null = null;
+  let systemStream: MediaStream | null = null;
+  let resumeGeneration = 0;
+  const store = useStudioSessionStore();
 
   const captureBrowserTab = async (): Promise<MediaStream | null> => {
     if (!navigator.mediaDevices?.getDisplayMedia) {
@@ -110,9 +117,35 @@ export function provideStudioAudioDevices(engine: StudioAudioEngineHandle): Stud
     session = next;
     const stop = next.start();
     const unsubscribe = next.subscribe(apply);
+    const resumeMicrophones = async () => {
+      const token = ++resumeGeneration;
+      const project = store.project;
+      const projectId = project?.id;
+      if (!project || !projectId) {
+        return;
+      }
+      for (const item of microphoneSourcesToResume(project)) {
+        if (token !== resumeGeneration || store.project?.id !== projectId) {
+          return;
+        }
+        try {
+          await handle.startMicrophone(item.sourceId, item.deviceId);
+        } catch {
+          // A missing device or a denied permission leaves the source in the document.
+        }
+      }
+    };
+    const stopResume = watch(
+      () => store.project?.id,
+      () => {
+        void resumeMicrophones();
+      },
+      { immediate: true },
+    );
     onScopeDispose(() => {
       stop();
       unsubscribe();
+      stopResume();
       session = null;
     });
   });
@@ -121,6 +154,9 @@ export function provideStudioAudioDevices(engine: StudioAudioEngineHandle): Stud
     snapshot,
     get systemEnded() {
       return systemEnded.value;
+    },
+    get systemLive() {
+      return systemLive.value;
     },
     get browserTabLive() {
       return browserTabLive.value;
@@ -139,9 +175,15 @@ export function provideStudioAudioDevices(engine: StudioAudioEngineHandle): Stud
       });
     },
     armSystemStream: (sourceId, stream) => {
+      systemStream = stream;
       systemEnded.value = false;
+      systemLive.value = true;
       for (const track of stream.getAudioTracks()) {
         track.addEventListener('ended', () => {
+          if (systemStream !== stream) {
+            return;
+          }
+          systemLive.value = false;
           systemEnded.value = true;
         });
       }
@@ -177,6 +219,7 @@ export function useStudioAudioDevices(): StudioAudioDeviceHandle {
     inject(StudioAudioDevicesKey, null) ?? {
       snapshot: reactive(emptySnapshot()),
       systemEnded: false,
+      systemLive: false,
       browserTabLive: false,
       revealLabels: async () => undefined,
       startMicrophone: async () => undefined,

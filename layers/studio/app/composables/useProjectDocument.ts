@@ -1,16 +1,39 @@
 import { createSceneRepository } from '../application/scene-repository';
+import { clearAssetSession } from '../infrastructure/assets/asset-session';
+import { createIndexedDbAssetByteStore } from '../infrastructure/assets/indexed-db-asset-byte-store';
+import {
+  collectPackageAssets,
+  deleteProjectWithAssets,
+  holdPackagedAssets,
+  hydrateProjectAssets,
+  projectWithNewId,
+  syncProjectAssetBytes,
+} from '../infrastructure/assets/project-asset-sync';
 import { createIndexedDbProjectBackend } from '../infrastructure/indexed-db-project-backend';
 import type { ProjectId } from '../models/ids.domain';
-import type { ProjectMeta } from '../models/project.domain';
+import type { Project, ProjectMeta } from '../models/project.domain';
 import type { SceneRepositoryError } from '../ports/scene-repository';
-import { projectExportPayload } from '../serialization/project-file';
+import { parseProjectFile, serializeProjectFile } from '../serialization/project-file';
+import { decodeProjectPackage, encodeProjectPackage, projectPackageFilename } from '../serialization/project-package';
 import { useStudioSessionStore } from '../store/studio-session.store';
 
 type PendingDocumentAction = { kind: 'switch'; projectId: ProjectId } | null;
 
+const downloadBlob = (blob: Blob, fileName: string): void => {
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = fileName;
+  document.body.append(anchor);
+  anchor.click();
+  anchor.remove();
+  window.setTimeout(() => URL.revokeObjectURL(url), 0);
+};
+
 export function useProjectDocument() {
   const store = useStudioSessionStore();
   const repository = createSceneRepository(createIndexedDbProjectBackend());
+  const byteStore = createIndexedDbAssetByteStore();
   const { t } = useI18n();
 
   const statusMessage = ref<string | null>(null);
@@ -77,14 +100,55 @@ export function useProjectDocument() {
     pendingAction.value = null;
   }
 
+  function saveBlocked(): boolean {
+    if (store.audioMigrationConflicts.length > 0) {
+      statusMessage.value = t('studio.audioMigration.saveBlocked');
+      return true;
+    }
+    return false;
+  }
+
+  async function persistBytes(project: Project): Promise<boolean> {
+    try {
+      await syncProjectAssetBytes(byteStore, project);
+      return true;
+    } catch {
+      statusMessage.value = t('studio.document.saveFailed');
+      return false;
+    }
+  }
+
+  async function openLoaded(project: Project, conflicts: Parameters<typeof store.setAudioMigrationConflicts>[0]) {
+    const previous = store.project;
+    try {
+      await hydrateProjectAssets(byteStore, project);
+    } catch {
+      if (previous) {
+        await hydrateProjectAssets(byteStore, previous).catch(() => undefined);
+      }
+      statusMessage.value = t('studio.document.openFailed');
+      return;
+    }
+
+    store.setAudioMigrationConflicts(conflicts);
+    const opened = store.openProject(project);
+    if (!opened.ok) {
+      if (previous) {
+        await hydrateProjectAssets(byteStore, previous).catch(() => undefined);
+      }
+      statusMessage.value = t('studio.document.openFailed');
+      return;
+    }
+    statusMessage.value = null;
+  }
+
   async function saveProject() {
     const project = store.project;
     if (!project) {
       statusMessage.value = t('studio.document.saveFailed');
       return;
     }
-    if (store.audioMigrationConflicts.length > 0) {
-      statusMessage.value = t('studio.audioMigration.saveBlocked');
+    if (saveBlocked()) {
       return;
     }
 
@@ -93,25 +157,103 @@ export function useProjectDocument() {
       statusMessage.value = messageFor(saved.error, 'save');
       return;
     }
+    if (!(await persistBytes(project))) {
+      return;
+    }
 
     const marked = store.markSaved();
     statusMessage.value = marked.ok ? t('studio.document.saved') : t('studio.document.saveFailed');
   }
 
-  function exportProjectFile() {
+  async function saveProjectAs() {
+    const project = store.project;
+    if (!project || !import.meta.client) {
+      statusMessage.value = t('studio.document.saveFailed');
+      return;
+    }
+    if (saveBlocked()) {
+      return;
+    }
+
+    const copy = projectWithNewId(project, crypto.randomUUID(), new Date().toISOString());
+    const saved = await repository.saveProject(copy);
+    if (!saved.ok) {
+      statusMessage.value = messageFor(saved.error, 'save');
+      return;
+    }
+    if (!(await persistBytes(copy))) {
+      await repository.deleteProject?.(copy.id);
+      return;
+    }
+    await openLoaded(copy, []);
+    if (!statusMessage.value) {
+      statusMessage.value = t('studio.document.saved');
+    }
+  }
+
+  async function exportProjectFile() {
     const project = store.project;
     if (!project || !import.meta.client) {
       return;
     }
-    const payload = projectExportPayload(project);
-    const url = URL.createObjectURL(new Blob([payload.body], { type: 'application/json' }));
-    const anchor = document.createElement('a');
-    anchor.href = url;
-    anchor.download = payload.filename;
-    document.body.append(anchor);
-    anchor.click();
-    anchor.remove();
-    window.setTimeout(() => URL.revokeObjectURL(url), 0);
+    const assets = await collectPackageAssets(project);
+    const body = encodeProjectPackage(serializeProjectFile(project), assets);
+    const packed = body.buffer.slice(body.byteOffset, body.byteOffset + body.byteLength) as ArrayBuffer;
+    downloadBlob(new Blob([packed]), projectPackageFilename(project.name));
+  }
+
+  async function projectIdTaken(id: ProjectId): Promise<boolean> {
+    const listed = await repository.listProjects?.();
+    if (!listed?.ok) {
+      return false;
+    }
+    return listed.value.some((item) => item.id === id);
+  }
+
+  async function importProjectFile(file: File) {
+    if (!import.meta.client) {
+      return;
+    }
+    if (store.isDirty) {
+      statusMessage.value = t('studio.document.discardMessage');
+      return;
+    }
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    const packaged = decodeProjectPackage(bytes);
+    if (!packaged.ok && packaged.reason === 'invalid') {
+      statusMessage.value = t('studio.document.invalidFile');
+      return;
+    }
+
+    const parsed = parseProjectFile(packaged.ok ? packaged.projectJson : new TextDecoder().decode(bytes));
+    if (!parsed.ok) {
+      statusMessage.value = t('studio.document.invalidFile');
+      return;
+    }
+
+    let project = parsed.project;
+    if (await projectIdTaken(project.id)) {
+      project = projectWithNewId(project, crypto.randomUUID(), new Date().toISOString());
+    }
+    const previous = store.project;
+    clearAssetSession();
+    holdPackagedAssets(project, packaged.ok ? packaged.assets : []);
+    const saved = await repository.saveProject(project);
+    if (!saved.ok) {
+      if (previous) {
+        await hydrateProjectAssets(byteStore, previous).catch(() => undefined);
+      }
+      statusMessage.value = messageFor(saved.error, 'save');
+      return;
+    }
+    if (!(await persistBytes(project))) {
+      await repository.deleteProject?.(project.id);
+      if (previous) {
+        await hydrateProjectAssets(byteStore, previous).catch(() => undefined);
+      }
+      return;
+    }
+    await openLoaded(project, parsed.conflicts);
   }
 
   async function openProject(id: ProjectId) {
@@ -120,15 +262,19 @@ export function useProjectDocument() {
       statusMessage.value = messageFor(loaded.error, 'open');
       return;
     }
+    await openLoaded(loaded.value.project, loaded.value.conflicts);
+  }
 
-    store.setAudioMigrationConflicts(loaded.value.conflicts);
-    const opened = store.openProject(loaded.value.project);
-    if (!opened.ok) {
-      statusMessage.value = t('studio.document.openFailed');
+  async function deleteProject(id: ProjectId) {
+    const removed = await deleteProjectWithAssets(repository, byteStore, id);
+    if (!removed.ok) {
+      statusMessage.value = messageFor(removed.error, 'open');
       return;
     }
-
-    statusMessage.value = null;
+    if (store.project?.id === id) {
+      store.closeProject();
+    }
+    await refreshCatalog();
   }
 
   return {
@@ -140,6 +286,9 @@ export function useProjectDocument() {
     confirmDiscard,
     cancelDiscard,
     saveProject,
+    saveProjectAs,
     exportProjectFile,
+    importProjectFile,
+    deleteProject,
   };
 }
