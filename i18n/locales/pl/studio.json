@@ -184,8 +184,10 @@
     },
     "boot": {
       "engine": "Uruchamianie podglądu",
+      "error": "Błąd",
       "failed": "Nie udało się uruchomić studia. Odśwież stronę, aby spróbować ponownie.",
       "opening": "Otwieranie studia",
+      "progress": "Uruchamianie",
       "project": "Tworzenie projektu",
       "session": "Inicjalizacja sesji"
     },
@@ -597,7 +599,6 @@
         "screen": "Ekran",
         "shape": "Kształt",
         "size": "Rozmiar",
-        "solo": "Solo",
         "solo": "Solo",
         "source": "Źródło",
         "space": "Odstęp",

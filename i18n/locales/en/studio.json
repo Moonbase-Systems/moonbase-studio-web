@@ -184,8 +184,10 @@
     },
     "boot": {
       "engine": "Starting preview",
+      "error": "Error",
       "failed": "Studio failed to start. Refresh the page to try again.",
       "opening": "Opening studio",
+      "progress": "Starting",
       "project": "Creating project",
       "session": "Initializing session"
     },
@@ -597,7 +599,6 @@
         "screen": "Screen",
         "shape": "Shape",
         "size": "Size",
-        "solo": "Solo",
         "solo": "Solo",
         "source": "Source",
         "space": "Space",
