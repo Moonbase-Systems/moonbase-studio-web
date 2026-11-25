@@ -212,13 +212,13 @@ describe('hit testing', () => {
     expect(hitTestScene(scene, { x: 900, y: 900 })).toBeNull();
   });
 
-  it('hits an audio-visual layer, which draws level bars', () => {
+  it('does not hit an audio layer, which is not drawn', () => {
     const audio = createSourceBackedElement({
       id: 'mic',
       source: { id: 'src-audio', name: 'Mic', type: 'audio' },
       video,
     });
-    expect(hitTestScene(sceneWith([audio]), { x: 960, y: 540 })?.id).toBe('mic');
+    expect(hitTestScene(sceneWith([audio]), { x: 960, y: 540 })).toBeNull();
   });
 
   it('can ignore the dragged element and report what sits under it', () => {

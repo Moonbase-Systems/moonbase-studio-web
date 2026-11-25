@@ -30,8 +30,8 @@ export type SceneSyncPlan = {
   issues: SceneSyncIssue[];
 };
 
-/** Every layer is drawn. Audio-visual layers are level bars, not a silent omission. */
-export const isRenderableElement = (_element: SceneElement): boolean => true;
+/** Audio layers enable a mixer channel. They have no picture, so the canvas does not draw them. */
+export const isRenderableElement = (element: SceneElement): boolean => element.type !== 'audioVisual';
 
 export const planSceneSync = (scene: Scene, rendered: RenderedSceneIds): SceneSyncPlan => {
   const elementById = new Map(scene.elements.map((element) => [element.id, element]));
