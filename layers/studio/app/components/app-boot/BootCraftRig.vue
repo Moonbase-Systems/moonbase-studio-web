@@ -151,8 +151,8 @@ defineExpose({
 
 .boot-craft-visual {
   position: relative;
-  width: 24rem;
-  height: 16rem;
+  width: 120px;
+  height: 80px;
   transform: translateZ(0);
 }
 
