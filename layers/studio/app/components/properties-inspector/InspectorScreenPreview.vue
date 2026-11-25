@@ -2,18 +2,29 @@
 import { cn } from '~/utils/index';
 
 import type { ScreenElement } from '../../models/scene-elements';
+import { reuseScreenSourceOnPick, screenPreviewMessageKey } from '../../playback/screen-recapture';
+import { useStudioSessionStore } from '../../store/studio-session.store';
 import { inspectorBodyTextClass } from './inspector-control-classes';
-import { peekScreenPreviewStream } from './screen-preview-stream';
+import { peekScreenPreviewStream, screenStreamRevision } from './screen-preview-stream';
 
 const props = defineProps<{
   element: ScreenElement;
 }>();
 
 const { t } = useI18n();
+const store = useStudioSessionStore();
 const host = ref<HTMLVideoElement | null>(null);
 const failed = ref(false);
 
-const stream = computed(() => peekScreenPreviewStream(props.element.sourceId) ?? null);
+const stream = computed(() => {
+  void screenStreamRevision.value;
+  return peekScreenPreviewStream(props.element.sourceId) ?? null;
+});
+
+const savedScreen = computed(() => {
+  const source = store.project?.sources.find((item) => item.id === props.element.sourceId);
+  return source?.type === 'screen' && reuseScreenSourceOnPick(source);
+});
 
 function resume() {
   const video = host.value;
@@ -69,7 +80,7 @@ watch([host, stream], ([, current], _previous, onCleanup) => {
       v-if="!stream || failed"
       :class="cn(inspectorBodyTextClass, 'px-x-sm text-on-surface-dim text-center')"
     >
-      {{ t('studio.properties.screen.choose') }}
+      {{ t(screenPreviewMessageKey(Boolean(stream), savedScreen)) }}
     </p>
   </div>
 </template>

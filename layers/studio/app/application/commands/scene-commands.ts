@@ -1,5 +1,5 @@
 import type { SceneId, TransitionId } from '../../models/ids.domain';
-import { createEmptyScene } from '../../models/scene.domain';
+import { createEmptyScene, type SceneBackground } from '../../models/scene.domain';
 import { portErr } from '../../ports/result';
 import { displayNameSchema } from '../../schemas/display-name.schema';
 import { assertInitialized, withClonedProject } from '../command-utils';
@@ -264,6 +264,46 @@ export const deleteScene = (
   }
 
   return { ok: true, value: nextSession };
+};
+
+const HEX_COLOR = /^#[0-9a-fA-F]{6}$/;
+
+export const setSceneBackground = (
+  session: StudioSession,
+  sceneId: SceneId,
+  background: SceneBackground,
+  ctx: CommandContext,
+): StudioResult<StudioSession> => {
+  const ready = assertInitialized(session);
+  if (!ready.ok) {
+    return ready;
+  }
+  if (!session.project) {
+    return portErr({ kind: 'no-project' });
+  }
+  if (!findSceneInProject(session.project, sceneId)) {
+    return portErr({ kind: 'scene-not-found', sceneId });
+  }
+
+  if (background.kind === 'color' && !HEX_COLOR.test(background.color)) {
+    return portErr({ kind: 'invalid-argument', message: 'Background color must be a #rrggbb hex value' });
+  }
+
+  if (background.kind === 'image') {
+    const asset = session.project.assets.find((item) => item.id === background.assetId);
+    if (!asset || asset.type !== 'image') {
+      return portErr({ kind: 'invalid-argument', message: 'Background image must be an image asset in the project' });
+    }
+  }
+
+  return withClonedProject(
+    session,
+    (project) => {
+      const scene = project.scenes.find((item) => item.id === sceneId)!;
+      scene.background = background;
+    },
+    ctx,
+  );
 };
 
 export const setSceneDefaultTransition = (

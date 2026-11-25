@@ -4,16 +4,15 @@ import { createDefaultAudioMixer } from './audio.domain';
 import type { ProjectHistory } from './history.domain';
 import { createEmptyHistory } from './history.domain';
 import type { ProjectId } from './ids.domain';
+import { createDefaultOutputProfile, type OutputProfile } from './output-profile.domain';
 import { createEmptyScene, type Scene } from './scene.domain';
 import type { Source } from './source.domain';
 import type { Transition } from './transition.domain';
 
 export type ProjectType = 'podcast' | 'gaming' | 'broadcast' | 'general';
 
+/** Color metadata for the frame. Width, height and frame rate live on `OutputProfile`. */
 export type ProjectVideoSettings = {
-  width: number;
-  height: number;
-  frameRate: number;
   colorSpace?: string;
 };
 
@@ -22,6 +21,7 @@ export type ProjectAudioSettings = {
   channels: number;
 };
 
+/** Transmission slot. Not the output frame. */
 export type ProjectOutputSettings = {
   profile?: string;
 };
@@ -32,6 +32,8 @@ export type ProjectPreferences = {
 
 export type ProjectSettings = {
   video: ProjectVideoSettings;
+  /** The project's single output frame. */
+  outputProfile: OutputProfile;
   audio: ProjectAudioSettings;
   output: ProjectOutputSettings;
   preferences: ProjectPreferences;
@@ -67,12 +69,13 @@ export type ProjectMeta = {
 
 /** Persistable document — history always stripped. */
 export type ProjectFile = {
-  formatVersion: 2;
+  formatVersion: 4;
   project: Omit<Project, 'history'>;
 };
 
 export const createDefaultProjectSettings = (): ProjectSettings => ({
-  video: { width: 1920, height: 1080, frameRate: 30 },
+  video: {},
+  outputProfile: createDefaultOutputProfile(crypto.randomUUID()),
   audio: { sampleRate: 48000, channels: 2 },
   output: {},
   preferences: {},

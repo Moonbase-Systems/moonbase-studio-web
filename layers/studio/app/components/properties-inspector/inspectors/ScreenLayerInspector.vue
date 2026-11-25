@@ -3,9 +3,11 @@ import { cn } from '~/utils/index';
 
 import { useElementInspectorUpdate } from '../../../composables/useElementInspectorUpdate';
 import type { SceneId } from '../../../models/ids.domain';
+import { outputFrame } from '../../../models/output-profile.domain';
 import type { ScreenElement } from '../../../models/scene-elements';
 import type { ScreenSource, Source } from '../../../models/source.domain';
 import { captureConstraints, projectCaptureFrame } from '../../../playback/screen-capture-constraints';
+import { reuseScreenSourceOnPick } from '../../../playback/screen-recapture';
 import { useStudioSessionStore } from '../../../store/studio-session.store';
 import {
   inspectorChevronClass,
@@ -18,7 +20,7 @@ import {
 } from '../inspector-control-classes';
 import InspectorLayerFrame from '../InspectorLayerFrame.vue';
 import InspectorScreenPreview from '../InspectorScreenPreview.vue';
-import { holdScreenPreviewStream, peekScreenPreviewStream } from '../screen-preview-stream';
+import { holdScreenPreviewStream, peekScreenPreviewStream, screenStreamRevision } from '../screen-preview-stream';
 
 const props = defineProps<{
   sceneId: SceneId;
@@ -42,9 +44,15 @@ const linkedScreen = computed(() => (props.linkedSource?.type === 'screen' ? pro
 
 const screenSources = computed(() => store.project?.sources.filter((source) => source.type === 'screen') ?? []);
 
+const captureLive = computed(() => {
+  void screenStreamRevision.value;
+  const sourceId = linkedScreen.value?.id;
+  return Boolean(sourceId && peekScreenPreviewStream(sourceId));
+});
+
 const sourceLabel = computed(() => {
   const source = linkedScreen.value;
-  if (!source || !source.width || !source.height) {
+  if (!captureLive.value || !source || !source.width || !source.height) {
     return t('studio.properties.screen.choose');
   }
   return source.name;
@@ -140,7 +148,7 @@ async function pickDisplay() {
   picking.value = true;
   open.value = false;
   let stream: MediaStream | null = null;
-  const frame = store.project?.settings.video;
+  const frame = store.project ? outputFrame(store.project) : null;
   try {
     stream = await navigator.mediaDevices.getDisplayMedia({
       video: {
@@ -153,9 +161,18 @@ async function pickDisplay() {
     const width = size.width ?? frame?.width;
     const height = size.height ?? frame?.height;
     const name = (size.label || t('studio.properties.cardTitles.screen')).slice(0, 128);
+    const previous = linkedScreen.value;
+    if (previous && reuseScreenSourceOnPick(previous)) {
+      holdScreenPreviewStream(previous.id, stream);
+      stream = null;
+      if (name !== previous.name) {
+        store.renameSource(previous.id, name);
+      }
+      return;
+    }
+
     const sourceIdsBefore = new Set(store.project?.sources.map((source) => source.id) ?? []);
     const previousSourceId = props.element.sourceId;
-    const previous = linkedScreen.value;
     const previousWasEmpty = previous ? isEmptyScreen(previous) : false;
 
     const added = store.addSource({

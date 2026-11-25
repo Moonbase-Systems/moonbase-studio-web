@@ -1,19 +1,22 @@
 <script setup lang="ts">
 import { useStudioCompositionEngine } from '../../composables/useCompositionEngine';
-import { useSceneAudioLevel } from '../../composables/useSceneAudioLevel';
+import { useStudioAudioEngine } from '../../composables/useStudioAudioEngine';
+import { channelAudibleInScene, normalizeLevelDb } from '../../models/audio.domain';
+import { outputFrame } from '../../models/output-profile.domain';
+import type { AudioVisualElement } from '../../models/scene-elements/audio-element.domain';
 import { useStudioSessionStore } from '../../store/studio-session.store';
+import { screenStreamRevision } from '../properties-inspector/screen-preview-stream';
 import PreviewSignalField from './PreviewSignalField.vue';
+import SceneBrowserFrames from './SceneBrowserFrames.vue';
 import SceneTransformOverlay from './SceneTransformOverlay.vue';
-
-const FLOOR_DB = -60;
 
 const store = useStudioSessionStore();
 const { t } = useI18n();
 const compositionEngine = useStudioCompositionEngine();
+const audioEngine = useStudioAudioEngine();
 const { host, isReady, lastError } = compositionEngine;
 
 const activeScene = computed(() => store.activeScene ?? undefined);
-const { levels } = useSceneAudioLevel(activeScene);
 
 function onEmptyPreviewPointerDown(event: PointerEvent) {
   const target = event.target;
@@ -26,10 +29,23 @@ function onEmptyPreviewPointerDown(event: PointerEvent) {
   store.clearSelection();
 }
 
-const video = computed(() => store.project?.settings.video);
+function onPreviewPointerDown(event: PointerEvent) {
+  onEmptyPreviewPointerDown(event);
+  const root = event.currentTarget;
+  const target = event.target;
+  if (!(root instanceof HTMLElement) || !(target instanceof Element)) {
+    return;
+  }
+  if (target.closest('input, textarea, select, button, a')) {
+    return;
+  }
+  root.focus({ preventScroll: true });
+}
+
+const frame = computed(() => outputFrame(store.project));
 const aspectValue = computed(() => {
-  const v = video.value;
-  if (!v || v.height === 0 || v.width === 0) {
+  const v = frame.value;
+  if (v.height === 0 || v.width === 0) {
     return 16 / 9;
   }
   return v.width / v.height;
@@ -43,8 +59,8 @@ const frameStyle = computed(() => ({
 
 const resolutionLabel = computed(() =>
   t('studio.preview.heading', {
-    width: video.value?.width ?? 1920,
-    height: video.value?.height ?? 1080,
+    width: frame.value.width,
+    height: frame.value.height,
   }),
 );
 
@@ -53,35 +69,66 @@ const renderFailed = computed(() => lastError.value?.kind === 'render-failed');
 
 const audioChannels = computed(() => {
   const scene = activeScene.value;
-  if (!scene) {
+  const project = store.project;
+  if (!scene || !project) {
     return [];
   }
-  return scene.elements
-    .filter((element) => element.type === 'audioVisual')
-    .map((element) => {
-      const db = levels[element.id] ?? FLOOR_DB;
-      const normalized = Math.max(0, Math.min(1, (db - FLOOR_DB) / -FLOOR_DB));
+  const enabled = new Set(
+    scene.elements
+      .filter((element): element is AudioVisualElement => element.type === 'audioVisual' && element.visibility)
+      .map((element) => element.channelId),
+  );
+  return project.audioMixer.channels
+    .filter((channel) => channelAudibleInScene(channel, enabled))
+    .map((channel) => {
+      const reading = audioEngine.levels.channels[channel.id];
+      const db = reading?.rmsDb ?? -60;
       return {
-        id: element.id,
-        label: element.name,
-        value: normalized,
+        id: channel.id,
+        label: channel.name,
+        value: normalizeLevelDb(db),
+        peak: normalizeLevelDb(reading?.peakDb ?? -60),
         readout: String(Math.round(db)),
       };
     });
 });
 
-watch([() => store.activeScene, isReady], ([scene, ready]) => {
-  if (scene && ready) {
-    void compositionEngine.render(scene);
-  }
+const masterMeter = computed(() => {
+  const reading = audioEngine.levels.master;
+  const db = reading?.rmsDb ?? -60;
+  return {
+    value: normalizeLevelDb(db),
+    peak: normalizeLevelDb(reading?.peakDb ?? -60),
+    readout: String(Math.round(db)),
+  };
 });
+
+const overlayMeter = computed(() => {
+  const reading = audioEngine.levels.overlay;
+  const db = reading?.rmsDb ?? -60;
+  return {
+    value: normalizeLevelDb(db),
+    peak: normalizeLevelDb(reading?.peakDb ?? -60),
+    readout: String(Math.round(db)),
+  };
+});
+
+watch(
+  [() => store.activeScene, () => store.project?.settings.outputProfile, isReady, screenStreamRevision],
+  ([scene, , ready]) => {
+    if (scene && ready) {
+      void compositionEngine.render(scene);
+    }
+  },
+);
 </script>
 
 <template>
   <div
-    class="p-xx-lg gap-xx-lg relative flex h-full min-h-0 flex-col overflow-hidden"
+    class="p-xx-lg gap-xx-lg focus-visible:ring-accent relative flex h-full min-h-0 flex-col overflow-hidden outline-none focus-visible:ring-2 focus-visible:ring-inset"
     data-scene-preview
-    @pointerdown="onEmptyPreviewPointerDown"
+    tabindex="0"
+    @pointerdown="onPreviewPointerDown"
   >
     <div class="gap-md flex shrink-0 flex-wrap items-baseline justify-between">
       <div class="gap-tiny flex min-w-0 flex-col">
@@ -115,6 +162,10 @@ watch([() => store.activeScene, isReady], ([scene, ready]) => {
           :class="{ invisible: !store.activeScene }"
           data-composition-host
         />
+        <SceneBrowserFrames
+          v-if="!showPlaceholder"
+          :host="host"
+        />
         <span
           v-if="showPlaceholder"
           class="text-body-sm text-on-surface-dim pointer-events-none absolute inset-0 flex items-center justify-center font-sans"
@@ -140,24 +191,28 @@ watch([() => store.activeScene, isReady], ([scene, ready]) => {
         <span class="text-label text-on-surface-dim font-mono uppercase">
           {{ t('studio.preview.mixer') }}
         </span>
-        <div
-          v-if="audioChannels.length > 0"
-          class="gap-md flex items-end"
-        >
+        <div class="gap-md flex items-end">
           <BaseLevelMeter
             v-for="channel in audioChannels"
             :key="channel.id"
             :value="channel.value"
+            :peak="channel.peak"
             :label="channel.label"
             :readout="channel.readout"
           />
+          <BaseLevelMeter
+            :value="overlayMeter.value"
+            :peak="overlayMeter.peak"
+            :label="t('studio.audio.overlay.title')"
+            :readout="overlayMeter.readout"
+          />
+          <BaseLevelMeter
+            :value="masterMeter.value"
+            :peak="masterMeter.peak"
+            :label="t('studio.preview.master')"
+            :readout="masterMeter.readout"
+          />
         </div>
-        <p
-          v-else
-          class="text-body-sm text-on-surface-dim font-sans"
-        >
-          {{ t('studio.preview.mixerEmpty') }}
-        </p>
       </div>
 
       <div class="gap-x-sm ml-auto flex flex-wrap">

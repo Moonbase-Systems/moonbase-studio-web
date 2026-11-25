@@ -1,6 +1,6 @@
 import type { Appearance, Transform2D } from './common.domain';
 import type { ElementId, GroupId } from './ids.domain';
-import type { ProjectVideoSettings } from './project.domain';
+import type { OutputFrame } from './output-profile.domain';
 import { createDefaultElementTransform } from './scene-element.domain';
 
 export type SceneGroup = {
@@ -17,7 +17,7 @@ export const createSceneGroup = (input: {
   id: GroupId;
   name: string;
   elementIds: ElementId[];
-  video: ProjectVideoSettings;
+  video: Pick<OutputFrame, 'width' | 'height'>;
   type?: string;
 }): SceneGroup => ({
   id: input.id,

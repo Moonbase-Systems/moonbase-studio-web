@@ -21,7 +21,7 @@ describe('projectFileSchema', () => {
     const file = createProjectFileWithSources();
     const element = file.project.scenes[0]!.elements[0]!;
     expect(element.type).not.toBe('overlay');
-    if (element.type === 'overlay') {
+    if (element.type === 'overlay' || element.type === 'audioVisual') {
       throw new Error('expected source-backed element');
     }
     element.sourceId = 'missing-source';
@@ -97,6 +97,39 @@ describe('projectFileSchema', () => {
 
     const result = projectFileSchema.safeParse(file);
     expect(result.success).toBe(true);
+    if (!result.success) {
+      return;
+    }
+    const browser = result.data.project.sources.find((item) => item.type === 'browser');
+    expect(browser?.type === 'browser' && browser.audio).toBe(false);
+  });
+
+  it('keeps browser page audio when the file sets it', () => {
+    const file = createValidProjectFile();
+    file.project.sources = [
+      {
+        id: 'browser-1',
+        name: 'Browser',
+        type: 'browser',
+        url: 'https://example.com',
+        width: 1280,
+        height: 720,
+        audio: true,
+        refreshSettings: {
+          intervalMs: null,
+          refreshOnActivate: true,
+          bypassCache: false,
+        },
+      },
+    ];
+
+    const result = projectFileSchema.safeParse(file);
+    expect(result.success).toBe(true);
+    if (!result.success) {
+      return;
+    }
+    const browser = result.data.project.sources[0];
+    expect(browser?.type === 'browser' && browser.audio).toBe(true);
   });
 
   it('rejects invalid browser source url', () => {
@@ -200,5 +233,31 @@ describe('projectFileSchema', () => {
     ];
 
     expect(projectFileSchema.safeParse(file).success).toBe(false);
+  });
+
+  it('treats a channel without a global flag as a scene channel', () => {
+    const raw = structuredClone(createValidProjectFile()) as {
+      project: { audioMixer: { channels: Record<string, unknown>[] } };
+    };
+    raw.project.audioMixer.channels.push({
+      id: 'ch-global',
+      name: 'Mic',
+      sourceIds: [],
+      trimDb: 0,
+      faderDb: 0,
+      pan: 0,
+      muted: false,
+      solo: false,
+      monitoring: 'off',
+      syncOffsetMs: 0,
+      filters: [],
+      effects: [],
+    });
+
+    const result = projectFileSchema.safeParse(raw);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.project.audioMixer.channels[0]?.global).toBe(false);
+    }
   });
 });

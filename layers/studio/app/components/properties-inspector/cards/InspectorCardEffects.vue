@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { allowedEffectTypesForElement } from '../../../models/effects';
+import { allowedEffectTypesForElement, effectPlayback } from '../../../models/effects';
 import type { SceneElement } from '../../../models/scene-element.domain';
 
 defineProps<{
@@ -26,6 +26,12 @@ const { t } = useI18n();
         class="text-body-sm text-on-surface truncate font-sans lowercase"
       >
         {{ effect.name }}
+        <span
+          v-if="effectPlayback(effect) === 'inactive'"
+          class="text-on-surface-dim"
+        >
+          {{ t('studio.properties.effectInactive') }}
+        </span>
       </li>
     </ul>
     <p

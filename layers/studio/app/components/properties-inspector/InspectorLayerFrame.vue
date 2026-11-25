@@ -83,10 +83,12 @@ const iconRailItems = computed(() =>
           :scene-id="sceneId"
           :element="element"
         />
-        <InspectorCardEffects
+        <slot
           v-else-if="activeRailId === 'effects'"
-          :element="element"
-        />
+          name="effects"
+        >
+          <InspectorCardEffects :element="element" />
+        </slot>
       </BasePropertyCard>
     </div>
   </div>

@@ -2,6 +2,7 @@
 import { useElementInspectorUpdate } from '../../../composables/useElementInspectorUpdate';
 import type { ElementCrop } from '../../../models/common.domain';
 import type { SceneId } from '../../../models/ids.domain';
+import { outputFrame } from '../../../models/output-profile.domain';
 import type { SceneElement } from '../../../models/scene-element.domain';
 import { useStudioSessionStore } from '../../../store/studio-session.store';
 import { inspectorLabelClass } from '../inspector-control-classes';
@@ -16,7 +17,7 @@ const { t } = useI18n();
 const store = useStudioSessionStore();
 const { applyUpdate } = useElementInspectorUpdate();
 
-const video = computed(() => store.project?.settings.video ?? { width: 1920, height: 1080, frameRate: 30 });
+const video = computed(() => outputFrame(store.project));
 
 type TransformKey = 'x' | 'y' | 'width' | 'height' | 'rotation';
 

@@ -226,7 +226,8 @@ export const keepsAspectRatio = (element: SceneElement): boolean =>
   element.type === 'screen' || element.transform.keepAspectRatio;
 
 /** Media whose picture can be trimmed from the sides. */
-export const canCrop = (element: SceneElement): boolean => element.type === 'image' || element.type === 'screen';
+export const canCrop = (element: SceneElement): boolean =>
+  element.type === 'image' || element.type === 'screen' || element.type === 'browser';
 
 /** CSS resize cursor along the handle's on-screen direction. */
 export const handleCursor = (affine: Affine, handle: Handle): string => {

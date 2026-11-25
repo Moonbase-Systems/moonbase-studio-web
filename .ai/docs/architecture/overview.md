@@ -66,6 +66,11 @@ Sources and assets are **not** children of a scene. Elements and animations only
 ## Related docs
 
 - [data-models.md](./data-models.md) — field-level model spec
+- [output-frame.md](./output-frame.md) — output profile, editor viewport, and output canvas
+- [output-capture.md](./output-capture.md) — profile-sized canvas and program-mix audio
+- [recording-engine.md](./recording-engine.md) — local MediaRecorder, file writer, and recording library
+- [audio-engine.md](./audio-engine.md) — browser mixer graph, overlay bus, monitor, and program stream
+- [browser-layer.md](./browser-layer.md) — iframe preview, project-frame adoption, crop, and tab audio
 - [stores.md](./stores.md) — `studioSession`
 - [diagrams.md](./diagrams.md) — Mermaid diagrams
 - [decisions.md](./decisions.md) — ADRs

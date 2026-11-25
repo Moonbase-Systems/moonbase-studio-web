@@ -1,6 +1,10 @@
 import { z } from 'zod';
 
 import { animationSourceSettingsSchema } from './animation-source.schema';
+import { audioEffectSchema, audioUserPresetSchema } from './audio-effect.schema';
+import { browserPageUrlSchema, browserZoomSchema } from './browser-source.schema';
+import { outputProfileSchema } from './output-profile.schema';
+import { overlayBusFieldSchema } from './overlay-sound.schema';
 import { sceneAnimationSchema } from './scene-animation.schema';
 import { appearanceSchema, transform2DSchema } from './scene-elements/element-shared.schema';
 import { overlayElementSchema, sourceBackedElementSchema } from './scene-elements/scene-element.schema';
@@ -56,9 +60,11 @@ const sourceSchema = z.discriminatedUnion('type', [
   z.object({
     ...sourceBaseFields,
     type: z.literal('browser'),
-    url: z.string().url(),
+    url: browserPageUrlSchema,
     width: z.number().positive(),
     height: z.number().positive(),
+    zoom: browserZoomSchema,
+    audio: z.boolean().default(false),
     refreshSettings: browserRefreshSettingsSchema,
   }),
   z.object({
@@ -155,21 +161,28 @@ const audioFilterOrEffectSchema = z.object({
 const audioChannelSchema = z.object({
   id: idSchema,
   name: z.string().min(1),
-  sourceId: idSchema.nullable(),
-  volume: z.number().min(0).max(1),
+  sourceIds: z.array(idSchema),
+  trimDb: z.number().min(-24).max(24),
+  faderDb: z.number().min(-60).max(12),
+  pan: z.number().min(-1).max(1),
   muted: z.boolean(),
   solo: z.boolean(),
-  pan: z.number().min(-1).max(1),
+  monitoring: z.enum(['off', 'monitor', 'monitor-and-output']),
+  syncOffsetMs: z.number().min(-1000).max(1000),
+  global: z.boolean().default(false),
   filters: z.array(audioFilterOrEffectSchema),
-  effects: z.array(audioFilterOrEffectSchema),
+  effects: z.array(audioEffectSchema),
 });
 
 const audioMixerSchema = z.object({
   master: z.object({
     volume: z.number().min(0).max(1),
     muted: z.boolean(),
+    effects: z.array(audioEffectSchema).default([]),
   }),
   channels: z.array(audioChannelSchema),
+  presets: z.array(audioUserPresetSchema).default([]),
+  overlay: overlayBusFieldSchema,
 });
 
 const transitionBaseFields = {
@@ -216,11 +229,9 @@ const transitionSchema = z.discriminatedUnion('type', [
 
 const projectSettingsSchema = z.object({
   video: z.object({
-    width: z.number().positive(),
-    height: z.number().positive(),
-    frameRate: z.number().positive(),
     colorSpace: z.string().optional(),
   }),
+  outputProfile: outputProfileSchema,
   audio: z.object({
     sampleRate: z.number().positive(),
     channels: z.number().int().positive(),
@@ -307,7 +318,7 @@ const assertGroupMembershipInvariant = (scene: z.infer<typeof sceneSchema>, ctx:
 
 export const projectFileSchema = z
   .object({
-    formatVersion: z.literal(2),
+    formatVersion: z.literal(4),
     project: persistableProjectSchema,
   })
   .superRefine((file, ctx) => {
@@ -375,11 +386,20 @@ export const projectFileSchema = z
       }
 
       for (const element of scene.elements) {
-        if (element.type !== 'overlay' && !sourceIds.has(element.sourceId)) {
+        if (element.type !== 'overlay' && element.type !== 'audioVisual' && !sourceIds.has(element.sourceId)) {
           ctx.addIssue({
             code: 'custom',
             message: `studio.validation.unknownSource:${element.sourceId}`,
           });
+        }
+        if (element.type === 'audioVisual') {
+          const channelIds = new Set(project.audioMixer.channels.map((channel) => channel.id));
+          if (!channelIds.has(element.channelId)) {
+            ctx.addIssue({
+              code: 'custom',
+              message: `studio.validation.unknownChannel:${element.channelId}`,
+            });
+          }
         }
         if (element.type === 'overlay') {
           for (const anim of element.animations) {
@@ -439,12 +459,89 @@ export const projectFileSchema = z
       }
     }
 
-    for (const channel of project.audioMixer.channels) {
-      if (channel.sourceId && !sourceIds.has(channel.sourceId)) {
+    const assertUniqueEffectIds = (ids: string[], label: string) => {
+      assertUniqueIds(ids, label, ctx);
+    };
+    assertUniqueEffectIds(
+      project.audioMixer.master.effects.map((effect) => effect.id),
+      'master-effect',
+    );
+    assertUniqueEffectIds(
+      project.audioMixer.presets.map((preset) => preset.id),
+      'audio-preset',
+    );
+
+    const overlay = project.audioMixer.overlay;
+    assertUniqueEffectIds(
+      overlay.effects.map((effect) => effect.id),
+      'overlay-effect',
+    );
+    assertUniqueIds(
+      overlay.sounds.map((sound) => sound.id),
+      'overlay-sound',
+      ctx,
+    );
+    assertUniqueIds(
+      overlay.triggers.map((trigger) => trigger.id),
+      'overlay-trigger',
+      ctx,
+    );
+    const soundIds = new Set(overlay.sounds.map((sound) => sound.id));
+    const assetTypes = new Map(project.assets.map((asset) => [asset.id, asset.type]));
+    for (const sound of overlay.sounds) {
+      if (assetTypes.get(sound.assetId) !== 'audio') {
         ctx.addIssue({
           code: 'custom',
-          message: `studio.validation.unknownSource:${channel.sourceId}`,
+          message: `studio.validation.unknownAsset:${sound.assetId}`,
         });
+      }
+    }
+    for (const trigger of overlay.triggers) {
+      if (!soundIds.has(trigger.soundId)) {
+        ctx.addIssue({
+          code: 'custom',
+          message: `studio.validation.unknownOverlaySound:${trigger.soundId}`,
+        });
+      }
+      if (trigger.sceneId && !project.scenes.some((scene) => scene.id === trigger.sceneId)) {
+        ctx.addIssue({
+          code: 'custom',
+          message: `studio.validation.unknownScene:${trigger.sceneId}`,
+        });
+      }
+      if (trigger.elementId) {
+        const scenes = trigger.sceneId
+          ? project.scenes.filter((scene) => scene.id === trigger.sceneId)
+          : project.scenes;
+        if (!scenes.some((scene) => scene.elements.some((element) => element.id === trigger.elementId))) {
+          ctx.addIssue({
+            code: 'custom',
+            message: `studio.validation.unknownElement:${trigger.elementId}`,
+          });
+        }
+      }
+    }
+
+    const claimedSources = new Set<string>();
+    for (const channel of project.audioMixer.channels) {
+      assertUniqueEffectIds(
+        channel.effects.map((effect) => effect.id),
+        `channel-effect:${channel.id}`,
+      );
+      for (const sourceId of channel.sourceIds) {
+        if (!sourceIds.has(sourceId)) {
+          ctx.addIssue({
+            code: 'custom',
+            message: `studio.validation.unknownSource:${sourceId}`,
+          });
+        }
+        if (claimedSources.has(sourceId)) {
+          ctx.addIssue({
+            code: 'custom',
+            message: `studio.validation.duplicateAudioSource:${sourceId}`,
+          });
+        }
+        claimedSources.add(sourceId);
       }
     }
   });

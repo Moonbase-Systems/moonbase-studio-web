@@ -1,0 +1,204 @@
+{
+  "overlayLab": {
+    "alertIdle": "Nic nie jest na ekranie",
+    "alerts": {
+      "chat": "{name} pisze",
+      "cheer": "{name} wysyła cheer",
+      "custom": "{name}",
+      "donation": "{name} wpłaca",
+      "follow": "{name} obserwuje",
+      "raid": "{name} robi raid",
+      "subscription": "{name} subskrybuje"
+    },
+    "announcementIdle": "Żaden test jeszcze nie ruszył.",
+    "burst": "Seria",
+    "burstSend": "Wyślij serię",
+    "clearQueue": "Wyczyść kolejkę",
+    "connected": "Podłączone",
+    "disconnected": "Rozłączone",
+    "emptyLog": "Brak wpisów",
+    "event": {
+      "clear": "Czyszczenie kolejki",
+      "invalid": "Odrzucono",
+      "renderer": "Renderer",
+      "sent": "Wysłano"
+    },
+    "fields": {
+      "amount": "Kwota",
+      "avatarUrl": "Adres avatara",
+      "currency": "Waluta",
+      "displayName": "Nazwa wyświetlana",
+      "message": "Wiadomość",
+      "months": "Miesiące",
+      "plan": "Plan",
+      "soundUrl": "Adres dźwięku",
+      "soundVolume": "Głośność dźwięku (dB)",
+      "title": "Tytuł",
+      "username": "Nazwa użytkownika",
+      "viewers": "Widzowie"
+    },
+    "hint": "Panel wysyła zdarzenie. Dźwięk uruchamia tylko Studio: trigger albo adres pliku w zdarzeniu. Ta strona nie odtwarza audio.",
+    "log": {
+      "event-received": "Zdarzenie odebrane",
+      "monitor-route": "Wysłanie na odsłuch",
+      "playback-completed": "Odtwarzanie zakończone",
+      "playback-error": "Błąd odtwarzania",
+      "playback-ignored": "Odtwarzanie pominięte",
+      "playback-queued": "Dźwięk w kolejce",
+      "playback-started": "Odtwarzanie wystartowało",
+      "program-route": "Wysłanie do programu",
+      "signal": "Sygnał na magistrali",
+      "trigger-matched": "Trigger pasuje",
+      "trigger-miss": "Brak triggera"
+    },
+    "monitoring": {
+      "monitor": "Tylko słuchawki",
+      "monitor-and-output": "Słuchawki i program",
+      "off": "Odsłuch wyłączony"
+    },
+    "muted": "Wyciszone",
+    "open": "Otwarte",
+    "openRenderer": "Otwórz renderer",
+    "overlayId": "Id nakładki",
+    "overlayMeter": "Nakładki",
+    "previewFrame": "Podgląd strony nakładki",
+    "programOff": "Wysłanie do programu wyłączone",
+    "programOn": "Wysłanie do programu włączone",
+    "queued": "W kolejce: {count}",
+    "renderer": "Renderer",
+    "rendererTitle": "Nakładka",
+    "resend": "Wyślij ponownie",
+    "rows": {
+      "bus": "Magistrala",
+      "effects": "Efekty",
+      "instances": "Instancje",
+      "last": "Ostatni dźwięk",
+      "master": "Master",
+      "monitor": "Odsłuch",
+      "program": "Program",
+      "queued": "Kolejka audio"
+    },
+    "run": "Uruchom",
+    "sections": {
+      "audioLog": "Dziennik audio",
+      "diagnostics": "Diagnostyka audio",
+      "eventLog": "Dziennik zdarzeń",
+      "payload": "Dane zdarzenia",
+      "preview": "Podgląd nakładki",
+      "simulator": "Symulator zdarzeń",
+      "tests": "Testy audio"
+    },
+    "send": "Wyślij zdarzenie",
+    "state": {
+      "fail": "Niezaliczone",
+      "idle": "Czeka",
+      "manual": "Do odsłuchu",
+      "pass": "Zaliczone",
+      "running": "W toku"
+    },
+    "studio": "Studio",
+    "studioMissing": "Studio nie jest podłączone. Otwórz /app w drugiej karcie tej samej przeglądarki.",
+    "tests": {
+      "cooldown": {
+        "expect": "Drugi strzał w cooldownzie jest odrzucony. Cooldown 0 wymaga ustawienia na dźwięku.",
+        "name": "Cooldown"
+      },
+      "effects": {
+        "expect": "Włączony efekt na magistrali nie zgłasza błędu łańcucha podczas startu.",
+        "name": "Efekty"
+      },
+      "loop": {
+        "expect": "Jeśli dźwięk ma pętlę, trwanie potwierdzasz słuchem.",
+        "name": "Pętla"
+      },
+      "master-mute": {
+        "expect": "Studio zapisuje wyciszenie mastera.",
+        "name": "Wyciszenie mastera"
+      },
+      "master-volume": {
+        "expect": "Studio ustawia głośność mastera na 20% i przywraca poprzednią.",
+        "name": "Głośność mastera"
+      },
+      "max-instances": {
+        "expect": "Seria ośmiu zdarzeń wypełnia limit i reszta jest pomijana albo kolejkowana.",
+        "name": "Limit instancji"
+      },
+      "monitoring": {
+        "expect": "Tryb słuchawek zostawia program wyłączony, a odsłuch włączony.",
+        "name": "Odsłuch"
+      },
+      "multiple": {
+        "expect": "Trzy zdarzenia dają co najmniej dwa starty albo limit polityki je zatrzymuje.",
+        "name": "Kilka dźwięków"
+      },
+      "overlay-mute": {
+        "expect": "Głos startuje, a miernik magistrali zostaje na dole skali.",
+        "name": "Wyciszenie magistrali"
+      },
+      "play": {
+        "expect": "Studio znajduje trigger i startuje głos. Samo wysłanie zdarzenia nie zalicza testu.",
+        "name": "Odtwórz dźwięk nakładki"
+      },
+      "program": {
+        "expect": "Odsłuch i program są włączone, magistrala nie jest wyciszona.",
+        "name": "Wysłanie do programu"
+      },
+      "rapid": {
+        "expect": "Osiem zdarzeń dochodzi do Studio i co najmniej jeden głos startuje.",
+        "name": "Seria"
+      },
+      "restart": {
+        "expect": "Przy polityce restart zostaje co najwyżej jeden głos tego dźwięku.",
+        "name": "Polityka restart"
+      },
+      "stop-all": {
+        "expect": "Po starcie głosu Stop all zostawia zero instancji.",
+        "name": "Zatrzymaj wszystko"
+      }
+    },
+    "title": "Overlay Lab",
+    "transportOff": "Brak BroadcastChannel",
+    "transportOn": "BroadcastChannel",
+    "verdict": {
+      "cooldown-missed": "Drugi strzał wystartował mimo cooldownu.",
+      "cooldown-rejected": "Drugi strzał został odrzucony przez cooldown.",
+      "cooldown-unset": "Cooldown wynosi 0. Ustaw go na dźwięku i powtórz test.",
+      "effects-clean": "Efekt jest włączony i łańcuch nie zgłosił błędu.",
+      "effects-error": "Łańcuch efektów zgłosił błąd.",
+      "effects-none": "Na magistrali nie ma włączonego efektu. Dodaj go w Studio i powtórz test.",
+      "instances-capped": "Po wypełnieniu limitu kolejne starty zostały pominięte albo weszły do kolejki.",
+      "instances-open": "Limit jest wyższy niż seria. Obniż limit instancji i powtórz test.",
+      "invalid-payload": "Dane zdarzenia nie przeszły walidacji.",
+      "loop-off": "Dźwięk nie ma pętli. Włącz ją i potwierdź słuchem.",
+      "loop-on": "Dźwięk ma pętlę. Potwierdź słuchem, że nie milknie po pierwszym przebiegu.",
+      "master-mute-failed": "Studio nie zapisało wyciszenia mastera.",
+      "master-muted": "Studio ma master wyciszony.",
+      "master-volume": "Studio ma głośność mastera na 20%.",
+      "master-volume-failed": "Głośność mastera nie doszła do 20%.",
+      "monitor-failed": "Tryb odsłuchu nie doszedł do samych słuchawek.",
+      "monitor-on": "Odsłuch jest włączony, a program wyłączony.",
+      "multiple-capped": "Kolejne zdarzenie zostało pominięte przez limit albo politykę.",
+      "multiple-short": "Doszło tylko jedno odtworzenie.",
+      "multiple-started": "Wystartowało albo weszło do kolejki więcej niż jedno odtworzenie.",
+      "mute-failed": "Wyciszenie nie zgadza się ze stanem magistrali albo miernik nadal coś pokazuje.",
+      "mute-silenced": "Głos wystartował, a miernik magistrali został na dole skali.",
+      "mute-unconfirmed": "Magistrala jest wyciszona, ale żaden głos nie wystartował, więc ciszy nie da się potwierdzić.",
+      "no-trace": "Nie pojawił się ślad odtwarzania.",
+      "no-trigger": "Studio odebrało zdarzenie, ale żaden włączony trigger do niego nie pasuje.",
+      "playback-error": "Odtwarzanie zwróciło błąd, na przykład brak pliku.",
+      "playback-ignored": "Polityka odrzuciła odtwarzanie.",
+      "playback-queued": "Kontroler przyjął głos do kolejki.",
+      "playback-started": "Kontroler odtwarzania wystartował głos.",
+      "program-failed": "Routing programu nie doszedł do oczekiwanego stanu.",
+      "program-on": "Wysłanie do programu i odsłuch są włączone.",
+      "rapid-handled": "Każde zdarzenie serii doszło do Studio i co najmniej jeden głos wystartował.",
+      "rapid-short": "Nie wszystkie zdarzenia serii wróciły ze Studio.",
+      "restart-grew": "Po restarcie zostało więcej niż jeden głos.",
+      "restart-held": "Polityka restart zostawiła co najwyżej jeden głos.",
+      "restart-other": "Ten dźwięk nie ma polityki restart. Ustaw ją i powtórz test.",
+      "stop-failed": "Po Stop all głos nadal jest aktywny.",
+      "stopped": "Po Stop all nie zostało żadnej instancji ani wpisu w kolejce.",
+      "studio-offline": "Studio nie jest podłączone, więc ścieżki nie da się zmierzyć."
+    }
+  }
+}

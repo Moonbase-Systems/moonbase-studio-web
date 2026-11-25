@@ -1,5 +1,12 @@
+import { ref } from 'vue';
+
 const streams = new Map<string, MediaStream>();
 let activeConstraints: MediaTrackConstraints | null = null;
+export const screenStreamRevision = ref(0);
+
+const touchStreams = (): void => {
+  screenStreamRevision.value += 1;
+};
 
 const applyToStream = async (stream: MediaStream, constraints: MediaTrackConstraints): Promise<void> => {
   await Promise.all(
@@ -18,6 +25,16 @@ export function holdScreenPreviewStream(sourceId: string, stream: MediaStream) {
     }
   }
   streams.set(sourceId, stream);
+  touchStreams();
+  for (const track of stream.getVideoTracks()) {
+    track.addEventListener('ended', () => {
+      if (streams.get(sourceId) !== stream) {
+        return;
+      }
+      streams.delete(sourceId);
+      touchStreams();
+    });
+  }
   // Prefer a steady frame rate so Chromium's WGC 0 Hz path does not leave the track silent after a
   // minimise/restore. `getDisplayMedia` itself rejects `min`/`exact`; `applyConstraints` accepts ideal.
   void Promise.all(

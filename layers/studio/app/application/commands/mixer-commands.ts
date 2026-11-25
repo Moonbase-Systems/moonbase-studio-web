@@ -1,41 +1,101 @@
-import type { AudioChannel, AudioEffect, AudioFilter, AudioMaster } from '../../models/audio.domain';
+import { z } from 'zod';
+
+import {
+  type AudioChannel,
+  type AudioEffect,
+  type AudioFilter,
+  type AudioMaster,
+  type AudioMonitoringMode,
+  channelOwningSource,
+  createDefaultAudioChannel,
+  FADER_DB_MAX,
+  FADER_DB_MIN,
+  SYNC_OFFSET_MS_MAX,
+  SYNC_OFFSET_MS_MIN,
+  TRIM_DB_MAX,
+  TRIM_DB_MIN,
+} from '../../models/audio.domain';
 import type { ChannelId, SourceId } from '../../models/ids.domain';
 import type { Project } from '../../models/project.domain';
-import { portErr } from '../../ports/result';
+import { portErr, portOk } from '../../ports/result';
 import { displayNameSchema } from '../../schemas/display-name.schema';
 import { assertInitialized, withClonedProject } from '../command-utils';
 import type { CommandContext } from '../context';
 import type { StudioResult } from '../errors';
 import type { StudioSession } from '../session';
 
+const trimDbSchema = z.number().min(TRIM_DB_MIN).max(TRIM_DB_MAX);
+const faderDbSchema = z.number().min(FADER_DB_MIN).max(FADER_DB_MAX);
+const panSchema = z.number().min(-1).max(1);
+const monitoringSchema = z.enum(['off', 'monitor', 'monitor-and-output']);
+const syncOffsetSchema = z.number().min(SYNC_OFFSET_MS_MIN).max(SYNC_OFFSET_MS_MAX);
+
 export type AudioChannelDraft = {
   name: string;
-  sourceId?: SourceId | null;
-  volume?: number;
+  sourceIds?: SourceId[];
+  trimDb?: number;
+  faderDb?: number;
+  pan?: number;
   muted?: boolean;
   solo?: boolean;
-  pan?: number;
+  monitoring?: AudioMonitoringMode;
+  syncOffsetMs?: number;
+  global?: boolean;
   filters?: AudioFilter[];
   effects?: AudioEffect[];
 };
 
 export type AudioChannelChanges = {
   name?: string;
-  sourceId?: SourceId | null;
-  volume?: number;
+  trimDb?: number;
+  faderDb?: number;
+  pan?: number;
   muted?: boolean;
   solo?: boolean;
-  pan?: number;
+  monitoring?: AudioMonitoringMode;
+  syncOffsetMs?: number;
+  global?: boolean;
   filters?: AudioFilter[];
   effects?: AudioEffect[];
 };
 
-const assertSourceExists = (project: Project, sourceId: SourceId | null | undefined): StudioResult<void> => {
-  if (!sourceId) {
-    return { ok: true, value: undefined };
+const parseStrip = (
+  changes: Pick<AudioChannelChanges, 'trimDb' | 'faderDb' | 'pan' | 'monitoring' | 'syncOffsetMs'>,
+): StudioResult<void> => {
+  if (changes.trimDb !== undefined && !trimDbSchema.safeParse(changes.trimDb).success) {
+    return portErr({ kind: 'invalid-argument', message: 'trimDb is out of range' });
   }
-  if (!project.sources.some((source) => source.id === sourceId)) {
-    return portErr({ kind: 'source-not-found', sourceId });
+  if (changes.faderDb !== undefined && !faderDbSchema.safeParse(changes.faderDb).success) {
+    return portErr({ kind: 'invalid-argument', message: 'faderDb is out of range' });
+  }
+  if (changes.pan !== undefined && !panSchema.safeParse(changes.pan).success) {
+    return portErr({ kind: 'invalid-argument', message: 'pan is out of range' });
+  }
+  if (changes.monitoring !== undefined && !monitoringSchema.safeParse(changes.monitoring).success) {
+    return portErr({ kind: 'invalid-argument', message: 'monitoring is invalid' });
+  }
+  if (changes.syncOffsetMs !== undefined && !syncOffsetSchema.safeParse(changes.syncOffsetMs).success) {
+    return portErr({ kind: 'invalid-argument', message: 'syncOffsetMs is out of range' });
+  }
+  return { ok: true, value: undefined };
+};
+
+const assertAudioSources = (project: Project, sourceIds: readonly SourceId[]): StudioResult<void> => {
+  for (const sourceId of sourceIds) {
+    const source = project.sources.find((item) => item.id === sourceId);
+    if (!source) {
+      return portErr({ kind: 'source-not-found', sourceId });
+    }
+    if (source.type !== 'audio') {
+      return portErr({ kind: 'invalid-argument', message: 'Only audio sources can join a channel' });
+    }
+    const owner = channelOwningSource(project.audioMixer.channels, sourceId);
+    if (owner) {
+      return portErr({
+        kind: 'invalid-argument',
+        message: `Source ${sourceId} already belongs to channel ${owner.id}`,
+      });
+    }
   }
   return { ok: true, value: undefined };
 };
@@ -51,6 +111,9 @@ export const updateAudioMaster = (
   }
   if (!session.project) {
     return portErr({ kind: 'no-project' });
+  }
+  if (changes.volume !== undefined && (!Number.isFinite(changes.volume) || changes.volume < 0 || changes.volume > 1)) {
+    return portErr({ kind: 'invalid-argument', message: 'Master volume is out of range' });
   }
 
   return withClonedProject(
@@ -83,19 +146,27 @@ export const addAudioChannel = (
     });
   }
 
-  const source = assertSourceExists(session.project, draft.sourceId);
-  if (!source.ok) {
-    return source;
+  const strip = parseStrip(draft);
+  if (!strip.ok) {
+    return strip;
+  }
+
+  const sourceIds = draft.sourceIds ?? [];
+  const sources = assertAudioSources(session.project, sourceIds);
+  if (!sources.ok) {
+    return sources;
   }
 
   const channel: AudioChannel = {
-    id: ctx.generateId(),
-    name: parsedName.data,
-    sourceId: draft.sourceId ?? null,
-    volume: draft.volume ?? 1,
+    ...createDefaultAudioChannel({ id: ctx.generateId(), name: parsedName.data, sourceIds }),
+    trimDb: draft.trimDb ?? 0,
+    faderDb: draft.faderDb ?? 0,
+    pan: draft.pan ?? 0,
     muted: draft.muted ?? false,
     solo: draft.solo ?? false,
-    pan: draft.pan ?? 0,
+    monitoring: draft.monitoring ?? 'off',
+    syncOffsetMs: draft.syncOffsetMs ?? 0,
+    global: draft.global ?? false,
     filters: structuredClone(draft.filters ?? []),
     effects: structuredClone(draft.effects ?? []),
   };
@@ -140,9 +211,9 @@ export const updateAudioChannel = (
     name = parsedName.data;
   }
 
-  const source = assertSourceExists(session.project, changes.sourceId);
-  if (!source.ok) {
-    return source;
+  const strip = parseStrip(changes);
+  if (!strip.ok) {
+    return strip;
   }
 
   return withClonedProject(
@@ -152,11 +223,14 @@ export const updateAudioChannel = (
       if (name !== undefined) {
         target.name = name;
       }
-      if (changes.sourceId !== undefined) {
-        target.sourceId = changes.sourceId;
+      if (changes.trimDb !== undefined) {
+        target.trimDb = changes.trimDb;
       }
-      if (changes.volume !== undefined) {
-        target.volume = changes.volume;
+      if (changes.faderDb !== undefined) {
+        target.faderDb = changes.faderDb;
+      }
+      if (changes.pan !== undefined) {
+        target.pan = changes.pan;
       }
       if (changes.muted !== undefined) {
         target.muted = changes.muted;
@@ -164,15 +238,101 @@ export const updateAudioChannel = (
       if (changes.solo !== undefined) {
         target.solo = changes.solo;
       }
-      if (changes.pan !== undefined) {
-        target.pan = changes.pan;
+      if (changes.monitoring !== undefined) {
+        target.monitoring = changes.monitoring;
+      }
+      if (changes.syncOffsetMs !== undefined) {
+        target.syncOffsetMs = changes.syncOffsetMs;
       }
       if (changes.filters !== undefined) {
         target.filters = structuredClone(changes.filters);
       }
+      if (changes.global !== undefined) {
+        target.global = changes.global;
+      }
       if (changes.effects !== undefined) {
         target.effects = structuredClone(changes.effects);
       }
+    },
+    ctx,
+  );
+};
+
+export const assignAudioSource = (
+  session: StudioSession,
+  channelId: ChannelId,
+  sourceId: SourceId,
+  ctx: CommandContext,
+): StudioResult<StudioSession> => {
+  const ready = assertInitialized(session);
+  if (!ready.ok) {
+    return ready;
+  }
+  if (!session.project) {
+    return portErr({ kind: 'no-project' });
+  }
+
+  const channel = session.project.audioMixer.channels.find((item) => item.id === channelId);
+  if (!channel) {
+    return portErr({ kind: 'channel-not-found', channelId });
+  }
+  if (channel.sourceIds.includes(sourceId)) {
+    return portOk(session);
+  }
+
+  const source = session.project.sources.find((item) => item.id === sourceId);
+  if (!source) {
+    return portErr({ kind: 'source-not-found', sourceId });
+  }
+  if (source.type !== 'audio') {
+    return portErr({ kind: 'invalid-argument', message: 'Only audio sources can join a channel' });
+  }
+
+  const owner = channelOwningSource(session.project.audioMixer.channels, sourceId);
+  if (owner) {
+    return portErr({
+      kind: 'invalid-argument',
+      message: `Source ${sourceId} already belongs to channel ${owner.id}`,
+    });
+  }
+
+  return withClonedProject(
+    session,
+    (project) => {
+      const target = project.audioMixer.channels.find((item) => item.id === channelId)!;
+      target.sourceIds = [...target.sourceIds, sourceId];
+    },
+    ctx,
+  );
+};
+
+export const removeAudioSource = (
+  session: StudioSession,
+  channelId: ChannelId,
+  sourceId: SourceId,
+  ctx: CommandContext,
+): StudioResult<StudioSession> => {
+  const ready = assertInitialized(session);
+  if (!ready.ok) {
+    return ready;
+  }
+  if (!session.project) {
+    return portErr({ kind: 'no-project' });
+  }
+
+  const channel = session.project.audioMixer.channels.find((item) => item.id === channelId);
+  if (!channel) {
+    return portErr({ kind: 'channel-not-found', channelId });
+  }
+  if (!channel.sourceIds.includes(sourceId)) {
+    return portErr({ kind: 'source-not-found', sourceId });
+  }
+
+  return withClonedProject(
+    session,
+    (project) => {
+      const target = project.audioMixer.channels.find((item) => item.id === channelId)!;
+      target.sourceIds = target.sourceIds.filter((id) => id !== sourceId);
     },
     ctx,
   );
@@ -199,6 +359,11 @@ export const removeAudioChannel = (
     session,
     (project) => {
       project.audioMixer.channels = project.audioMixer.channels.filter((item) => item.id !== channelId);
+      for (const scene of project.scenes) {
+        scene.elements = scene.elements.filter(
+          (element) => element.type !== 'audioVisual' || element.channelId !== channelId,
+        );
+      }
     },
     ctx,
   );

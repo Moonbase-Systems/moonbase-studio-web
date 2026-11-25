@@ -12,7 +12,7 @@ The live editor store is `useStudioSessionStore` (`STORE_KEYS.STUDIO_SESSION`). 
 
 | Store key       | Constant                    | Persistable?                                                             | Responsibility                                                          |
 | --------------- | --------------------------- | ------------------------------------------------------------------------ | ----------------------------------------------------------------------- |
-| `studioSession` | `STORE_KEYS.STUDIO_SESSION` | No. The document is saved as `ProjectFile` v2 through `SceneRepository`. | Open project, editor selection and viewport, dirty flag, initialization |
+| `studioSession` | `STORE_KEYS.STUDIO_SESSION` | No. The document is saved as `ProjectFile` v3 through `SceneRepository`. | Open project, editor selection and viewport, dirty flag, initialization |
 | `userSession`   | `STORE_KEYS.USER_SESSION`   | Cookie Pinia                                                             | Auth only                                                               |
 | `shortcuts`     | `STORE_KEYS.SHORTCUTS`      | No                                                                       | Keyboard bindings                                                       |
 
@@ -44,12 +44,14 @@ Implemented on the service and the store:
 - scene CRUD, including `setSceneDefaultTransition`
 - element, group, and source CRUD
 - `addAsset` / `updateAsset` / `removeAsset`
-- mixer master and channel CRUD
+- mixer master and channel CRUD, including `global` on a channel
+- overlay bus, overlay sounds, and overlay triggers
+- `setBrowserPageAudio` for the shared tab-audio channel
 - transition library CRUD
 - `undo` / `redo`, `runTransaction`
 - selection and active scene (`recordHistory: false`)
 
-Save and load go through `createSceneRepository`. The browser adapter stores `ProjectFile` v2 in IndexedDB. `openProject` validates the file, drops history, and resets editor selection.
+Save and load go through `createSceneRepository`. The browser adapter stores `ProjectFile` v3 in IndexedDB. `openProject` validates the file, drops history, and resets editor selection. A v2 file is migrated in memory; conflicting audio strips are reported on the session and block save until that report is dismissed.
 
 ### Isolation
 
@@ -59,7 +61,7 @@ Save and load go through `createSceneRepository`. The browser adapter stores `Pr
 
 | Data                        | Where                                                    |
 | --------------------------- | -------------------------------------------------------- |
-| `Project` without `history` | `ProjectFile` (`formatVersion: 2`) via `SceneRepository` |
+| `Project` without `history` | `ProjectFile` (`formatVersion: 4`) via `SceneRepository` |
 | `history`                   | Memory only                                              |
 | catalog                     | `listProjects()` over saved files                        |
 
@@ -69,14 +71,16 @@ Save and load go through `createSceneRepository`. The browser adapter stores `Pr
 
 `EditorState` lives on the session, not in its own store.
 
-| Field                | Type                   | Notes                                   |
-| -------------------- | ---------------------- | --------------------------------------- |
-| `selectedElementIds` | `ElementId[]`          |                                         |
-| `selectedGroupIds`   | `GroupId[]`            | Cleared when the document is normalized |
-| `activeSceneId`      | `SceneId \| null`      |                                         |
-| `tool`               | `EditorTool`           |                                         |
-| `viewport`           | `{ zoom, panX, panY }` |                                         |
-| `panels`             | panel flags            |                                         |
+| Field                     | Type                     | Notes                                                                   |
+| ------------------------- | ------------------------ | ----------------------------------------------------------------------- |
+| `selectedElementIds`      | `ElementId[]`            | Selecting any layer clears the overlay sound and the global channel     |
+| `selectedGroupIds`        | `GroupId[]`              | Cleared when the document is normalized                                 |
+| `selectedOverlaySoundId`  | `OverlaySoundId \| null` | Inspector target for a library sound. Not in `ProjectFile`              |
+| `selectedGlobalChannelId` | `ChannelId \| null`      | Inspector target for a `global` channel. Not in `ProjectFile`           |
+| `activeSceneId`           | `SceneId \| null`        | Changing it follows `overlay.sceneChangePolicy` in the playback session |
+| `tool`                    | `EditorTool`             |                                                                         |
+| `viewport`                | `{ zoom, panX, panY }`   |                                                                         |
+| `panels`                  | panel flags              |                                                                         |
 
 Selection changes do not mark the project dirty and are not undo steps, except that an undo snapshot also restores the active scene and selection from the moment of the edit.
 

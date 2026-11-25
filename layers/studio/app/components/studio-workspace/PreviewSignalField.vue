@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { letterboxComposition, type Size } from '../../infrastructure/pixi/composition-geometry';
+import { outputFrame } from '../../models/output-profile.domain';
 import { useStudioSessionStore } from '../../store/studio-session.store';
 import { projectPointCovered, type SignalCover, signalCovers } from './preview-signal-covers';
 
@@ -18,7 +19,7 @@ let listenTarget: HTMLElement | null = null;
 let covers: SignalCover[] = [];
 /** Covers that swallow dots. A drag keeps the previous set until the element is released. */
 let settledCovers: SignalCover[] = [];
-let composition: Size = { width: 1920, height: 1080 };
+let composition: Size = outputFrame(null);
 let letter = { scale: 1, offsetX: 0, offsetY: 0 };
 
 const SIGNAL = '34, 255, 134';
@@ -73,7 +74,7 @@ function pointerStrength(point: Point) {
 }
 
 function refreshCovers(width: number, height: number) {
-  composition = store.project?.settings.video ?? composition;
+  composition = outputFrame(store.project);
   letter = letterboxComposition(composition, { width, height });
   covers = signalCovers(store.activeScene, store.project);
   if (!dragging) {
@@ -334,7 +335,7 @@ watch(
   { deep: true },
 );
 watch(
-  () => store.project?.settings.video,
+  () => store.project?.settings.outputProfile,
   () => syncActivity(),
   { deep: true },
 );

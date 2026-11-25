@@ -1,6 +1,8 @@
 import { z } from 'zod';
 
+import { createDefaultAudioChannel } from '../../models/audio.domain';
 import type { AssetId, SourceId } from '../../models/ids.domain';
+import { outputFrame } from '../../models/output-profile.domain';
 import type { Project } from '../../models/project.domain';
 import {
   type AnimationEndBehavior,
@@ -10,6 +12,7 @@ import {
   type AnimationPlaybackTrigger,
   type AnimationSource,
   type AudioSource,
+  BROWSER_TAB_AUDIO_DEVICE_ID,
   type BrowserSource,
   type CameraSource,
   defaultAnimationFormat,
@@ -22,6 +25,12 @@ import {
 } from '../../models/source.domain';
 import { portErr, portOk } from '../../ports/result';
 import { animationSourceSettingsSchema } from '../../schemas/animation-source.schema';
+import {
+  BROWSER_FRAME_SIZE,
+  browserPageUrlSchema,
+  browserZoomSchema,
+  isExternalBrowserPageUrl,
+} from '../../schemas/browser-source.schema';
 import { assertInitialized, withClonedProject } from '../command-utils';
 import type { CommandContext } from '../context';
 import type { StudioError, StudioReference, StudioResult } from '../errors';
@@ -44,14 +53,19 @@ const collectSourceReferences = (session: StudioSession, sourceId: SourceId): St
 
   for (const scene of project.scenes) {
     for (const element of scene.elements) {
-      if (element.type !== 'overlay' && element.sourceId === sourceId) {
+      if (element.type === 'audioVisual') {
+        const channel = project.audioMixer.channels.find((item) => item.id === element.channelId);
+        if (channel?.sourceIds.includes(sourceId)) {
+          references.push({ kind: 'layer', sceneId: scene.id, layerId: element.id });
+        }
+      } else if (element.type !== 'overlay' && element.sourceId === sourceId) {
         references.push({ kind: 'layer', sceneId: scene.id, layerId: element.id });
       }
     }
   }
 
   for (const channel of project.audioMixer.channels) {
-    if (channel.sourceId === sourceId) {
+    if (channel.sourceIds.includes(sourceId)) {
       references.push({ kind: 'audio-channel', channelId: channel.id });
     }
   }
@@ -150,9 +164,10 @@ export const renameSource = (
 };
 
 const browserSourceSchema = z.object({
-  url: z.string().url(),
+  url: browserPageUrlSchema,
   width: z.number().positive(),
   height: z.number().positive(),
+  zoom: browserZoomSchema,
   refreshSettings: z.object({
     intervalMs: z.number().positive().nullable(),
     refreshOnActivate: z.boolean(),
@@ -164,6 +179,7 @@ export type BrowserSourceChanges = {
   url?: string;
   width?: number;
   height?: number;
+  zoom?: number;
   refreshSettings?: Partial<BrowserSource['refreshSettings']>;
 };
 
@@ -193,6 +209,7 @@ export const updateBrowserSource = (
     url: changes.url ?? source.url,
     width: changes.width ?? source.width,
     height: changes.height ?? source.height,
+    zoom: changes.zoom ?? source.zoom,
     refreshSettings: { ...source.refreshSettings, ...changes.refreshSettings },
   });
   if (!parsed.success) {
@@ -209,10 +226,141 @@ export const updateBrowserSource = (
       if (!target || target.type !== 'browser') {
         return;
       }
+      const frame = outputFrame(project);
+      const adoptProjectFrame =
+        changes.width === undefined &&
+        changes.height === undefined &&
+        isExternalBrowserPageUrl(parsed.data.url) &&
+        parsed.data.width === BROWSER_FRAME_SIZE &&
+        parsed.data.height === BROWSER_FRAME_SIZE &&
+        frame.width > 0 &&
+        frame.height > 0;
       target.url = parsed.data.url;
-      target.width = parsed.data.width;
-      target.height = parsed.data.height;
+      target.width = adoptProjectFrame ? frame.width : parsed.data.width;
+      target.height = adoptProjectFrame ? frame.height : parsed.data.height;
+      target.zoom = parsed.data.zoom;
+      target.audio = source.audio;
       target.refreshSettings = parsed.data.refreshSettings;
+      if (!adoptProjectFrame) {
+        return;
+      }
+      for (const scene of project.scenes) {
+        for (const element of scene.elements) {
+          if (element.type !== 'browser' || element.sourceId !== sourceId) {
+            continue;
+          }
+          if (element.transform.width !== BROWSER_FRAME_SIZE || element.transform.height !== BROWSER_FRAME_SIZE) {
+            continue;
+          }
+          element.transform = { ...element.transform, width: frame.width, height: frame.height };
+        }
+      }
+    },
+    ctx,
+  );
+};
+
+const pageWantsTabAudio = (project: Project): boolean =>
+  project.sources.some((item) => item.type === 'browser' && item.audio === true);
+
+const tabAudioSource = (project: Project) =>
+  project.sources.find((item) => item.type === 'audio' && item.deviceId === BROWSER_TAB_AUDIO_DEVICE_ID);
+
+const sceneUsesChannel = (project: Project, channelId: string): boolean =>
+  project.scenes.some((scene) =>
+    scene.elements.some((element) => element.type === 'audioVisual' && element.channelId === channelId),
+  );
+
+/** Drops the shared tab input once no browser layer still wants it. A scene layer keeps the channel and clears only `global`. */
+const releaseBrowserTabAudio = (project: Project): void => {
+  if (pageWantsTabAudio(project)) {
+    return;
+  }
+  const audio = tabAudioSource(project);
+  if (!audio) {
+    return;
+  }
+  const channel = project.audioMixer.channels.find((item) => item.sourceIds.includes(audio.id));
+  if (channel && sceneUsesChannel(project, channel.id)) {
+    channel.global = false;
+    return;
+  }
+  if (channel) {
+    if (channel.sourceIds.length === 1) {
+      project.audioMixer.channels = project.audioMixer.channels.filter((item) => item.id !== channel.id);
+    } else {
+      channel.sourceIds = channel.sourceIds.filter((id) => id !== audio.id);
+    }
+  }
+  project.sources = project.sources.filter((item) => item.id !== audio.id);
+};
+
+const ensureBrowserTabAudio = (project: Project, name: string, ctx: CommandContext): void => {
+  const existing = tabAudioSource(project);
+  const audioId = existing?.id ?? ctx.generateId();
+  if (!existing) {
+    project.sources.push({ id: audioId, type: 'audio', name, deviceId: BROWSER_TAB_AUDIO_DEVICE_ID });
+  }
+  const channel = project.audioMixer.channels.find((item) => item.sourceIds.includes(audioId));
+  if (!channel) {
+    project.audioMixer.channels.push({
+      ...createDefaultAudioChannel({ id: ctx.generateId(), name, sourceIds: [audioId] }),
+      global: true,
+    });
+    return;
+  }
+  channel.global = true;
+};
+
+/** Includes or removes this browser page from the one global tab-audio channel. */
+export const setBrowserPageAudio = (
+  session: StudioSession,
+  sourceId: SourceId,
+  enabled: boolean,
+  ctx: CommandContext,
+): StudioResult<StudioSession> => {
+  const ready = assertInitialized(session);
+  if (!ready.ok) {
+    return ready;
+  }
+  if (!session.project) {
+    return portErr({ kind: 'no-project' });
+  }
+
+  const source = session.project.sources.find((item) => item.id === sourceId);
+  if (!source) {
+    return portErr({ kind: 'source-not-found', sourceId });
+  }
+  if (source.type !== 'browser') {
+    return portErr({ kind: 'invalid-argument', message: 'Source is not a browser source' });
+  }
+
+  if (enabled && source.audio === true) {
+    const audio = tabAudioSource(session.project);
+    const channel = audio
+      ? session.project.audioMixer.channels.find((item) => item.sourceIds.includes(audio.id))
+      : undefined;
+    if (audio && channel?.global) {
+      return portOk(session);
+    }
+  }
+  if (!enabled && source.audio !== true) {
+    return portOk(session);
+  }
+
+  return withClonedProject(
+    session,
+    (project) => {
+      const target = project.sources.find((item) => item.id === sourceId);
+      if (!target || target.type !== 'browser') {
+        return;
+      }
+      target.audio = enabled;
+      if (enabled) {
+        ensureBrowserTabAudio(project, target.name, ctx);
+        return;
+      }
+      releaseBrowserTabAudio(project);
     },
     ctx,
   );
@@ -361,7 +509,18 @@ export const removeSource = (
   return withClonedProject(
     session,
     (project) => {
+      const removing = project.sources.find((item) => item.id === sourceId);
       project.sources = project.sources.filter((item) => item.id !== sourceId);
+      if (removing?.type === 'browser' && removing.audio === true) {
+        releaseBrowserTabAudio(project);
+      }
+      if (removing?.type === 'audio' && removing.deviceId === BROWSER_TAB_AUDIO_DEVICE_ID) {
+        for (const item of project.sources) {
+          if (item.type === 'browser') {
+            item.audio = false;
+          }
+        }
+      }
     },
     ctx,
   );

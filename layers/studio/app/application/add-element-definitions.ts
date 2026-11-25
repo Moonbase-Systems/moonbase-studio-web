@@ -1,4 +1,5 @@
 import { createDefaultAnimationSourceFields } from '../models/source.domain';
+import { BROWSER_FRAME_SIZE } from '../schemas/browser-source.schema';
 import type { SourceDefinition } from './commands/source-commands';
 
 export type AddElementPanelKey = 'screen' | 'audio' | 'text' | 'shape' | 'image' | 'browser' | 'animation';
@@ -21,9 +22,9 @@ export const createSourceDefinitionForPanelKey = (key: AddElementPanelKey, name:
       return {
         type: 'browser',
         name,
-        url: 'https://example.com',
-        width: 1920,
-        height: 1080,
+        url: '',
+        width: BROWSER_FRAME_SIZE,
+        height: BROWSER_FRAME_SIZE,
         refreshSettings: {
           intervalMs: null,
           refreshOnActivate: true,

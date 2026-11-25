@@ -1,19 +1,38 @@
 <script setup lang="ts">
+import { useCameraPreview } from '../../composables/useCameraPreview';
 import { provideStudioCompositionEngine } from '../../composables/useCompositionEngine';
 import { useHistoryShortcuts } from '../../composables/useHistoryShortcuts';
 import { useLayerStackShortcuts } from '../../composables/useLayerStackShortcuts';
+import { provideStudioAudioDevices } from '../../composables/useStudioAudioDevices';
+import { provideStudioAudioEngine } from '../../composables/useStudioAudioEngine';
+import { useStudioOverlayEventBridge } from '../../composables/useStudioOverlayEventBridge';
+import { provideStudioOverlayPlayback } from '../../composables/useStudioOverlayPlayback';
+import { provideStudioRecording } from '../../composables/useStudioRecording';
+import { useStudioSessionStore } from '../../store/studio-session.store';
 import { AppBootScreen } from '../app-boot';
 import { STUDIO_BOOT_REVEAL_KEY } from '../app-boot/studio-boot-chrome';
 import { PropertiesInspector } from '../properties-inspector';
 import { ScenesSidebar } from '../scenes-sidebar';
 import { StudioTopBar } from '../studio-top-bar';
+import AudioMigrationReport from './AudioMigrationReport.vue';
 import ScenePreviewFrame from './ScenePreviewFrame.vue';
 
 useHistoryShortcuts();
 useLayerStackShortcuts();
-provideStudioCompositionEngine();
-
+const audioEngine = provideStudioAudioEngine();
+const composition = provideStudioCompositionEngine(audioEngine);
+provideStudioRecording(composition, audioEngine);
+useCameraPreview(() => {
+  const scene = useStudioSessionStore().activeScene;
+  if (scene) {
+    void composition.render(scene);
+  }
+});
+provideStudioAudioDevices(audioEngine);
 const studioReveal = useState(STUDIO_BOOT_REVEAL_KEY, () => false);
+
+const playback = provideStudioOverlayPlayback(audioEngine);
+useStudioOverlayEventBridge(audioEngine, playback);
 
 const SIDEBAR_MIN = 220;
 const SIDEBAR_MAX = 560;
@@ -108,6 +127,7 @@ function onResizePointerUp(event: PointerEvent) {
         class="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden"
         data-editor-column
       >
+        <AudioMigrationReport />
         <div class="min-h-0 flex-1">
           <ScenePreviewFrame />
         </div>

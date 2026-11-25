@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import type { ProjectVideoSettings } from '../../models/project.domain';
+import type { OutputFrame } from '../../models/output-profile.domain';
 import { createEmptyScene, type Scene } from '../../models/scene.domain';
 import { createSourceBackedElement, type SceneElement } from '../../models/scene-element.domain';
 import { createSceneGroup } from '../../models/scene-group.domain';
@@ -14,9 +14,10 @@ import {
   placementForTransform,
   toFontWeight,
 } from './composition-geometry';
+import { BROWSER_PLATE_CAPTION } from './composition-layer';
 import { elementContentKey, planSceneSync, type RenderedSceneIds } from './composition-scene-sync';
 
-const video: ProjectVideoSettings = { width: 1920, height: 1080, frameRate: 30 };
+const video: OutputFrame = { width: 1920, height: 1080, frameRate: 30 };
 const nothingRendered: RenderedSceneIds = { elementIds: new Set(), groupIds: new Set() };
 
 const shapeSource: Source = { id: 'src-shape', name: 'Shape', type: 'shape', shapeKind: 'rect' };
@@ -38,7 +39,7 @@ const rootIds = (scene: Scene): string[] =>
   );
 
 describe('planSceneSync', () => {
-  it('keeps scene.elements order bottom to top and skips audio layers', () => {
+  it('keeps scene.elements order bottom to top and leaves audio layers off the canvas', () => {
     const scene = sceneWith([element('a', shapeSource), element('mic', audioSource), element('b', textSource)]);
     expect(rootIds(scene)).toEqual(['a', 'b']);
   });
@@ -119,6 +120,22 @@ describe('elementContentKey', () => {
       settings: { ...screen.settings, showCursor: !screen.settings.showCursor },
     };
     expect(elementContentKey(toggled, 'stream-1')).toBe(elementContentKey(screen, 'stream-1'));
+  });
+});
+
+describe('browser plate', () => {
+  it('keeps the explicit caption in the scene graph key', () => {
+    const page = element('page', {
+      id: 'src-browser',
+      name: 'Page',
+      type: 'browser',
+      url: 'https://example.com',
+      width: 500,
+      height: 500,
+      refreshSettings: { intervalMs: null, refreshOnActivate: false, bypassCache: false },
+    });
+    expect(elementContentKey(page)).toContain(BROWSER_PLATE_CAPTION);
+    expect(planSceneSync(sceneWith([page]), nothingRendered).elementIds.has('page')).toBe(true);
   });
 });
 

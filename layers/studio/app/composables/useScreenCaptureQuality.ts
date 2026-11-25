@@ -1,7 +1,7 @@
 import type { Ref } from 'vue';
 
 import { applyScreenCaptureConstraints } from '../components/properties-inspector/screen-preview-stream';
-import type { ProjectVideoSettings } from '../models/project.domain';
+import { outputFrame } from '../models/output-profile.domain';
 import {
   BACKGROUND_PREVIEW_FRAME_RATE,
   captureConstraints,
@@ -9,10 +9,8 @@ import {
 } from '../playback/screen-capture-constraints';
 import { useStudioSessionStore } from '../store/studio-session.store';
 
-const FALLBACK_VIDEO: ProjectVideoSettings = { width: 1920, height: 1080, frameRate: 30 };
-
 const live = ref(false);
-let projectConstraints = captureConstraints(projectCaptureFrame(FALLBACK_VIDEO));
+let projectConstraints = captureConstraints(projectCaptureFrame(outputFrame(null)));
 
 /**
  * Recording and streaming call this before they start: captures go back to the project size
@@ -46,7 +44,7 @@ export function useScreenCaptureQuality(): ScreenCaptureQuality {
     foreground.value = document.visibilityState === 'visible' && document.hasFocus();
   };
 
-  const video = computed(() => store.project?.settings.video ?? FALLBACK_VIDEO);
+  const video = computed(() => outputFrame(store.project));
   // Project edits replace the settings object; compare by value so captures are only re-negotiated
   // when the ceiling itself changes.
   const target = computed(() => {

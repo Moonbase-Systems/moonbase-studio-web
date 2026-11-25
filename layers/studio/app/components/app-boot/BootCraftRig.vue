@@ -80,6 +80,28 @@ watch(
   },
 );
 
+const enterRef = ref<HTMLElement | null>(null);
+
+/*
+ * The boot screen is server-rendered and hydrates only once the studio setup resolves,
+ * often after the enter animation has already ended, so `animationend` never reaches us.
+ * Pick up the animation state on mount instead of waiting for an event that already fired.
+ */
+onMounted(() => {
+  const element = enterRef.value;
+  if (!element || enterDone.value) {
+    return;
+  }
+  const enter = element
+    .getAnimations()
+    .find((animation) => animation instanceof CSSAnimation && animation.animationName.includes('boot-craft-enter'));
+  if (!enter || enter.playState === 'finished') {
+    finishEnter();
+    return;
+  }
+  enter.finished.then(finishEnter).catch(() => finishEnter());
+});
+
 watch(
   () => props.reduceMotion,
   (reduce) => {
@@ -97,6 +119,7 @@ defineExpose({
 
 <template>
   <div
+    ref="enterRef"
     class="boot-craft-enter"
     :class="{ 'boot-craft-enter-static': reduceMotion }"
     @animationend="onEnterEnd"
@@ -154,6 +177,13 @@ defineExpose({
   width: 120px;
   height: 80px;
   transform: translateZ(0);
+
+  /*
+   * Draw the craft larger for the Orbit boot screen. Scaling around the lamp (60, 50 of 120 × 80)
+   * keeps the beam anchor and the sway pivot where the beam math expects them.
+   */
+  scale: 1.4;
+  transform-origin: 50% 62.5%;
 }
 
 @keyframes boot-craft-enter {

@@ -4,6 +4,7 @@ import 'pixi.js/unsafe-eval';
 import {
   Application,
   type BLEND_MODES,
+  BlurFilter,
   CanvasTextMetrics,
   Container,
   FillGradient,
@@ -11,6 +12,7 @@ import {
   Graphics,
   ImageSource,
   Rectangle,
+  RenderTexture,
   Sprite,
   Text,
   type TextDropShadow,
@@ -20,6 +22,7 @@ import {
 } from 'pixi.js';
 
 import type { Appearance, BlendMode, ElementCrop, Transform2D } from '../../models/common.domain';
+import { effectPlayback } from '../../models/effects';
 import type { AssetId, ElementId, GroupId, SceneId, SourceId } from '../../models/ids.domain';
 import type { Scene, SceneBackground } from '../../models/scene.domain';
 import type {
@@ -30,8 +33,14 @@ import type {
   TextElement,
 } from '../../models/scene-element.domain';
 import type { SceneGroup } from '../../models/scene-group.domain';
-import type { CompositionEngine, CompositionEngineError, CompositionViewport } from '../../ports/composition-engine';
+import type {
+  CompositionEngine,
+  CompositionEngineError,
+  CompositionViewport,
+  FrameDelivery,
+} from '../../ports/composition-engine';
 import { portErr, portOk, type PortResult } from '../../ports/result';
+import { sizeOutputCanvas } from '../output/output-surface';
 import {
   alignTextBlock,
   cropFrame,
@@ -44,8 +53,10 @@ import {
   type Size,
   toFontWeight,
 } from './composition-geometry';
+import { BROWSER_PLATE_CAPTION, layerDrawKind, overlayText } from './composition-layer';
 import { elementContentKey, planSceneSync } from './composition-scene-sync';
 import { createPixiTextureCache, type PixiTextureCache, type TextureScaleMode } from './pixi-texture-cache';
+import { type FadeCurve, fadeProgress, transitionPlayer } from './transition-playback';
 
 export type PixiCompositionEngineOptions = {
   getHost: () => HTMLElement | null;
@@ -57,12 +68,22 @@ export type PixiCompositionEngineOptions = {
   resolveAssetUrl: (assetId: AssetId) => string | null;
   /** Live display capture for a screen source, when the user has picked one. */
   resolveScreenStream: (sourceId: SourceId) => MediaStream | null;
+  /** Shown when a saved screen capture was not restored. */
+  missingScreenCaption?: (sourceId: SourceId) => string;
   /** Highest rate the preview redraws captures at; null or omitted redraws on every new capture frame. */
   getCapturePreviewFrameRate?: () => number | null;
   /** Fill inside the project frame when the scene has no background; preview-only by default. */
   compositionFillWhenBackgroundNone?: number;
   /** Capture size when its first frame shows and whenever the captured window changes size afterwards. */
   onCapturePicture?: (sourceId: SourceId, picture: Size, change: 'shown' | 'resized') => void;
+  /** Live camera already opened for the editor. Recording must not call getUserMedia again. */
+  resolveCameraStream?: (sourceId: SourceId) => MediaStream | null;
+  /** Video file or animation asset. `image` is a still or GIF; `video` is one shared HTMLVideoElement. */
+  resolveVideoFile?: (sourceId: SourceId) => { url: string | null; mediaKind: 'image' | 'video'; loop: boolean } | null;
+  /** Program-mix spectrum from the existing AudioContext. Missing data leaves the bars at rest. */
+  readProgramSpectrum?: (bins: Uint8Array) => boolean;
+  /** Transition that plays when this scene becomes active. Null cuts. */
+  resolveSceneTransition?: (sceneId: SceneId) => { type: string; durationMs: number; curve?: FadeCurve } | null;
   /** Non-fatal problems: failed texture loads, broken references inside a scene. */
   onDiagnostic?: (error: CompositionEngineError) => void;
 };
@@ -106,6 +127,10 @@ type CaptureBinding = {
   lastSurfaceHeight: number;
   /** Removes the listeners and timer that bring the capture back after it stalls. */
   stopWatching: (() => void) | null;
+  /** Screen capture owns its element. Camera and file video share one element per source. */
+  ownsElement: boolean;
+  /** Drops one user of a shared element. Null for an exclusive capture. */
+  releaseShared: (() => void) | null;
 };
 
 type ContentLayout = Size & { crop: ElementCrop };
@@ -130,6 +155,15 @@ type ContentHolder = {
   cropGhost: Container | null;
   image: ImageBinding | null;
   capture: CaptureBinding | null;
+  /** Level bars for an audio-visual layer. */
+  bars: Graphics | null;
+  /**
+   * Browser stand-in for the output copy. Hidden on the preview so a transparent
+   * page shows the layers underneath instead of this plate.
+   */
+  plate: Container | null;
+  /** Sprite used as an alpha mask. */
+  maskSprite: Sprite | null;
   disposables: { destroy(): void }[];
 };
 
@@ -151,6 +185,14 @@ type SceneState = {
   reportedIssues: Set<string>;
 };
 
+type FadePlayback = {
+  fromId: SceneId;
+  toId: SceneId;
+  startedAt: number;
+  durationMs: number;
+  curve: FadeCurve;
+};
+
 type Runtime = {
   app: Application;
   frame: Container;
@@ -163,6 +205,17 @@ type Runtime = {
   viewport: Size;
   frameRequest: number | null;
   stopIdleTimers: () => void;
+  /** Profile-sized canvas. It is not mounted in the editor layout. */
+  outputCanvas: HTMLCanvasElement;
+  outputContext: CanvasRenderingContext2D | null;
+  outputTexture: RenderTexture | null;
+  outputCaptureActive: boolean;
+  deliveredFrames: number;
+  firstDeliveredAt: number | null;
+  lastDeliveredAt: number | null;
+  activeSceneId: SceneId | null;
+  fade: FadePlayback | null;
+  reportedTransitions: Set<string>;
 };
 
 const DESTROY_OWNED = { children: true, context: true, style: true } as const;
@@ -228,6 +281,9 @@ const createContentHolder = (): ContentHolder => ({
   cropGhost: null,
   image: null,
   capture: null,
+  bars: null,
+  plate: null,
+  maskSprite: null,
   disposables: [],
 });
 
@@ -268,6 +324,25 @@ const drawPlaceholder = (parent: Container, size: Size, title: string, caption: 
   label.anchor.set(0.5);
   label.position.set(size.width / 2, size.height / 2);
   parent.addChild(box, label);
+};
+
+const BAR_COUNT = 16;
+
+const paintBars = (graphics: Graphics, size: Size, samples: Uint8Array | null): void => {
+  graphics.clear();
+  if (size.width <= 0 || size.height <= 0) {
+    return;
+  }
+  graphics.rect(0, 0, size.width, size.height).fill(PLACEHOLDER_FILL);
+  const gap = Math.max(2, size.width * 0.01);
+  const barWidth = (size.width - gap * (BAR_COUNT + 1)) / BAR_COUNT;
+  for (let index = 0; index < BAR_COUNT; index += 1) {
+    const sample = samples ? (samples[Math.floor((index / BAR_COUNT) * samples.length)] ?? 0) / 255 : 0.08;
+    const barHeight = Math.max(2, size.height * Math.max(0.08, sample));
+    graphics
+      .rect(gap + index * (barWidth + gap), size.height - barHeight, Math.max(1, barWidth), barHeight)
+      .fill(0x22ff86);
+  }
 };
 
 const drawClipShape = (mask: Graphics, size: Size, radius: number): void => {
@@ -521,12 +596,190 @@ export const createPixiCompositionEngine = (options: PixiCompositionEngineOption
     options.onDiagnostic?.(error);
   };
 
+  const spectrum = new Uint8Array(64);
+  const sharedVideos = new Map<string, { element: HTMLVideoElement; users: number }>();
+  const maskKeys = new WeakMap<ContentHolder, string>();
+
+  const retainSharedVideo = (key: string, setup: (video: HTMLVideoElement) => void): (() => void) => {
+    let entry = sharedVideos.get(key);
+    if (!entry) {
+      const element = document.createElement('video');
+      element.muted = true;
+      element.playsInline = true;
+      setup(element);
+      entry = { element, users: 0 };
+      sharedVideos.set(key, entry);
+    }
+    entry.users += 1;
+    const current = entry;
+    return () => {
+      current.users -= 1;
+      if (current.users > 0) {
+        return;
+      }
+      current.element.pause();
+      current.element.srcObject = null;
+      current.element.removeAttribute('src');
+      current.element.load();
+      sharedVideos.delete(key);
+    };
+  };
+
+  const hideCropGhosts = (rt: Runtime): Container[] => {
+    const hidden: Container[] = [];
+    for (const scene of rt.scenes.values()) {
+      for (const node of scene.elements.values()) {
+        if (node.cropGhost?.visible) {
+          node.cropGhost.visible = false;
+          hidden.push(node.cropGhost);
+        }
+      }
+    }
+    return hidden;
+  };
+
+  const ensureOutputTarget = (rt: Runtime): void => {
+    sizeOutputCanvas(rt.outputCanvas, rt.composition);
+    const width = rt.outputCanvas.width;
+    const height = rt.outputCanvas.height;
+    if (rt.outputTexture && rt.outputTexture.width === width && rt.outputTexture.height === height) {
+      return;
+    }
+    rt.outputTexture?.destroy(true);
+    rt.outputTexture = RenderTexture.create({ width, height, resolution: 1 });
+  };
+
+  const showBrowserPlates = (rt: Runtime): Container[] => {
+    const plates: Container[] = [];
+    for (const scene of rt.scenes.values()) {
+      for (const node of scene.elements.values()) {
+        if (!node.plate) {
+          continue;
+        }
+        node.plate.visible = true;
+        plates.push(node.plate);
+      }
+    }
+    return plates;
+  };
+
+  const publishOutput = (rt: Runtime): void => {
+    ensureOutputTarget(rt);
+    if (!rt.outputTexture || !rt.outputContext) {
+      return;
+    }
+    const frame = rt.frame;
+    const x = frame.position.x;
+    const y = frame.position.y;
+    const scaleX = frame.scale.x;
+    const scaleY = frame.scale.y;
+    const hidden = hideCropGhosts(rt);
+    const plates = showBrowserPlates(rt);
+    frame.position.set(0, 0);
+    frame.scale.set(1, 1);
+    try {
+      rt.app.renderer.render({ container: frame, target: rt.outputTexture, clear: true });
+      const extracted = rt.app.renderer.extract.canvas({ target: rt.outputTexture });
+      rt.outputContext.clearRect(0, 0, rt.outputCanvas.width, rt.outputCanvas.height);
+      rt.outputContext.drawImage(extracted as CanvasImageSource, 0, 0, rt.outputCanvas.width, rt.outputCanvas.height);
+      const now = performance.now();
+      if (rt.deliveredFrames === 0) {
+        rt.firstDeliveredAt = now;
+      }
+      rt.deliveredFrames += 1;
+      rt.lastDeliveredAt = now;
+    } catch (error) {
+      report({ kind: 'render-failed', message: `Output frame copy failed: ${errorMessage(error)}` });
+    } finally {
+      frame.position.set(x, y);
+      frame.scale.set(scaleX, scaleY);
+      for (const ghost of hidden) {
+        ghost.visible = true;
+      }
+      for (const plate of plates) {
+        plate.visible = false;
+      }
+    }
+  };
+
+  const paintAudioBars = (rt: Runtime): void => {
+    let any = false;
+    for (const scene of rt.scenes.values()) {
+      if (!scene.container.visible && rt.fade === null) {
+        continue;
+      }
+      for (const node of scene.elements.values()) {
+        if (!node.bars) {
+          continue;
+        }
+        any = true;
+        const width = node.contentLayout?.width ?? 0;
+        const height = node.contentLayout?.height ?? 0;
+        const filled = options.readProgramSpectrum?.(spectrum) ?? false;
+        paintBars(node.bars, { width, height }, filled ? spectrum : null);
+      }
+    }
+    if (any && !rt.outputCaptureActive && rt.fade === null) {
+      // Bars keep moving in the preview. The caller decides whether to schedule another frame.
+    }
+  };
+
+  const hasAudioBars = (rt: Runtime): boolean => {
+    for (const scene of rt.scenes.values()) {
+      if (!scene.container.visible) {
+        continue;
+      }
+      for (const node of scene.elements.values()) {
+        if (node.bars) {
+          return true;
+        }
+      }
+    }
+    return false;
+  };
+
+  const advanceFade = (rt: Runtime): void => {
+    const fade = rt.fade;
+    if (!fade) {
+      return;
+    }
+    const progress = fadeProgress(performance.now() - fade.startedAt, fade.durationMs, fade.curve);
+    const from = rt.scenes.get(fade.fromId);
+    const to = rt.scenes.get(fade.toId);
+    if (from) {
+      from.container.alpha = 1 - progress;
+      from.container.visible = true;
+    }
+    if (to) {
+      to.container.alpha = progress;
+      to.container.visible = true;
+    }
+    if (progress >= 1) {
+      if (from && fade.fromId !== fade.toId) {
+        from.container.visible = false;
+        from.container.alpha = 1;
+      }
+      if (to) {
+        to.container.alpha = 1;
+      }
+      rt.fade = null;
+    }
+  };
+
   const renderNow = (rt: Runtime): void => {
     if (rt.frameRequest !== null) {
       cancelAnimationFrame(rt.frameRequest);
       rt.frameRequest = null;
     }
+    paintAudioBars(rt);
+    advanceFade(rt);
     rt.app.render();
+    if (rt.outputCaptureActive) {
+      publishOutput(rt);
+    }
+    if (rt.outputCaptureActive || rt.fade || hasAudioBars(rt)) {
+      requestFrame(rt);
+    }
   };
 
   const requestFrame = (rt: Runtime): void => {
@@ -539,8 +792,13 @@ export const createPixiCompositionEngine = (options: PixiCompositionEngineOption
         return;
       }
       const polling = pollCaptureFrames(rt, performance.now());
+      paintAudioBars(rt);
+      advanceFade(rt);
       rt.app.render();
-      if (polling) {
+      if (rt.outputCaptureActive) {
+        publishOutput(rt);
+      }
+      if (polling || rt.outputCaptureActive || rt.fade || hasAudioBars(rt)) {
         requestFrame(rt);
       }
     });
@@ -558,13 +816,17 @@ export const createPixiCompositionEngine = (options: PixiCompositionEngineOption
   /** Real pixels worth uploading: larger than a stub, and not a muted minimise freeze. */
   const captureHasPicture = (binding: CaptureBinding): boolean => {
     const { element: video, stream } = binding;
-    if (captureTracks(stream).every((track) => track.readyState === 'ended')) {
-      return false;
+    const tracks = captureTracks(stream);
+    if (tracks.length > 0) {
+      if (tracks.every((track) => track.readyState === 'ended')) {
+        return false;
+      }
+      if (captureIsMuted(stream) && performance.now() > binding.forcePresentUntil) {
+        return false;
+      }
     }
-    if (captureIsMuted(stream) && performance.now() > binding.forcePresentUntil) {
-      return false;
-    }
-    return video.videoWidth >= MIN_CAPTURE_PICTURE && video.videoHeight >= MIN_CAPTURE_PICTURE;
+    const minimum = tracks.length > 0 ? MIN_CAPTURE_PICTURE : 1;
+    return video.videoWidth >= minimum && video.videoHeight >= minimum;
   };
 
   /**
@@ -648,7 +910,7 @@ export const createPixiCompositionEngine = (options: PixiCompositionEngineOption
 
   const pauseSceneCaptures = (state: SceneState): void => {
     for (const node of state.elements.values()) {
-      if (node.capture) {
+      if (node.capture?.ownsElement) {
         node.capture.suspended = true;
         node.capture.element.pause();
       }
@@ -661,7 +923,7 @@ export const createPixiCompositionEngine = (options: PixiCompositionEngineOption
       if (binding) {
         binding.suspended = false;
       }
-      if (binding?.texture && binding.element.paused && !binding.element.ended) {
+      if (binding?.ownsElement && binding.texture && binding.element.paused && !binding.element.ended) {
         void binding.element.play().catch(() => undefined);
       }
     }
@@ -839,10 +1101,15 @@ export const createPixiCompositionEngine = (options: PixiCompositionEngineOption
       binding.frameCallback = null;
     }
     binding.fit = null;
-    binding.element.pause();
-    binding.element.srcObject = null;
-    binding.texture?.destroy(true);
+    binding.texture?.destroy(binding.ownsElement);
     binding.texture = null;
+    if (binding.ownsElement) {
+      binding.element.pause();
+      binding.element.srcObject = null;
+      binding.element.removeAttribute('src');
+    } else {
+      binding.releaseShared?.();
+    }
   };
 
   const clearContent = (rt: Runtime, holder: ContentHolder): void => {
@@ -851,6 +1118,13 @@ export const createPixiCompositionEngine = (options: PixiCompositionEngineOption
     }
     holder.relayout = null;
     holder.cropGhost = null;
+    holder.bars = null;
+    holder.plate = null;
+    holder.content.visible = true;
+    holder.content.mask = null;
+    holder.maskSprite = null;
+    holder.content.filters = null;
+    maskKeys.delete(holder);
     releaseImage(rt, holder);
     releaseCapture(holder);
     for (const disposable of holder.disposables) {
@@ -963,7 +1237,12 @@ export const createPixiCompositionEngine = (options: PixiCompositionEngineOption
   ): Promise<void> => {
     const box = { width: element.transform.width, height: element.transform.height };
     if (!stream) {
-      drawPlaceholder(node.content, box, element.name, 'screen unavailable');
+      drawPlaceholder(
+        node.content,
+        box,
+        element.name,
+        options.missingScreenCaption?.(element.sourceId) ?? 'screen unavailable',
+      );
       return Promise.resolve();
     }
 
@@ -990,6 +1269,8 @@ export const createPixiCompositionEngine = (options: PixiCompositionEngineOption
       lastSurfaceWidth: 0,
       lastSurfaceHeight: 0,
       stopWatching: null,
+      ownsElement: true,
+      releaseShared: null,
     };
     node.capture = binding;
 
@@ -1074,14 +1355,225 @@ export const createPixiCompositionEngine = (options: PixiCompositionEngineOption
     });
   };
 
+  const mediaToken = (element: SceneElement): string | null => {
+    if (element.type === 'image') {
+      return resolveImageUrl(element);
+    }
+    if (element.type === 'screen') {
+      return options.resolveScreenStream(element.sourceId)?.id ?? null;
+    }
+    if (element.type === 'camera') {
+      return options.resolveCameraStream?.(element.sourceId)?.id ?? null;
+    }
+    if (element.type === 'video' || element.type === 'animation') {
+      return options.resolveVideoFile?.(element.sourceId)?.url ?? null;
+    }
+    return null;
+  };
+
+  const visualFit = (
+    element: SceneElement,
+  ): { fitMode: 'contain' | 'cover' | 'fill' | 'none'; cornerRadius: number } => {
+    if (element.type === 'camera' || element.type === 'video' || element.type === 'image') {
+      return { fitMode: element.settings.fitMode, cornerRadius: element.settings.cornerRadius };
+    }
+    return { fitMode: 'contain', cornerRadius: 0 };
+  };
+
+  const applyBlur = (node: ElementNode, element: SceneElement): void => {
+    const blur = element.effects.find((effect) => effect.type === 'blur' && effectPlayback(effect) === 'live');
+    if (blur && blur.type === 'blur') {
+      const current = node.content.filters?.[0];
+      if (current instanceof BlurFilter) {
+        current.strength = blur.parameters.radius;
+      } else {
+        node.content.filters = [new BlurFilter({ strength: blur.parameters.radius })];
+      }
+      return;
+    }
+    if (node.content.filters?.length) {
+      node.content.filters = null;
+    }
+  };
+
+  const syncMask = (rt: Runtime, node: ElementNode, element: SceneElement): void => {
+    const mask = element.effects.find((effect) => effect.type === 'mask' && effectPlayback(effect) === 'live');
+    const nextKey = mask && mask.type === 'mask' ? mask.parameters.sourceId : '';
+    if (maskKeys.get(node) === nextKey) {
+      return;
+    }
+    maskKeys.set(node, nextKey);
+    if (node.maskSprite) {
+      node.content.mask = null;
+      node.maskSprite.destroy();
+      node.maskSprite = null;
+    }
+    if (!mask || mask.type !== 'mask') {
+      return;
+    }
+    const assetId = options.resolveSourceAssetId(mask.parameters.sourceId);
+    const url = assetId ? options.resolveAssetUrl(assetId) : null;
+    if (!url) {
+      report({
+        kind: 'render-failed',
+        message: `Mask for element ${element.id} is not an image in the frame`,
+      });
+      return;
+    }
+    void rt.textures.acquire(url, 'linear').then(
+      (texture) => {
+        if (runtime !== rt || maskKeys.get(node) !== nextKey) {
+          rt.textures.release(url, 'linear');
+          return;
+        }
+        const sprite = new Sprite(texture);
+        sprite.width = element.transform.width;
+        sprite.height = element.transform.height;
+        node.maskSprite = sprite;
+        node.content.addChild(sprite);
+        node.content.mask = sprite;
+        node.disposables.push({ destroy: () => rt.textures.release(url, 'linear') });
+        requestFrame(rt);
+      },
+      () => {
+        report({ kind: 'render-failed', message: `Mask image for element ${element.id} failed to load` });
+      },
+    );
+  };
+
+  const drawStill = (rt: Runtime, node: ElementNode, element: SceneElement, url: string | null): Promise<void> => {
+    const fit = visualFit(element);
+    return drawImage(
+      rt,
+      node,
+      {
+        ...element,
+        type: 'image',
+        sourceId: 'sourceId' in element ? element.sourceId : element.id,
+        settings: { fitMode: fit.fitMode, cornerRadius: fit.cornerRadius, maskSourceId: null, smoothing: true },
+      },
+      url,
+    );
+  };
+
+  const drawSharedVideo = (
+    rt: Runtime,
+    node: ElementNode,
+    element: Extract<SceneElement, { sourceId: SourceId }>,
+    key: string,
+    attach: (video: HTMLVideoElement) => void,
+    failure: string,
+  ): Promise<void> => {
+    const box = { width: element.transform.width, height: element.transform.height };
+    const releaseShared = retainSharedVideo(key, attach);
+    const video = sharedVideos.get(key)?.element;
+    if (!video) {
+      releaseShared();
+      drawPlaceholder(node.content, box, element.name, failure);
+      return Promise.resolve();
+    }
+    const fit = visualFit(element);
+    const binding: CaptureBinding = {
+      sourceId: element.sourceId,
+      stream: video.srcObject instanceof MediaStream ? video.srcObject : new MediaStream(),
+      element: video,
+      texture: null,
+      fit: null,
+      width: 0,
+      height: 0,
+      frameCallback: null,
+      nextDrawAt: Number.NEGATIVE_INFINITY,
+      suspended: false,
+      lastCallbackAt: performance.now(),
+      lastPresentedFrames: -1,
+      reattachedAt: Number.NEGATIVE_INFINITY,
+      forcePresentUntil: 0,
+      lastSurfaceWidth: 0,
+      lastSurfaceHeight: 0,
+      stopWatching: null,
+      ownsElement: false,
+      releaseShared,
+    };
+    node.capture = binding;
+    const placeholder = new Container();
+    drawPlaceholder(placeholder, box, element.name, 'loading');
+    node.content.addChild(placeholder);
+
+    return new Promise((resolve) => {
+      const stillCurrent = () => runtime === rt && node.capture === binding;
+      const fail = () => {
+        if (!stillCurrent()) {
+          resolve();
+          return;
+        }
+        placeholder.destroy(DESTROY_OWNED);
+        drawPlaceholder(node.content, box, element.name, failure);
+        report({ kind: 'render-failed', message: `${failure} (${element.id})` });
+        requestFrame(rt);
+        resolve();
+      };
+      const showFrame = () => {
+        if (!stillCurrent() || binding.texture) {
+          resolve();
+          return;
+        }
+        const width = video.videoWidth;
+        const height = video.videoHeight;
+        if (width <= 0 || height <= 0) {
+          fail();
+          return;
+        }
+        const texture = new Texture({
+          source: new ImageSource({ resource: video }),
+          frame: new Rectangle(0, 0, width, height),
+          dynamic: true,
+        });
+        binding.texture = texture;
+        const sprite = new Sprite(texture);
+        let fitLayout: ContentLayout = { ...box, crop: element.crop };
+        binding.fit = (contentWidth, contentHeight) => {
+          const whole = { width: contentWidth, height: contentHeight };
+          const frame = cropFrame(fitLayout.crop, whole);
+          texture.frame.copyFrom(new Rectangle(frame.x, frame.y, frame.width, frame.height));
+          texture.update();
+          const rect = fitContentRect(fit.fitMode, fitLayout, frame);
+          sprite.position.set(rect.x, rect.y);
+          sprite.setSize(rect.width, rect.height);
+        };
+        binding.width = width;
+        binding.height = height;
+        binding.fit(width, height);
+        placeholder.destroy(DESTROY_OWNED);
+        node.content.addChild(sprite);
+        const mask = clipTo(node.content, sprite, box, fit.cornerRadius);
+        node.relayout = (next) => {
+          fitLayout = next;
+          binding.fit?.(binding.width, binding.height);
+          drawClipShape(mask, next, fit.cornerRadius);
+        };
+        void video.play().catch(() => fail());
+        watchCaptureFrames(rt, binding);
+        requestFrame(rt);
+        resolve();
+      };
+      if (video.readyState >= 2 && video.videoWidth > 0) {
+        showFrame();
+        return;
+      }
+      video.addEventListener('loadeddata', showFrame, { once: true });
+      video.addEventListener('error', fail, { once: true });
+    });
+  };
+
   const syncElement = (rt: Runtime, node: ElementNode, element: SceneElement): Promise<void> => {
     applyPlacement(node, element.transform, element.appearance, element.visibility);
 
-    const url = element.type === 'image' ? resolveImageUrl(element) : null;
-    const streamId = element.type === 'screen' ? (options.resolveScreenStream(element.sourceId)?.id ?? null) : null;
-    const key = elementContentKey(element, url ?? streamId);
+    const token = mediaToken(element);
+    const key = elementContentKey(element, token);
     const layout = { width: element.transform.width, height: element.transform.height, crop: element.crop };
     if (key === node.contentKey) {
+      applyBlur(node, element);
+      syncMask(rt, node, element);
       if (sameLayout(node.contentLayout, layout)) {
         return Promise.resolve();
       }
@@ -1095,26 +1587,118 @@ export const createPixiCompositionEngine = (options: PixiCompositionEngineOption
     node.contentLayout = layout;
     clearContent(rt, node);
 
-    switch (element.type) {
+    const finish = (drawn: Promise<void> | void): Promise<void> => {
+      applyBlur(node, element);
+      syncMask(rt, node, element);
+      return Promise.resolve(drawn);
+    };
+
+    switch (layerDrawKind(element.type)) {
       case 'shape':
-        drawShape(node, element);
-        return Promise.resolve();
-      case 'text':
-        drawText(node, element);
-        return Promise.resolve();
-      case 'image':
-        if (!options.resolveSourceAssetId(element.sourceId)) {
-          report({
-            kind: 'render-failed',
-            message: `Image element ${element.id} references source ${element.sourceId} without an image asset`,
-          });
+        if (element.type === 'shape') {
+          drawShape(node, element);
         }
-        return drawImage(rt, node, element, url);
+        return finish();
+      case 'text':
+        if (element.type === 'text') {
+          drawText(node, element);
+        }
+        return finish();
+      case 'image':
+        if (element.type === 'image') {
+          if (!options.resolveSourceAssetId(element.sourceId)) {
+            report({
+              kind: 'render-failed',
+              message: `Image element ${element.id} references source ${element.sourceId} without an image asset`,
+            });
+          }
+          return finish(drawImage(rt, node, element, token));
+        }
+        return finish();
       case 'screen':
-        return drawScreen(rt, node, element, options.resolveScreenStream(element.sourceId));
+        if (element.type === 'screen') {
+          return finish(drawScreen(rt, node, element, options.resolveScreenStream(element.sourceId)));
+        }
+        return finish();
+      case 'browser-plate':
+        drawPlaceholder(node.content, element.transform, element.name, BROWSER_PLATE_CAPTION);
+        node.plate = node.content;
+        node.content.visible = false;
+        return finish();
+      case 'camera': {
+        if (element.type !== 'camera') {
+          return finish();
+        }
+        const stream = options.resolveCameraStream?.(element.sourceId) ?? null;
+        const track = stream?.getVideoTracks()[0];
+        if (!stream || !track || track.readyState === 'ended') {
+          drawPlaceholder(node.content, element.transform, element.name, 'camera unavailable');
+          return finish();
+        }
+        track.addEventListener('ended', () => {
+          if (runtime === rt && node.capture?.sourceId === element.sourceId) {
+            clearContent(rt, node);
+            drawPlaceholder(node.content, element.transform, element.name, 'camera ended');
+            requestFrame(rt);
+          }
+        });
+        return finish(
+          drawSharedVideo(
+            rt,
+            node,
+            element,
+            `camera:${element.sourceId}:${stream.id}`,
+            (video) => {
+              video.srcObject = stream;
+            },
+            'camera unavailable',
+          ),
+        );
+      }
+      case 'video':
+      case 'animation': {
+        if (element.type !== 'video' && element.type !== 'animation') {
+          return finish();
+        }
+        const file = options.resolveVideoFile?.(element.sourceId) ?? null;
+        if (!file?.url) {
+          drawPlaceholder(node.content, element.transform, element.name, `${element.type} unavailable`);
+          return finish();
+        }
+        if (file.mediaKind === 'image') {
+          return finish(drawStill(rt, node, element, file.url));
+        }
+        const loop = element.type === 'video' ? element.settings.loop : file.loop;
+        return finish(
+          drawSharedVideo(
+            rt,
+            node,
+            element,
+            `file:${file.url}`,
+            (video) => {
+              video.loop = loop;
+              video.src = file.url ?? '';
+            },
+            `${element.type} unavailable`,
+          ),
+        );
+      }
+      case 'overlay':
+        if (element.type === 'overlay') {
+          const text = overlayText(element.content);
+          drawPlaceholder(node.content, element.transform, element.overlayKind, text || element.name);
+        }
+        return finish();
+      case 'audio-visual': {
+        const bars = new Graphics();
+        node.bars = bars;
+        node.content.addChild(bars);
+        paintBars(bars, element.transform, null);
+        return finish();
+      }
       default:
         drawPlaceholder(node.content, element.transform, element.name, element.type);
-        return Promise.resolve();
+        return finish();
     }
   };
 
@@ -1264,6 +1848,7 @@ export const createPixiCompositionEngine = (options: PixiCompositionEngineOption
     }
     if (composition.width !== rt.composition.width || composition.height !== rt.composition.height) {
       rt.composition = { width: composition.width, height: composition.height };
+      ensureOutputTarget(rt);
       layout(rt);
     }
   };
@@ -1346,6 +1931,9 @@ export const createPixiCompositionEngine = (options: PixiCompositionEngineOption
         const projectOutline = new Graphics();
         app.stage.addChild(frame, projectOutline);
 
+        const outputCanvas = document.createElement('canvas');
+        outputCanvas.dataset.outputFrame = 'true';
+        outputCanvas.setAttribute('aria-hidden', 'true');
         const rt: Runtime = {
           app,
           frame,
@@ -1357,8 +1945,19 @@ export const createPixiCompositionEngine = (options: PixiCompositionEngineOption
           viewport: { width: size.width, height: size.height },
           frameRequest: null,
           stopIdleTimers,
+          outputCanvas,
+          outputContext: outputCanvas.getContext('2d'),
+          outputTexture: null,
+          outputCaptureActive: false,
+          deliveredFrames: 0,
+          firstDeliveredAt: null,
+          lastDeliveredAt: null,
+          activeSceneId: null,
+          fade: null,
+          reportedTransitions: new Set(),
         };
         runtime = rt;
+        ensureOutputTarget(rt);
         layout(rt);
         renderNow(rt);
         return portOk(undefined);
@@ -1377,8 +1976,36 @@ export const createPixiCompositionEngine = (options: PixiCompositionEngineOption
         const state = rt.scenes.get(scene.id) ?? createSceneState(rt);
         rt.scenes.set(scene.id, state);
         loads = syncScene(rt, state, scene);
+        const previousId = rt.activeSceneId;
+        if (previousId && previousId !== scene.id) {
+          const transition = options.resolveSceneTransition?.(scene.id) ?? null;
+          const player = transition ? transitionPlayer(transition.type) : 'cut';
+          if (player === 'missing' && transition && !rt.reportedTransitions.has(transition.type)) {
+            rt.reportedTransitions.add(transition.type);
+            report({
+              kind: 'render-failed',
+              message: `Transition ${transition.type} has no player`,
+            });
+          }
+          if (player === 'fade' && transition && transition.durationMs > 0 && rt.scenes.has(previousId)) {
+            rt.fade = {
+              fromId: previousId,
+              toId: scene.id,
+              startedAt: performance.now(),
+              durationMs: transition.durationMs,
+              curve: transition.curve ?? 'linear',
+            };
+          } else {
+            rt.fade = null;
+          }
+        }
+        rt.activeSceneId = scene.id;
         for (const [sceneId, other] of rt.scenes) {
-          const active = sceneId === scene.id;
+          const inFade = rt.fade !== null && (sceneId === rt.fade.fromId || sceneId === rt.fade.toId);
+          if (!inFade) {
+            other.container.alpha = 1;
+          }
+          const active = sceneId === scene.id || inFade;
           other.container.visible = active;
           if (active) {
             resumeSceneCaptures(other);
@@ -1414,6 +2041,39 @@ export const createPixiCompositionEngine = (options: PixiCompositionEngineOption
       return portOk(undefined);
     },
 
+    getOutputCanvas() {
+      return runtime?.outputCanvas ?? null;
+    },
+
+    setOutputCaptureActive(active: boolean) {
+      const rt = runtime;
+      if (!rt) {
+        return;
+      }
+      rt.outputCaptureActive = active;
+      if (active) {
+        rt.deliveredFrames = 0;
+        rt.firstDeliveredAt = null;
+        rt.lastDeliveredAt = null;
+        publishOutput(rt);
+        requestFrame(rt);
+      }
+    },
+
+    readFrameDelivery(): FrameDelivery {
+      const rt = runtime;
+      if (!rt) {
+        return { deliveredFrames: 0, firstDeliveredAt: null, lastDeliveredAt: null, width: 0, height: 0 };
+      }
+      return {
+        deliveredFrames: rt.deliveredFrames,
+        firstDeliveredAt: rt.firstDeliveredAt,
+        lastDeliveredAt: rt.lastDeliveredAt,
+        width: rt.outputCanvas.width,
+        height: rt.outputCanvas.height,
+      };
+    },
+
     previewCrop(elementId) {
       cropPreviewId = elementId;
       const rt = runtime;
@@ -1437,6 +2097,7 @@ export const createPixiCompositionEngine = (options: PixiCompositionEngineOption
           return portOk(undefined);
         }
         runtime = null;
+        rt.outputCaptureActive = false;
         if (rt.frameRequest !== null) {
           cancelAnimationFrame(rt.frameRequest);
         }
@@ -1446,6 +2107,7 @@ export const createPixiCompositionEngine = (options: PixiCompositionEngineOption
             destroySceneState(rt, state);
           }
           rt.scenes.clear();
+          rt.outputTexture?.destroy(true);
           rt.textures.destroy();
           rt.app.destroy({ removeView: true }, DESTROY_OWNED);
         } catch (error) {

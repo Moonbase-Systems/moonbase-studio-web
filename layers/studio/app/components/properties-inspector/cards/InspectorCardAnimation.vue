@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import { cn } from '~/utils/index';
 
+import { holdAssetBlob } from '../../../infrastructure/assets/asset-session';
 import type { SceneId } from '../../../models/ids.domain';
 import type { AnimationElement } from '../../../models/scene-elements';
 import type { AnimationEndBehavior, AnimationPlaybackTrigger } from '../../../models/source.domain';
 import { capabilitiesForMediaKind } from '../../../playback/animation-player';
 import { peekAnimationControls } from '../../../playback/animation-player-registry';
-import { holdAnimationPreviewUrl } from '../../../playback/animation-preview-url';
 import { detectAnimationFile } from '../../../playback/detect-animation-file';
 import { readMediaPixelSize } from '../../../playback/read-media-pixel-size';
 import { useStudioSessionStore } from '../../../store/studio-session.store';
@@ -109,9 +109,11 @@ async function onFile(event: Event) {
     return;
   }
   fileError.value = null;
-  const url = URL.createObjectURL(file);
-  const size = await readMediaPixelSize(url, detected.mediaKind);
+  const preview = URL.createObjectURL(file);
+  const size = await readMediaPixelSize(preview, detected.mediaKind);
+  URL.revokeObjectURL(preview);
   const assetIdsBefore = new Set(store.project?.assets.map((asset) => asset.id) ?? []);
+  let createdAssetId: string | null = null;
   const result = store.runTransaction(() => {
     const added = store.addAsset({
       name: file.name.slice(0, 256),
@@ -132,7 +134,7 @@ async function onFile(event: Event) {
     if (!asset) {
       return { ok: false as const, error: { kind: 'invalid-state' as const, reason: 'Asset was not created' } };
     }
-    holdAnimationPreviewUrl(asset.id, url);
+    createdAssetId = asset.id;
     const updated = store.updateAnimationSource(current.id, {
       assetId: asset.id,
       mediaKind: detected.mediaKind,
@@ -149,9 +151,10 @@ async function onFile(event: Event) {
       transform: { width: size.width, height: size.height },
     });
   });
-  if (!result.ok) {
-    URL.revokeObjectURL(url);
+  if (!result.ok || !createdAssetId) {
+    return;
   }
+  holdAssetBlob(createdAssetId, file, file.type);
 }
 
 function commitNumber(

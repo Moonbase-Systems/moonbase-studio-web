@@ -36,11 +36,11 @@
 
 ## ADR-005: Browser is a Source, not an Asset
 
-**Decision:** Browser configuration (`url`, `width`, `height`, `refreshSettings`) lives on `Source` with `type: 'browser'`. Placement on a scene is `SceneElement` with `type: 'browser'` and `sourceId`.
+**Decision:** Browser configuration (`url`, `width`, `height`, `refreshSettings`, `audio`) lives on `Source` with `type: 'browser'`. Placement on a scene is `SceneElement` with `type: 'browser'` and `sourceId`. `audio` adds the tab mix to one global channel.
 
 **Why:** Assets are stored files. A browser source is a live URL. Source reuse across scenes follows the same pattern as camera/screen.
 
-**Sizing rule:** Source `width`/`height` define the browser viewport. On-canvas scale/position come from the element `transform`.
+**Sizing rule:** Source `width`/`height` define the browser viewport. On-canvas scale/position come from the element `transform`. The preview paints the page as an iframe, not as a Pixi texture. An external page still stored at the default 500×500 viewport is shown at the project frame. Details are in [browser-layer.md](./browser-layer.md).
 
 ---
 
@@ -66,12 +66,12 @@
 
 ```ts
 type ProjectFile = {
-  formatVersion: 2;
+  formatVersion: 4;
   project: Omit<Project, 'history'>;
 };
 ```
 
-Validated with Zod on import and on every committed document change. A `formatVersion: 1` file is migrated to v2 by `migrateProjectFile` before validation. Unknown versions fail validation.
+Validated with Zod on import and on every committed document change. `migrateProjectFile` upgrades v1 to v2, v2 to v3, then v3 to v4, before validation. Unknown versions fail validation. The v3 step folds per-scene audio strips into project channels; conflicts stay in the session until the operator dismisses them, and the file is not written by the migration itself. The v4 step moves the frame size into `settings.outputProfile` and stores the profile id. Reloading that v4 file does not mint another id.
 
 **Why:** Cookie Pinia is unsuitable for large scene graphs. Explicit versioning enables safe schema changes. The browser `SceneRepository` stores this file in IndexedDB. Bridge loads the same document without editor state or history.
 
@@ -89,7 +89,7 @@ Validated with Zod on import and on every committed document change. A `formatVe
 
 **Decision:** `moonbase-studio-web` is the editor of the project document.
 
-- **Standalone.** Edit, undo, and save work with Bridge stopped. The editor preview draws the active scene in the browser. It is not Program Output.
+- **Standalone.** Edit, undo, and save work with Bridge stopped. The editor preview draws the active scene in the browser. It is not Program Output. The browser does run a project audio graph for monitoring and a program `MediaStream`; that graph is specified in [audio-engine.md](./audio-engine.md) and is not the Bridge mix.
 - **Connected.** A downloaded process for Windows and Linux, MoonBase Bridge (Rust, no operator window, x64 and arm64, same features on both systems), loads the whole project and renders one Program Output. FFmpeg publishes that same picture and the program mix over RTMP. The transport is not WebRTC.
 - **AI.** A separate module, MoonBase AI, reads camera frames, including cameras that are not on Program, and returns a score with a camera id and a reason. It does not write the project and does not open devices. A recommendation reaches Bridge as a command. Failure of the module does not stop RTMP.
 
@@ -98,3 +98,11 @@ Serializable RTMP settings (target, address, key, resolution, frame rate, bitrat
 A studio floor plan and a `deviceId` on a camera position are document data. A `deviceId` is platform-specific, so a project moved between Windows and Linux needs its cameras assigned again. Three.js, a second render path for the stream, and multi-user sync stay out of this repository.
 
 **Why:** The December 2026 scope splits the product across `moonbase-studio-web`, `moonbase-bridge`, and `moonbase-ai`. Putting the runtime in the Nuxt layer would make the document depend on a process the editor must survive without.
+
+---
+
+## ADR-011: Overlay playback is session state
+
+**Decision:** `audioMixer.overlay` stores the bus, the sound library, and the triggers. Voices, decoded buffers, queues, timers, and object URLs are not in `ProjectFile`. Cues are in-memory calls (`dispatchOverlayCue`). Alert messages on `BroadcastChannel` `moonbase-overlay-events` are a developer transport, not project data. A browser source flag `audio` registers one global channel; the `getDisplayMedia` stream for that channel is session state and starts only from a gesture.
+
+**Why:** The document has to open without a device prompt and without a second audio context. The same cue path serves the lab today and a later Bridge or Core publisher. Foreign overlay pages stay inside their iframe and do not become a second mixer.

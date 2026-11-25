@@ -1,6 +1,6 @@
 import type { Appearance, Transform2D } from './common.domain';
-import type { ElementId } from './ids.domain';
-import type { ProjectVideoSettings } from './project.domain';
+import type { ChannelId, ElementId } from './ids.domain';
+import type { OutputFrame } from './output-profile.domain';
 import type { SourceBackedElement, SourceBackedElementType } from './scene-elements';
 import { createDefaultSettingsForSource } from './scene-elements/create-element-settings';
 import type { OverlayElement } from './scene-elements/overlay-element.domain';
@@ -45,9 +45,11 @@ export const createSourceBackedElement = (input: {
   id: ElementId;
   source: Source;
   name?: string;
-  video: ProjectVideoSettings;
+  video: Pick<OutputFrame, 'width' | 'height'>;
   transform?: Partial<Transform2D>;
   appearance?: Partial<Appearance>;
+  /** Required for an audio source. The layer enables this project channel and has no strip of its own. */
+  channelId?: ChannelId;
 }): SourceBackedElement => {
   const base = createSceneElementBaseFields({
     id: input.id,
@@ -56,6 +58,19 @@ export const createSourceBackedElement = (input: {
     transform: input.transform,
     appearance: input.appearance,
   });
+
+  if (input.source.type === 'browser' && input.transform?.keepAspectRatio === undefined) {
+    base.transform = { ...base.transform, keepAspectRatio: true };
+  }
+
+  if (input.source.type === 'audio') {
+    return {
+      ...base,
+      type: 'audioVisual',
+      channelId: input.channelId ?? input.source.id,
+      settings: {},
+    };
+  }
 
   const type = elementTypeForSource(input.source);
   const settings = createDefaultSettingsForSource(input.source);

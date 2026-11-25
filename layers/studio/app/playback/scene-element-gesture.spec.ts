@@ -212,7 +212,7 @@ describe('hit testing', () => {
     expect(hitTestScene(scene, { x: 900, y: 900 })).toBeNull();
   });
 
-  it('ignores an audio layer, which has no picture', () => {
+  it('does not hit an audio layer, which is not drawn', () => {
     const audio = createSourceBackedElement({
       id: 'mic',
       source: { id: 'src-audio', name: 'Mic', type: 'audio' },
@@ -262,7 +262,22 @@ describe('element rules', () => {
 
   it('crops media only', () => {
     const screen = createSourceBackedElement({ id: 'screen', source: screenSource, video, transform: box() });
+    const browser = createSourceBackedElement({
+      id: 'browser',
+      source: {
+        id: 'src-browser',
+        name: 'Browser',
+        type: 'browser',
+        url: '',
+        width: 500,
+        height: 500,
+        refreshSettings: { intervalMs: null, refreshOnActivate: false, bypassCache: false },
+      },
+      video,
+    });
     expect(canCrop(screen)).toBe(true);
+    expect(canCrop(browser)).toBe(true);
+    expect(keepsAspectRatio(browser)).toBe(true);
     expect(canCrop(element('shape', {}))).toBe(false);
   });
 });

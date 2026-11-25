@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { createDefaultAnimationSourceFields } from '../../models/source.domain';
+import { BROWSER_TAB_AUDIO_DEVICE_ID, createDefaultAnimationSourceFields } from '../../models/source.domain';
 import { animationSourceSettingsSchema } from '../../schemas/animation-source.schema';
 import { createSessionWithProject } from '../../test-utils/studio-session-fixtures';
 import { PLACEHOLDER_PANEL_ASSET_ID } from '../add-element-definitions';
@@ -10,6 +10,7 @@ import {
   findSource,
   removeSource,
   renameSource,
+  setBrowserPageAudio,
   updateAnimationSource,
   updateBrowserSource,
 } from './source-commands';
@@ -89,10 +90,67 @@ describe('source commands', () => {
       expect(source?.type === 'browser' && source.url).toBe('https://streamlabs.com/alert-box/v3/demo');
     }
 
+    const scaled = updateBrowserSource(updated.ok ? updated.value : added.value, sourceId, { zoom: 2 }, ctx);
+    expect(scaled.ok).toBe(true);
+    if (scaled.ok) {
+      const source = scaled.value.project?.sources[0];
+      expect(source?.type === 'browser' && source.zoom).toBe(2);
+    }
+
     const rejected = updateBrowserSource(added.value, sourceId, { url: 'alert-box' }, ctx);
     expect(rejected.ok).toBe(false);
     const unchanged = added.value.project?.sources[0];
     expect(unchanged?.type === 'browser' && unchanged.url).toBe('https://example.com');
+  });
+
+  it('expands a default browser layer to the project frame when the page is an external overlay', () => {
+    const { session, ctx } = createSessionWithProject(['p1', 's1', 'src-browser', 'layer-1']);
+    const added = addSource(
+      session,
+      {
+        type: 'browser',
+        name: 'Overlay',
+        url: '',
+        width: 500,
+        height: 500,
+        refreshSettings: { intervalMs: null, refreshOnActivate: true, bypassCache: false },
+      },
+      ctx,
+    );
+    expect(added.ok).toBe(true);
+    if (!added.ok) {
+      return;
+    }
+    const sourceId = added.value.project!.sources[0]!.id;
+    const sceneId = added.value.project!.scenes[0]!.id;
+    const layered = addLayer(added.value, sceneId, sourceId, undefined, ctx);
+    expect(layered.ok).toBe(true);
+    if (!layered.ok) {
+      return;
+    }
+
+    const updated = updateBrowserSource(
+      layered.value,
+      sourceId,
+      { url: 'https://streamelements.com/overlay/example/token' },
+      ctx,
+    );
+    expect(updated.ok).toBe(true);
+    if (!updated.ok) {
+      return;
+    }
+    const source = updated.value.project?.sources[0];
+    expect(source?.type === 'browser' && source.width).toBe(1920);
+    expect(source?.type === 'browser' && source.height).toBe(1080);
+    expect(updated.value.project?.scenes[0]?.elements[0]?.transform).toMatchObject({ width: 1920, height: 1080 });
+
+    const sameOrigin = updateBrowserSource(added.value, sourceId, { url: '/overlay/lab' }, ctx);
+    expect(sameOrigin.ok).toBe(true);
+    if (sameOrigin.ok) {
+      const lab = sameOrigin.value.project?.sources[0];
+      expect(lab?.type === 'browser' && lab.width).toBe(500);
+      expect(lab?.type === 'browser' && lab.height).toBe(500);
+    }
   });
 
   it('fills playback defaults for an older animation source', () => {
@@ -177,5 +235,87 @@ describe('source commands', () => {
       expect(result.error.kind).toBe('reference-conflict');
     }
     expect(current).toEqual(before);
+  });
+
+  it('adds one global channel for browser page audio and removes it when the last page turns it off', () => {
+    const { session, ctx } = createSessionWithProject([
+      'p1',
+      's1',
+      'browser-a',
+      'tab-audio',
+      'tab-channel',
+      'browser-b',
+    ]);
+    const first = addSource(
+      session,
+      {
+        type: 'browser',
+        name: 'Alerts',
+        url: 'https://example.com/overlay',
+        width: 1920,
+        height: 1080,
+        refreshSettings: { intervalMs: null, refreshOnActivate: true, bypassCache: false },
+      },
+      ctx,
+    );
+    expect(first.ok).toBe(true);
+    if (!first.ok) {
+      return;
+    }
+    const firstId = first.value.project!.sources[0]!.id;
+    const enabled = setBrowserPageAudio(first.value, firstId, true, ctx);
+    expect(enabled.ok).toBe(true);
+    if (!enabled.ok || !enabled.value.project) {
+      return;
+    }
+    const tab = enabled.value.project.sources.find((item) => item.type === 'audio');
+    expect(tab?.type === 'audio' && tab.deviceId).toBe(BROWSER_TAB_AUDIO_DEVICE_ID);
+    expect(enabled.value.project.audioMixer.channels).toEqual([
+      expect.objectContaining({ name: 'Alerts', global: true, sourceIds: [tab?.id] }),
+    ]);
+
+    const second = addSource(
+      enabled.value,
+      {
+        type: 'browser',
+        name: 'Chat',
+        url: 'https://example.com/chat',
+        width: 1920,
+        height: 1080,
+        refreshSettings: { intervalMs: null, refreshOnActivate: true, bypassCache: false },
+      },
+      ctx,
+    );
+    expect(second.ok).toBe(true);
+    if (!second.ok) {
+      return;
+    }
+    const secondId = second.value.project!.sources.find((item) => item.name === 'Chat')!.id;
+    const both = setBrowserPageAudio(second.value, secondId, true, ctx);
+    expect(both.ok).toBe(true);
+    if (!both.ok || !both.value.project) {
+      return;
+    }
+    expect(both.value.project.sources.filter((item) => item.type === 'audio')).toHaveLength(1);
+    expect(both.value.project.audioMixer.channels).toHaveLength(1);
+
+    const oneOff = setBrowserPageAudio(both.value, firstId, false, ctx);
+    expect(oneOff.ok).toBe(true);
+    if (!oneOff.ok || !oneOff.value.project) {
+      return;
+    }
+    expect(oneOff.value.project.audioMixer.channels).toHaveLength(1);
+    const chat = oneOff.value.project.sources.find((item) => item.id === secondId);
+    expect(chat?.type === 'browser' && chat.audio).toBe(true);
+
+    const cleared = setBrowserPageAudio(oneOff.value, secondId, false, ctx);
+    expect(cleared.ok).toBe(true);
+    if (!cleared.ok || !cleared.value.project) {
+      return;
+    }
+    expect(cleared.value.project.sources.some((item) => item.type === 'audio')).toBe(false);
+    expect(cleared.value.project.audioMixer.channels).toHaveLength(0);
+    const alerts = cleared.value.project.sources.find((item) => item.id === firstId);
+    expect(alerts?.type === 'browser' && alerts.audio).toBe(false);
   });
 });

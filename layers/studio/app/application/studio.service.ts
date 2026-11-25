@@ -1,25 +1,38 @@
 import type { AudioMaster } from '../models/audio.domain';
+import type { AudioEffectType } from '../models/audio-effect.domain';
 import type { HistoryEntry } from '../models/history.domain';
 import type {
   AssetId,
   ChannelId,
+  EffectId,
   ElementId,
   GroupId,
   HistoryEntryId,
+  OverlaySoundId,
+  OverlayTriggerId,
   SceneId,
   SourceId,
   TransitionId,
 } from '../models/ids.domain';
 import type { Project, ProjectType } from '../models/project.domain';
+import type { SceneBackground } from '../models/scene.domain';
 import {
   addAsset,
   addAudioChannel,
+  addAudioEffect,
   addElementToGroup,
   addLayer,
+  addOverlaySound,
+  addOverlayTrigger,
   addSource,
   addTransition,
+  applyAudioChannelPreset,
+  applyAudioEffectPreset,
+  applyOutputPreset,
+  assignAudioSource,
   clearSelection,
   closeProject,
+  copyAudioEffect,
   createGroupFromElements,
   createProject,
   createScene,
@@ -40,35 +53,64 @@ import {
   redo,
   removeAsset,
   removeAudioChannel,
+  removeAudioEffect,
+  removeAudioPreset,
+  removeAudioSource,
   removeElementsFromGroup,
   removeLayer,
   removeLayers,
+  removeOverlaySound,
+  removeOverlayTrigger,
   removeSource,
   removeTransition,
+  renameAudioEffect,
   renameGroup,
   renameLayer,
   renameScene,
   renameSource,
+  reorderAudioEffect,
+  resetAudioEffectCommand,
+  saveAudioChannelPreset,
+  saveAudioEffectPreset,
+  selectGlobalChannel,
   selectLayer,
+  selectOverlaySound,
   setActiveScene,
+  setAudioEffectEnabled,
+  setBrowserPageAudio,
   setLayerLocked,
   setLayerVisibility,
+  setSceneBackground,
   setSceneDefaultTransition,
   setSelectedLayers,
   undo,
   updateAnimationSource,
   updateAsset,
   updateAudioChannel,
+  updateAudioEffectParameters,
   updateAudioMaster,
   updateBrowserSource,
   updateLayer,
+  updateOutputProfile,
+  updateOutputProfileName,
+  updateOverlayBus,
+  updateOverlaySound,
+  updateOverlayTrigger,
   updateProject,
   updateTransition,
 } from './commands';
 import type { AssetChanges, AssetDraft } from './commands/asset-commands';
+import type { AudioEffectLocation } from './commands/audio-effect-commands';
 import type { LayerUpdateChanges } from './commands/layer-commands';
 import type { AudioChannelChanges, AudioChannelDraft } from './commands/mixer-commands';
-import type { ProjectChanges } from './commands/project-commands';
+import type {
+  OverlayBusChanges,
+  OverlaySoundChanges,
+  OverlaySoundDraft,
+  OverlayTriggerChanges,
+  OverlayTriggerDraft,
+} from './commands/overlay-sound-commands';
+import type { OutputProfileChanges, ProjectChanges } from './commands/project-commands';
 import type { AnimationSourceChanges, BrowserSourceChanges, SourceDefinition } from './commands/source-commands';
 import type { TransitionChanges, TransitionDraft } from './commands/transition-commands';
 import type { CommandContext } from './context';
@@ -218,6 +260,12 @@ export const createStudioService = (deps: { state: StudioSessionState; context?:
 
     selectLayer: (layerId: ElementId) => run((session) => selectLayer(session, layerId), { recordHistory: false }),
 
+    selectOverlaySound: (soundId: OverlaySoundId) =>
+      run((session) => selectOverlaySound(session, soundId), { recordHistory: false }),
+
+    selectGlobalChannel: (channelId: ChannelId) =>
+      run((session) => selectGlobalChannel(session, channelId), { recordHistory: false }),
+
     setSelectedLayers: (layerIds: ElementId[]) =>
       run((session) => setSelectedLayers(session, layerIds), { recordHistory: false }),
 
@@ -300,6 +348,9 @@ export const createStudioService = (deps: { state: StudioSessionState; context?:
     setLayerLocked: (sceneId: SceneId, layerId: ElementId, locked: boolean) =>
       run((session, context) => setLayerLocked(session, sceneId, layerId, locked, context)),
 
+    setSceneBackground: (sceneId: SceneId, background: SceneBackground) =>
+      run((session, context) => setSceneBackground(session, sceneId, background, context)),
+
     setSceneDefaultTransition: (sceneId: SceneId, transitionId: TransitionId | null) =>
       run((session, context) => setSceneDefaultTransition(session, sceneId, transitionId, context)),
 
@@ -311,6 +362,9 @@ export const createStudioService = (deps: { state: StudioSessionState; context?:
     updateBrowserSource: (sourceId: SourceId, changes: BrowserSourceChanges) =>
       run((session, context) => updateBrowserSource(session, sourceId, changes, context)),
 
+    setBrowserPageAudio: (sourceId: SourceId, enabled: boolean) =>
+      run((session, context) => setBrowserPageAudio(session, sourceId, enabled, context)),
+
     updateAnimationSource: (sourceId: SourceId, changes: AnimationSourceChanges) =>
       run((session, context) => updateAnimationSource(session, sourceId, changes, context)),
 
@@ -319,6 +373,14 @@ export const createStudioService = (deps: { state: StudioSessionState; context?:
     removeSource: (sourceId: SourceId) => run((session, context) => removeSource(session, sourceId, context)),
 
     updateProject: (changes: ProjectChanges) => run((session, context) => updateProject(session, changes, context)),
+
+    updateOutputProfile: (changes: OutputProfileChanges) =>
+      run((session, context) => updateOutputProfile(session, changes, context)),
+
+    updateOutputProfileName: (name: string) =>
+      run((session, context) => updateOutputProfileName(session, name, context)),
+
+    applyOutputPreset: (presetId: string) => run((session, context) => applyOutputPreset(session, presetId, context)),
 
     addAsset: (draft: AssetDraft) => run((session, context) => addAsset(session, draft, context)),
 
@@ -330,13 +392,77 @@ export const createStudioService = (deps: { state: StudioSessionState; context?:
     updateAudioMaster: (changes: Partial<AudioMaster>) =>
       run((session, context) => updateAudioMaster(session, changes, context)),
 
+    updateOverlayBus: (changes: OverlayBusChanges) =>
+      run((session, context) => updateOverlayBus(session, changes, context)),
+
+    addOverlaySound: (draft: OverlaySoundDraft) => run((session, context) => addOverlaySound(session, draft, context)),
+
+    updateOverlaySound: (soundId: OverlaySoundId, changes: OverlaySoundChanges) =>
+      run((session, context) => updateOverlaySound(session, soundId, changes, context)),
+
+    removeOverlaySound: (soundId: OverlaySoundId) =>
+      run((session, context) => removeOverlaySound(session, soundId, context)),
+
+    addOverlayTrigger: (draft: OverlayTriggerDraft) =>
+      run((session, context) => addOverlayTrigger(session, draft, context)),
+
+    updateOverlayTrigger: (triggerId: OverlayTriggerId, changes: OverlayTriggerChanges) =>
+      run((session, context) => updateOverlayTrigger(session, triggerId, changes, context)),
+
+    removeOverlayTrigger: (triggerId: OverlayTriggerId) =>
+      run((session, context) => removeOverlayTrigger(session, triggerId, context)),
+
     addAudioChannel: (draft: AudioChannelDraft) => run((session, context) => addAudioChannel(session, draft, context)),
 
     updateAudioChannel: (channelId: ChannelId, changes: AudioChannelChanges) =>
       run((session, context) => updateAudioChannel(session, channelId, changes, context)),
 
+    assignAudioSource: (channelId: ChannelId, sourceId: SourceId) =>
+      run((session, context) => assignAudioSource(session, channelId, sourceId, context)),
+
+    removeAudioSource: (channelId: ChannelId, sourceId: SourceId) =>
+      run((session, context) => removeAudioSource(session, channelId, sourceId, context)),
+
     removeAudioChannel: (channelId: ChannelId) =>
       run((session, context) => removeAudioChannel(session, channelId, context)),
+
+    addAudioEffect: (location: AudioEffectLocation, type: AudioEffectType, name?: string) =>
+      run((session, context) => addAudioEffect(session, location, type, context, name)),
+
+    removeAudioEffect: (location: AudioEffectLocation, effectId: EffectId) =>
+      run((session, context) => removeAudioEffect(session, location, effectId, context)),
+
+    setAudioEffectEnabled: (location: AudioEffectLocation, effectId: EffectId, enabled: boolean) =>
+      run((session, context) => setAudioEffectEnabled(session, location, effectId, enabled, context)),
+
+    updateAudioEffectParameters: (location: AudioEffectLocation, effectId: EffectId, parameters: unknown) =>
+      run((session, context) => updateAudioEffectParameters(session, location, effectId, parameters, context)),
+
+    renameAudioEffect: (location: AudioEffectLocation, effectId: EffectId, name: string) =>
+      run((session, context) => renameAudioEffect(session, location, effectId, name, context)),
+
+    reorderAudioEffect: (location: AudioEffectLocation, effectId: EffectId, toIndex: number) =>
+      run((session, context) => reorderAudioEffect(session, location, effectId, toIndex, context)),
+
+    copyAudioEffect: (from: AudioEffectLocation, effectId: EffectId, to: AudioEffectLocation) =>
+      run((session, context) => copyAudioEffect(session, from, effectId, to, context)),
+
+    resetAudioEffect: (location: AudioEffectLocation, effectId: EffectId) =>
+      run((session, context) => resetAudioEffectCommand(session, location, effectId, context)),
+
+    saveAudioChannelPreset: (channelId: ChannelId, name: string) =>
+      run((session, context) => saveAudioChannelPreset(session, channelId, name, context)),
+
+    saveAudioEffectPreset: (location: AudioEffectLocation, effectId: EffectId, name: string) =>
+      run((session, context) => saveAudioEffectPreset(session, location, effectId, name, context)),
+
+    removeAudioPreset: (presetId: string) => run((session, context) => removeAudioPreset(session, presetId, context)),
+
+    applyAudioChannelPreset: (channelId: ChannelId, presetId: string) =>
+      run((session, context) => applyAudioChannelPreset(session, channelId, presetId, context)),
+
+    applyAudioEffectPreset: (location: AudioEffectLocation, effectId: EffectId, presetId: string) =>
+      run((session, context) => applyAudioEffectPreset(session, location, effectId, presetId, context)),
 
     addTransition: (draft: TransitionDraft) => run((session, context) => addTransition(session, draft, context)),
 

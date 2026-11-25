@@ -25,7 +25,7 @@ export const sourceContentSize = (project: Project, source: Source): { width: nu
     return positiveSize(asset?.metadata?.width, asset?.metadata?.height);
   }
 
-  if (source.type === 'screen') {
+  if (source.type === 'screen' || source.type === 'browser') {
     return positiveSize(source.width, source.height);
   }
 
@@ -44,7 +44,7 @@ export const creationFrame = (project: Project, source: Source): Partial<Transfo
     return measureDynamicTextFrame(createDefaultTextElementSettings(source.content));
   }
 
-  if (type === 'screen' || type === 'image' || type === 'animation') {
+  if (type === 'screen' || type === 'image' || type === 'animation' || type === 'browser') {
     return sourceContentSize(project, source) ?? { width: 0, height: 0 };
   }
 

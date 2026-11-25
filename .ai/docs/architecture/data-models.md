@@ -40,12 +40,13 @@ All models are TypeScript `type`s in `layers/studio/app/models/` and validated b
 
 ## ProjectSettings
 
-| Field         | Type                    | Required | Notes                                       |
-| ------------- | ----------------------- | -------- | ------------------------------------------- |
-| `video`       | `ProjectVideoSettings`  | yes      | resolution, fps, colorSpace                 |
-| `audio`       | `ProjectAudioSettings`  | yes      | sampleRate, channels                        |
-| `output`      | `ProjectOutputSettings` | yes      | output profile; not an open RTMP connection |
-| `preferences` | `ProjectPreferences`    | yes      | editor defaults for this project            |
+| Field           | Type                    | Required | Notes                                   |
+| --------------- | ----------------------- | -------- | --------------------------------------- |
+| `video`         | `ProjectVideoSettings`  | yes      | optional `colorSpace` only              |
+| `outputProfile` | `OutputProfile`         | yes      | the project's single output frame       |
+| `audio`         | `ProjectAudioSettings`  | yes      | sampleRate, channels                    |
+| `output`        | `ProjectOutputSettings` | yes      | transmission slot; not the output frame |
+| `preferences`   | `ProjectPreferences`    | yes      | editor defaults for this project        |
 
 Do not mix with editor state on `studioSession` (selection, open panels).
 
@@ -118,9 +119,9 @@ Layer order is the index in `scene.elements`. Index 0 is the back. There is no `
 
 `type`: `'camera' | 'screen' | 'image' | 'video' | 'text' | 'shape' | 'browser' | 'audioVisual'` (extensible)
 
-| Field      | Type       | Required                                     |
-| ---------- | ---------- | -------------------------------------------- |
-| `sourceId` | `SourceId` | yes — must match a Source of compatible type |
+| Field      | Type       | Required                                                                            |
+| ---------- | ---------- | ----------------------------------------------------------------------------------- |
+| `sourceId` | `SourceId` | yes — must match a Source of compatible type. `audioVisual` has `channelId` instead |
 
 ### Overlay variant (`type: 'overlay'`)
 
@@ -186,12 +187,14 @@ Discriminated union on `type`. Shared:
 
 ### BrowserSource (`type: 'browser'`)
 
-| Field             | Type                     | Required | Notes           |
-| ----------------- | ------------------------ | -------- | --------------- |
-| `url`             | `string`                 | yes      | absolute URL    |
-| `width`           | `number`                 | yes      | viewport width  |
-| `height`          | `number`                 | yes      | viewport height |
-| `refreshSettings` | `BrowserRefreshSettings` | yes      |                 |
+| Field             | Type                     | Required | Notes                                                                                                                                                             |
+| ----------------- | ------------------------ | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `url`             | `string`                 | yes      | empty, an http(s) address, or a same-origin path. A new layer starts empty.                                                                                       |
+| `width`           | `number`                 | yes      | page viewport width. A new layer uses 500. An external http(s) page still at that default is shown at the project frame, so overlay widgets keep their positions. |
+| `height`          | `number`                 | yes      | page viewport height. A new layer uses 500. An external page still at that default uses the project frame.                                                        |
+| `zoom`            | `number`                 | no       | page scale inside the layer, 1–4, default 1                                                                                                                       |
+| `audio`           | `boolean`                | no       | default false. When true, this page contributes the tab mix to one global channel                                                                                 |
+| `refreshSettings` | `BrowserRefreshSettings` | yes      |                                                                                                                                                                   |
 
 ```ts
 type BrowserRefreshSettings = {
@@ -201,19 +204,19 @@ type BrowserRefreshSettings = {
 };
 ```
 
-Not an Asset — live URL, not a stored file.
+Not an Asset — live URL, not a stored file. The preview draws the page as an iframe. Layout, crop, and the tab-audio switch are specified in [browser-layer.md](./browser-layer.md).
 
 ### Other source kinds (extensible)
 
-| Type     | Key settings                 |
-| -------- | ---------------------------- |
-| `camera` | `deviceId?`, constraints     |
-| `screen` | `displayId?` / capture hints |
-| `image`  | `assetId`                    |
-| `video`  | `assetId`, loop?             |
-| `text`   | text content, typography     |
-| `shape`  | shapeKind, fill, stroke      |
-| `audio`  | `assetId` or device ref      |
+| Type     | Key settings                                                                                                                                                 |
+| -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `camera` | `deviceId?`, constraints                                                                                                                                     |
+| `screen` | `displayId?` / capture hints                                                                                                                                 |
+| `image`  | `assetId`                                                                                                                                                    |
+| `video`  | `assetId`, loop?                                                                                                                                             |
+| `text`   | text content, typography                                                                                                                                     |
+| `shape`  | shapeKind, fill, stroke                                                                                                                                      |
+| `audio`  | `assetId`, or `deviceId`. `'system'` is one shared system-or-app capture. `'moonbase:browser-tab'` is the one tab mix for browser sources with `audio: true` |
 
 ---
 
@@ -268,44 +271,95 @@ Distinct from `SceneAnimation`. Assignment: `Scene.settings.defaultTransitionId`
 
 ## AudioMixer
 
-| Field      | Type             | Required |
-| ---------- | ---------------- | -------- |
-| `master`   | `AudioMaster`    | yes      |
-| `channels` | `AudioChannel[]` | yes      |
+The browser graph that reads this model is [audio-engine.md](./audio-engine.md).
+
+| Field      | Type                | Required | Notes                                                         |
+| ---------- | ------------------- | -------- | ------------------------------------------------------------- |
+| `master`   | `AudioMaster`       | yes      | volume, mute, and `effects`                                   |
+| `channels` | `AudioChannel[]`    | yes      |                                                               |
+| `presets`  | `AudioUserPreset[]` | yes      | user library for this project, format 1                       |
+| `overlay`  | `OverlayBus`        | yes      | project bus for overlay sounds; missing files get the default |
 
 ### AudioMaster
 
-| Field    | Type      | Required |
-| -------- | --------- | -------- | --- |
-| `volume` | `number`  | yes      | 0–1 |
-| `muted`  | `boolean` | yes      |
+| Field     | Type            | Required | Notes                                       |
+| --------- | --------------- | -------- | ------------------------------------------- |
+| `volume`  | `number`        | yes      | 0–1                                         |
+| `muted`   | `boolean`       | yes      |                                             |
+| `effects` | `AudioEffect[]` | yes      | after the program sum, before master volume |
 
 ### AudioChannel
 
-| Field      | Type               | Required |
-| ---------- | ------------------ | -------- | ---- |
-| `id`       | `ChannelId`        | yes      |
-| `name`     | `string`           | yes      |
-| `sourceId` | `SourceId \| null` | yes      |
-| `volume`   | `number`           | yes      |
-| `muted`    | `boolean`          | yes      |
-| `solo`     | `boolean`          | yes      |
-| `pan`      | `number`           | yes      | -1…1 |
-| `filters`  | `AudioFilter[]`    | yes      |
-| `effects`  | `AudioEffect[]`    | yes      |
+| Field          | Type                                         | Required | Notes                                                 |
+| -------------- | -------------------------------------------- | -------- | ----------------------------------------------------- |
+| `id`           | `ChannelId`                                  | yes      |                                                       |
+| `name`         | `string`                                     | yes      |                                                       |
+| `sourceIds`    | `SourceId[]`                                 | yes      | one source belongs to one channel; summed before trim |
+| `trimDb`       | `number`                                     | yes      | −24…+24                                               |
+| `faderDb`      | `number`                                     | yes      | −60…+12, unity 0                                      |
+| `pan`          | `number`                                     | yes      | −1…1                                                  |
+| `muted`        | `boolean`                                    | yes      |                                                       |
+| `solo`         | `boolean`                                    | yes      | AFL on the monitor bus only                           |
+| `monitoring`   | `'off' \| 'monitor' \| 'monitor-and-output'` | yes      |                                                       |
+| `syncOffsetMs` | `number`                                     | yes      | −1000…1000 ms, stored, not applied yet                |
+| `global`       | `boolean`                                    | yes      | heard on every scene; a scene layer reuses this strip |
+| `filters`      | `AudioFilter[]`                              | yes      | kept for older files; the engine does not read them   |
+| `effects`      | `AudioEffect[]`                              | yes      | after trim, before the fader; disabled effects bypass |
 
-### AudioFilter / AudioEffect
+### AudioFilter
 
-Shared envelope + typed params:
+Loose stored record: `id`, `type`, `enabled`, `parameters`. Not part of the browser chain.
 
-| Field        | Type                 | Required |
-| ------------ | -------------------- | -------- |
-| `id`         | `EffectId`           | yes      |
-| `type`       | string discriminant  | yes      |
-| `enabled`    | `boolean`            | yes      |
-| `parameters` | type-specific object | yes      |
+### AudioEffect
 
-Configuration only — no Web Audio nodes in the model.
+`id`, `type`, `name`, `enabled`, and parameters for that type. Types: `eq-band`, `high-pass`, `compressor`, `noise-gate`, `limiter`. No Web Audio nodes in the model. A channel preset copies trim, fader, pan, mute, and the chain. It does not copy `sourceIds`, solo, or monitoring, and it does not change the overlay bus.
+
+### OverlayBus
+
+One bus for the whole project. Format 3. A file that omits `overlay` gets this default. The bus does not store voices, buffers, or queues.
+
+| Field               | Type                                                             | Required | Notes                                          |
+| ------------------- | ---------------------------------------------------------------- | -------- | ---------------------------------------------- |
+| `faderDb`           | `number`                                                         | yes      | −60…+12, unity 0                               |
+| `muted`             | `boolean`                                                        | yes      | in front of the program and headphone split    |
+| `solo`              | `boolean`                                                        | yes      | headphones only; it does not solo the channels |
+| `monitoring`        | `'off' \| 'monitor' \| 'monitor-and-output'`                     | yes      | same three positions as a channel              |
+| `effects`           | `AudioEffect[]`                                                  | yes      | after the overlay sum, before the fader        |
+| `maxInstances`      | `number`                                                         | yes      | 1…64, default 16                               |
+| `sceneChangePolicy` | `'continue' \| 'stop-scene-sounds' \| 'stop-all-overlay-sounds'` | yes      | default `continue`                             |
+| `sounds`            | `OverlaySound[]`                                                 | yes      |                                                |
+| `triggers`          | `OverlayTrigger[]`                                               | yes      |                                                |
+
+### OverlaySound
+
+| Field           | Type                                          | Required | Notes                           |
+| --------------- | --------------------------------------------- | -------- | ------------------------------- |
+| `id`            | `OverlaySoundId`                              | yes      |                                 |
+| `name`          | `string`                                      | yes      |                                 |
+| `assetId`       | `AssetId`                                     | yes      | must be an audio asset          |
+| `volumeDb`      | `number`                                      | yes      | −24…+12, default 0              |
+| `muted`         | `boolean`                                     | yes      |                                 |
+| `enabled`       | `boolean`                                     | yes      | a disabled sound does not start |
+| `loop`          | `boolean`                                     | yes      |                                 |
+| `startTimeSec`  | `number`                                      | yes      | ≥ 0                             |
+| `endTimeSec`    | `number`                                      | no       | after `startTimeSec`            |
+| `playbackRate`  | `number`                                      | yes      | 0.25…4                          |
+| `maxInstances`  | `number`                                      | yes      | 1…32, default 4                 |
+| `cooldownMs`    | `number`                                      | yes      | 0…60000                         |
+| `restartPolicy` | `'allow' \| 'restart' \| 'ignore' \| 'queue'` | yes      | default `allow`                 |
+
+### OverlayTrigger
+
+| Field       | Type                                                                                                                                                         | Required | Notes                                    |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------- | ---------------------------------------- |
+| `id`        | `OverlayTriggerId`                                                                                                                                           | yes      |                                          |
+| `soundId`   | `OverlaySoundId`                                                                                                                                             | yes      |                                          |
+| `event`     | cue name: `shown`, `hidden`, `animation-start`, `animation-complete`, `interaction`, `custom`, `follow`, `subscription`, `donation`, `raid`, `cheer`, `chat` | yes      | alert names are cue events               |
+| `enabled`   | `boolean`                                                                                                                                                    | yes      |                                          |
+| `sceneId`   | `SceneId`                                                                                                                                                    | no       | when set, the cue must name that scene   |
+| `elementId` | `ElementId`                                                                                                                                                  | no       | when set, the cue must name that element |
+
+Deleting a sound does not delete its asset. Deleting an asset fails while a sound still points at it.
 
 ---
 
@@ -332,12 +386,14 @@ Configuration only — no Web Audio nodes in the model.
 
 ```ts
 type ProjectFile = {
-  formatVersion: 2;
+  formatVersion: 4;
   project: Omit<Project, 'history'>;
 };
 ```
 
-On load: migrate `formatVersion: 1` to v2, validate with Zod, attach empty `history: { past: [], future: [], limit }`. Unknown versions fail validation.
+On load: migrate `formatVersion: 1` to v2, v2 to v3 (project audio channels), then v3 to v4 (output profile). The v4 step copies `settings.video` width, height and frame rate into `settings.outputProfile` and assigns its id once. A later read of the saved v4 file keeps that id. A conflicting audio strip becomes a neutral channel and a session report; the file is not written until the user saves. Validate with Zod, attach empty `history: { past: [], future: [], limit }`. Unknown versions fail validation.
+
+An `audioVisual` layer stores `channelId` and enables that project channel in the scene. The strip lives on the channel.
 
 ---
 
