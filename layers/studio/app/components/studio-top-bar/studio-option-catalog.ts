@@ -18,6 +18,13 @@ export type OptionFieldChoice = {
   labelKey?: string;
 };
 
+/** One entry of the options dialog dropdown (StudioOptionSelect). */
+export type StudioOptionSelectChoice = {
+  value: string;
+  label: string;
+  disabled?: boolean;
+};
+
 export type OptionFieldSpec = {
   id: string;
   section: OptionFieldSection;

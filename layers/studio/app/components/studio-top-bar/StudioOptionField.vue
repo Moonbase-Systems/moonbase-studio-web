@@ -1,5 +1,10 @@
 <script setup lang="ts">
+import { cn } from '~/utils/index';
+
+import { inspectorFocusRingClass } from '../properties-inspector/inspector-control-classes';
 import type { OptionFieldKind } from './studio-option-catalog';
+import { optionBoxClass, optionLabelClass, optionRowClass } from './studio-option-classes';
+import StudioOptionSelect from './StudioOptionSelect.vue';
 
 const props = defineProps<{
   label: string;
@@ -12,63 +17,60 @@ const props = defineProps<{
 
 const { t } = useI18n();
 const fieldId = useId();
-
-const controlClass =
-  'border-line text-body-sm text-on-surface focus-visible:border-accent h-row px-xxx-sm min-w-0 flex-1 border bg-transparent font-sans outline-none focus-visible:ring-0 disabled:cursor-not-allowed disabled:border-dashed disabled:text-on-surface-dim';
 </script>
 
 <template>
-  <div class="gap-md flex items-center">
+  <div :class="optionRowClass">
     <label
-      class="gap-md flex min-w-0 flex-1 items-center"
+      :class="optionLabelClass"
       :for="fieldId"
     >
-      <span class="text-body-sm text-on-surface-dim w-[22rem] shrink-0 truncate font-sans">
-        {{ label }}
-      </span>
+      {{ label }}
+    </label>
+    <span
+      v-if="kind === 'check'"
+      class="flex min-w-0 flex-1 items-center"
+    >
       <input
-        v-if="kind === 'check'"
         :id="fieldId"
         type="checkbox"
-        class="border-line accent-accent size-4 shrink-0 border bg-transparent disabled:cursor-not-allowed"
+        :class="
+          cn(
+            'border-line bg-surface checked:border-accent checked:bg-accent size-md shrink-0 cursor-pointer appearance-none border',
+            'disabled:checked:bg-on-surface-dim disabled:cursor-not-allowed disabled:border-dashed disabled:checked:border-solid',
+            inspectorFocusRingClass,
+          )
+        "
         :checked="checked"
         :disabled="props.off"
         @change.prevent
       />
-      <button
-        v-else-if="kind === 'action'"
-        :id="fieldId"
-        type="button"
-        :class="controlClass"
-        :disabled="props.off"
-      />
-      <select
-        v-else-if="kind === 'select'"
-        :id="fieldId"
-        :class="controlClass"
-        :value="text"
-        :disabled="props.off"
-      >
-        <option
-          v-for="choice in choices"
-          :key="choice.value"
-          :value="choice.value"
-        >
-          {{ choice.label }}
-        </option>
-      </select>
-      <input
-        v-else
-        :id="fieldId"
-        :class="[controlClass, kind === 'number' || kind === 'readout' ? 'tabular-nums' : '']"
-        :type="kind === 'password' ? 'password' : 'text'"
-        :inputmode="kind === 'number' ? 'decimal' : undefined"
-        :value="text"
-        autocomplete="off"
-        :disabled="props.off"
-        :readonly="kind === 'readout'"
-      />
-    </label>
+    </span>
+    <button
+      v-else-if="kind === 'action'"
+      :id="fieldId"
+      type="button"
+      :class="optionBoxClass"
+      :disabled="props.off"
+    />
+    <StudioOptionSelect
+      v-else-if="kind === 'select'"
+      :id="fieldId"
+      :model-value="text"
+      :choices="choices ?? []"
+      :disabled="props.off"
+    />
+    <input
+      v-else
+      :id="fieldId"
+      :class="[optionBoxClass, kind === 'number' || kind === 'readout' ? 'tabular-nums' : '']"
+      :type="kind === 'password' ? 'password' : 'text'"
+      :inputmode="kind === 'number' ? 'decimal' : undefined"
+      :value="text"
+      autocomplete="off"
+      :disabled="props.off"
+      :readonly="kind === 'readout'"
+    />
     <span
       v-if="off"
       class="text-label text-on-surface-dim w-[4.8rem] shrink-0 text-right font-mono uppercase"
