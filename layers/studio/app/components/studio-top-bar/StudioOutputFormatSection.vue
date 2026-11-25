@@ -6,6 +6,8 @@ import {
   type OutputPreset,
 } from '../../models/output-profile.domain';
 import { useStudioSessionStore } from '../../store/studio-session.store';
+import { inspectorFocusRingClass } from '../properties-inspector/inspector-control-classes';
+import { optionBoxClass, optionGroupClass, optionLabelClass, optionRowClass } from './studio-option-classes';
 
 const { t } = useI18n();
 const store = useStudioSessionStore();
@@ -13,9 +15,6 @@ const store = useStudioSessionStore();
 const profile = computed(() => store.project?.settings.outputProfile ?? null);
 const drafts = reactive({ name: '', width: '', height: '', frameRate: '' });
 const formatError = ref('');
-
-const fieldClass =
-  'border-line text-body-sm text-on-surface focus-visible:border-accent h-row px-xxx-sm min-w-0 flex-1 border bg-transparent font-sans outline-none focus-visible:ring-0';
 
 watch(
   profile,
@@ -112,11 +111,11 @@ function commitNumber(key: 'width' | 'height' | 'frameRate'): void {
 
 <template>
   <section class="gap-xxx-sm flex flex-col">
-    <h3 class="text-label text-on-surface-dim font-mono uppercase">
+    <h3 :class="optionGroupClass">
       {{ t('studio.options.outputFormat.title') }}
     </h3>
     <div
-      class="gap-xxx-sm grid grid-cols-2"
+      class="gap-xxx-sm grid max-w-[72rem] grid-cols-1 md:grid-cols-2"
       role="list"
     >
       <button
@@ -124,64 +123,87 @@ function commitNumber(key: 'width' | 'height' | 'frameRate'): void {
         :key="preset.id"
         type="button"
         role="listitem"
-        class="gap-xxx-sm border-line px-xxx-sm py-xxx-sm focus-visible:ring-accent flex items-center border text-left outline-none focus-visible:ring-2"
-        :class="matchedPresetId === preset.id ? 'border-accent' : 'hover:bg-surface-container-high'"
+        :class="[
+          'gap-x-sm px-x-sm py-xxx-sm duration-short relative flex items-center border text-left transition-colors',
+          inspectorFocusRingClass,
+          matchedPresetId === preset.id ? 'border-accent' : 'border-line hover:bg-surface-container-high',
+        ]"
         :aria-pressed="matchedPresetId === preset.id"
         @click="applyPreset(preset.id)"
       >
-        <span class="border-line flex h-10 w-10 shrink-0 items-center justify-center border">
+        <span class="size-xxxx-lg flex shrink-0 items-center justify-center">
           <span
-            class="bg-accent/30 max-h-full max-w-full"
+            class="max-h-full max-w-full border"
+            :class="matchedPresetId === preset.id ? 'border-accent' : 'border-on-surface-dim'"
             :style="aspectBox(preset)"
           />
         </span>
-        <span class="min-w-0">
-          <span class="text-body-sm text-on-surface block truncate font-sans">{{ preset.name }}</span>
-          <span class="text-label text-on-surface-dim block font-mono">
+        <span class="gap-x-tiny flex min-w-0 flex-col">
+          <span
+            class="text-body-sm block truncate font-sans"
+            :class="matchedPresetId === preset.id ? 'text-accent' : 'text-on-surface'"
+          >
+            {{ preset.name }}
+          </span>
+          <span class="text-label text-on-surface-dim block font-mono uppercase tabular-nums">
             {{ preset.width }}×{{ preset.height }} · {{ formatAspectRatio(preset.width, preset.height) }} ·
             {{ preset.frameRate }} fps
           </span>
-          <span class="text-label text-on-surface-dim block truncate font-sans">
+          <span class="text-body-x-sm text-on-surface-dim block truncate font-sans">
             {{ t(`studio.options.outputFormat.presets.${preset.id}`) }}
           </span>
         </span>
       </button>
     </div>
 
-    <label class="gap-md mt-lg flex items-center">
-      <span class="text-body-sm text-on-surface-dim w-[22rem] shrink-0 font-sans">
+    <div :class="[optionRowClass, 'mt-md']">
+      <label
+        :class="optionLabelClass"
+        for="studio-output-format-name"
+      >
         {{ t('studio.options.outputFormat.name') }}
-      </span>
+      </label>
       <input
+        id="studio-output-format-name"
         v-model="drafts.name"
-        :class="fieldClass"
+        :class="optionBoxClass"
         autocomplete="off"
         :disabled="!profile"
         @change="commitName"
         @keydown.enter="($event.target as HTMLInputElement).blur()"
       />
-    </label>
-    <label
+    </div>
+    <div
       v-for="key in ['width', 'height', 'frameRate'] as const"
       :key="key"
-      class="gap-md flex items-center"
+      :class="optionRowClass"
     >
-      <span class="text-body-sm text-on-surface-dim w-[22rem] shrink-0 font-sans">
+      <label
+        :class="optionLabelClass"
+        :for="`studio-output-format-${key}`"
+      >
         {{ t(`studio.options.outputFormat.${key}`) }}
-      </span>
+      </label>
       <input
+        :id="`studio-output-format-${key}`"
         v-model="drafts[key]"
-        :class="[fieldClass, 'tabular-nums']"
+        :class="[optionBoxClass, 'tabular-nums']"
         inputmode="decimal"
         autocomplete="off"
         :disabled="!profile"
         @change="commitNumber(key)"
         @keydown.enter="($event.target as HTMLInputElement).blur()"
       />
-    </label>
+      <span
+        class="text-label text-on-surface-dim w-[4.8rem] shrink-0 font-mono uppercase"
+        aria-hidden="true"
+      >
+        {{ key === 'frameRate' ? 'fps' : 'px' }}
+      </span>
+    </div>
     <p
       v-if="formatError"
-      class="text-body-sm text-accent font-sans"
+      class="text-body-x-sm text-error font-sans"
       role="alert"
     >
       {{ formatError }}
