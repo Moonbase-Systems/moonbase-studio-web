@@ -5,6 +5,8 @@ import { recordingNameFromPattern } from '../../infrastructure/recording/recordi
 import { containerSupported, type RecordingContainer } from '../../infrastructure/recording/recording-mime';
 import { outputFrame } from '../../models/output-profile.domain';
 import { useStudioSessionStore } from '../../store/studio-session.store';
+import type { StudioOptionSelectChoice } from './studio-option-catalog';
+import StudioOptionSelect from './StudioOptionSelect.vue';
 
 const { t } = useI18n();
 const store = useStudioSessionStore();
@@ -13,6 +15,18 @@ const recording = useStudioRecording();
 const presets: VideoBitratePreset[] = ['low', 'standard', 'high', 'veryHigh'];
 const containers: RecordingContainer[] = ['auto', 'webm', 'mp4'];
 const nameDraft = ref(recording.namePattern.value);
+
+const qualityChoices = computed<StudioOptionSelectChoice[]>(() =>
+  presets.map((preset) => ({ value: preset, label: qualityLabel(preset) })),
+);
+
+const containerChoices = computed<StudioOptionSelectChoice[]>(() =>
+  containers.map((container) => ({
+    value: container,
+    label: t(`studio.recording.containers.${container}`),
+    disabled: !containerEnabled(container),
+  })),
+);
 
 const fieldClass =
   'border-line text-body-sm text-on-surface focus-visible:border-accent h-row px-xxx-sm min-w-0 flex-1 border bg-transparent font-sans outline-none focus-visible:ring-0';
@@ -54,15 +68,13 @@ watch(
   },
 );
 
-function onQualityChange(event: Event) {
-  const value = (event.target as HTMLSelectElement).value;
+function onQualityChange(value: string) {
   if (value === 'low' || value === 'standard' || value === 'high' || value === 'veryHigh') {
     recording.videoBitrate.value = value;
   }
 }
 
-function onContainerChange(event: Event) {
-  const value = (event.target as HTMLSelectElement).value;
+function onContainerChange(value: string) {
   if (value === 'auto' || value === 'webm' || value === 'mp4') {
     recording.container.value = value;
   }
@@ -100,40 +112,23 @@ function containerEnabled(container: RecordingContainer): boolean {
       <span class="text-body-sm text-on-surface-dim w-[16rem] shrink-0 font-sans">
         {{ t('studio.recording.quality') }}
       </span>
-      <select
-        :class="fieldClass"
-        :value="recording.videoBitrate.value"
+      <StudioOptionSelect
+        :model-value="recording.videoBitrate.value"
+        :choices="qualityChoices"
         :disabled="locked"
-        @change="onQualityChange"
-      >
-        <option
-          v-for="preset in presets"
-          :key="preset"
-          :value="preset"
-        >
-          {{ qualityLabel(preset) }}
-        </option>
-      </select>
+        @update:model-value="onQualityChange"
+      />
     </label>
     <label class="gap-md flex items-center">
       <span class="text-body-sm text-on-surface-dim w-[16rem] shrink-0 font-sans">
         {{ t('studio.recording.container') }}
       </span>
-      <select
-        :class="fieldClass"
-        :value="recording.container.value"
+      <StudioOptionSelect
+        :model-value="recording.container.value"
+        :choices="containerChoices"
         :disabled="locked"
-        @change="onContainerChange"
-      >
-        <option
-          v-for="container in containers"
-          :key="container"
-          :value="container"
-          :disabled="!containerEnabled(container)"
-        >
-          {{ t(`studio.recording.containers.${container}`) }}
-        </option>
-      </select>
+        @update:model-value="onContainerChange"
+      />
     </label>
     <label class="gap-md flex items-center">
       <span class="text-body-sm text-on-surface-dim w-[16rem] shrink-0 font-sans">
