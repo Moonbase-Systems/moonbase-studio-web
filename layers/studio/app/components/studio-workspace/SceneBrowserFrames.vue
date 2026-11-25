@@ -172,7 +172,7 @@ watch(() => store.project?.sources, adoptExternalCanvases);
           :title="frame.name"
           allow="autoplay"
           class="pointer-events-none absolute left-0 top-0 border-0 bg-transparent"
-          :style="{ width: `${frame.pageWidth}px`, height: `${frame.pageHeight}px` }"
+          :style="{ width: `${frame.pageWidth}px`, height: `${frame.pageHeight}px`, colorScheme: 'normal' }"
         />
       </div>
     </div>

@@ -66,7 +66,7 @@ const pageStyle = computed(() => {
           :title="element.name"
           allow="autoplay"
           class="pointer-events-none absolute left-0 top-0 border-0 bg-transparent"
-          :style="{ width: pageStyle.width, height: pageStyle.height }"
+          :style="{ width: pageStyle.width, height: pageStyle.height, colorScheme: 'normal' }"
         />
       </div>
     </div>

@@ -23,8 +23,8 @@ const title = computed(() => t('overlayLab.rendererTitle'));
 
 useHead({
   title,
-  htmlAttrs: { class: 'theme-dark', style: 'background: transparent' },
-  bodyAttrs: { style: 'background: transparent; margin: 0; overflow: hidden' },
+  htmlAttrs: { class: 'theme-dark', style: 'background: transparent; color-scheme: normal' },
+  bodyAttrs: { style: 'background: transparent; color-scheme: normal; margin: 0; overflow: hidden' },
 });
 
 const overlayId = computed(() => {
