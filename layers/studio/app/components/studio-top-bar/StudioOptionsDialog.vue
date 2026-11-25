@@ -12,8 +12,9 @@ import {
 import { KEYBOARD_SHORTCUT_BINDINGS } from '../../config/keyboard-shortcuts';
 import type { ShortcutActionId, ShortcutBinding } from '../../models/shortcut.domain';
 import { useStudioSessionStore } from '../../store/studio-session.store';
-import { OPTION_FIELD_CATALOG, type OptionFieldSpec } from './studio-option-catalog';
+import { OPTION_FIELD_CATALOG, type OptionFieldSpec, type StudioOptionSelectChoice } from './studio-option-catalog';
 import StudioOptionField from './StudioOptionField.vue';
+import StudioOptionSelect from './StudioOptionSelect.vue';
 import StudioOutputFormatSection from './StudioOutputFormatSection.vue';
 import StudioRecordingSection from './StudioRecordingSection.vue';
 
@@ -155,6 +156,20 @@ const fieldClass =
 const backgroundColor = computed(() => (background.value.kind === 'color' ? background.value.color : '#ffffff'));
 const backgroundAssetId = computed(() => (background.value.kind === 'image' ? background.value.assetId : ''));
 
+const backgroundKindChoices = computed<StudioOptionSelectChoice[]>(() => [
+  { value: 'none', label: t('studio.options.background.none') },
+  { value: 'color', label: t('studio.options.background.color') },
+  {
+    value: 'image',
+    label: t('studio.options.background.image'),
+    disabled: imageAssets.value.length === 0 && background.value.kind !== 'image',
+  },
+]);
+
+const backgroundAssetChoices = computed<StudioOptionSelectChoice[]>(() =>
+  imageAssets.value.map((asset) => ({ value: asset.id, label: asset.name })),
+);
+
 function formatBinding(binding: ShortcutBinding): string {
   if (binding.kind === 'pointer') {
     const mod = binding.binding.modifiers.includes('shift') ? 'Shift' : 'Ctrl';
@@ -215,8 +230,7 @@ function setBackgroundKind(kind: 'none' | 'color' | 'image') {
   store.setSceneBackground(scene.id, { kind: 'image', assetId });
 }
 
-function onKindChange(event: Event) {
-  const value = (event.target as HTMLSelectElement).value;
+function onKindChange(value: string) {
   if (value === 'none' || value === 'color' || value === 'image') {
     setBackgroundKind(value);
   }
@@ -231,9 +245,8 @@ function onColorChange(event: Event) {
   store.setSceneBackground(scene.id, { kind: 'color', color });
 }
 
-function onAssetChange(event: Event) {
+function onAssetChange(assetId: string) {
   const scene = store.activeScene;
-  const assetId = (event.target as HTMLSelectElement).value;
   if (!scene || !assetId) {
     return;
   }
@@ -366,21 +379,12 @@ function onAssetChange(event: Event) {
                 <span class="text-body-sm text-on-surface-dim w-[16rem] shrink-0 font-sans">
                   {{ t('studio.options.background.kind') }}
                 </span>
-                <select
-                  :class="fieldClass"
-                  :value="background.kind"
+                <StudioOptionSelect
+                  :model-value="background.kind"
+                  :choices="backgroundKindChoices"
                   :disabled="!store.activeScene"
-                  @change="onKindChange"
-                >
-                  <option value="none">{{ t('studio.options.background.none') }}</option>
-                  <option value="color">{{ t('studio.options.background.color') }}</option>
-                  <option
-                    value="image"
-                    :disabled="imageAssets.length === 0 && background.kind !== 'image'"
-                  >
-                    {{ t('studio.options.background.image') }}
-                  </option>
-                </select>
+                  @update:model-value="onKindChange"
+                />
               </label>
               <label
                 v-if="background.kind === 'color'"
@@ -403,19 +407,11 @@ function onAssetChange(event: Event) {
                 <span class="text-body-sm text-on-surface-dim w-[16rem] shrink-0 font-sans">
                   {{ t('studio.options.background.asset') }}
                 </span>
-                <select
-                  :class="fieldClass"
-                  :value="backgroundAssetId"
-                  @change="onAssetChange"
-                >
-                  <option
-                    v-for="asset in imageAssets"
-                    :key="asset.id"
-                    :value="asset.id"
-                  >
-                    {{ asset.name }}
-                  </option>
-                </select>
+                <StudioOptionSelect
+                  :model-value="backgroundAssetId"
+                  :choices="backgroundAssetChoices"
+                  @update:model-value="onAssetChange"
+                />
               </label>
               <p
                 v-if="imageAssets.length === 0"
