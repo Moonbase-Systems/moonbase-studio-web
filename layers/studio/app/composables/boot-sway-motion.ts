@@ -9,7 +9,14 @@ export const bootSwayMotion = {
   /** Pivot → beam anchor in px (transform-origin 50% 85%, anchor ~50% height). */
   anchorOffsetY: -18,
   neutralSinEpsilon: 0.07,
+  /** The swing grows from rest over this time instead of starting at full speed. */
+  rampInMs: 900,
 } as const;
+
+const smoothstep = (value: number): number => {
+  const clamped = Math.min(1, Math.max(0, value));
+  return clamped * clamped * (3 - 2 * clamped);
+};
 
 export type BootSwaySample = {
   tx: number;
@@ -23,9 +30,11 @@ export type BootSwaySample = {
 export function sampleBootSway(elapsedMs: number): BootSwaySample {
   const phase = (elapsedMs % bootSwayMotion.periodMs) / bootSwayMotion.periodMs;
   const sin = Math.sin(phase * Math.PI * 2);
-  const tx = sin * bootSwayMotion.amplitudeX;
-  const ty = bootSwayMotion.hoverY - Math.abs(sin) * bootSwayMotion.amplitudeY;
-  const rot = sin * bootSwayMotion.amplitudeRot;
+  const ramp = smoothstep(elapsedMs / bootSwayMotion.rampInMs);
+  const tx = sin * bootSwayMotion.amplitudeX * ramp;
+  // sin² lifts the craft at both ends like |sin|, but without the kink as it crosses the middle.
+  const ty = bootSwayMotion.hoverY - sin * sin * bootSwayMotion.amplitudeY * ramp;
+  const rot = sin * bootSwayMotion.amplitudeRot * ramp;
 
   return {
     tx,

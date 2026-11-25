@@ -145,6 +145,8 @@ const beamAnchorTop = `${bootBeamAnchorTopPercent()}%`;
 const stageChromeStyle = computed(() => ({
   '--boot-light': displayedLightPower.value,
   '--boot-beam-anchor-top': beamAnchorTop,
+  // Quick blinks stay crisp; every other light change fades.
+  '--boot-light-duration': snappyLightTransition.value ? '0.08s' : '0.45s',
 }));
 
 watch(displayedLightPower, (power) => {

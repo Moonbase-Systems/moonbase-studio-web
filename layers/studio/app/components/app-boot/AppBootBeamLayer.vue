@@ -109,6 +109,15 @@ useBootBeamTrack(
 
 .boot-beam-shapes {
   opacity: calc(var(--boot-light, 0) * 0.85);
+
+  /* Fade with the lamp instead of jumping between light levels. */
+  transition: opacity var(--boot-light-duration, 0.45s) ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .boot-beam-shapes {
+    transition: none;
+  }
 }
 
 .boot-beam-polygon {
