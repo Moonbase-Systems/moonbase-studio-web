@@ -15,9 +15,10 @@ import {
   type RecordingEngine,
   type RecordingState,
 } from '../infrastructure/recording/recording-engine';
-import { recordingFileName } from '../infrastructure/recording/recording-filename';
+import { parseRecordingFilePrefs, type RecordingFilePrefs } from '../infrastructure/recording/recording-file-prefs';
+import { recordingNameFromPattern } from '../infrastructure/recording/recording-filename';
 import { createRecordingLibrary } from '../infrastructure/recording/recording-library';
-import { chooseRecordingMime } from '../infrastructure/recording/recording-mime';
+import { chooseRecordingMime, type RecordingContainer } from '../infrastructure/recording/recording-mime';
 import { createRecordingRecord, type RecordingRecord } from '../infrastructure/recording/recording-record';
 import { beginRecordingFile, type RecordingWriterSession } from '../infrastructure/recording/recording-writer';
 import { outputFrame } from '../models/output-profile.domain';
@@ -32,6 +33,8 @@ export type StudioRecordingHandle = {
   error: Ref<string | null>;
   mimeType: Ref<string>;
   videoBitrate: Ref<VideoBitratePreset>;
+  container: Ref<RecordingContainer>;
+  namePattern: Ref<string>;
   audioBitrate: number;
   requestedFrameRate: Ref<number>;
   measuredFrameRate: Ref<number | null>;
@@ -57,6 +60,15 @@ type SavePickerWindow = Window & {
     suggestedName?: string;
     types?: { description?: string; accept: Record<string, string[]> }[];
   }) => Promise<FileSystemFileHandle>;
+};
+
+const RECORDING_FILE_PREFS_KEY = 'moonbase-studio.recording-file';
+
+const readStoredPrefs = (): RecordingFilePrefs => {
+  if (typeof localStorage === 'undefined') {
+    return parseRecordingFilePrefs(null);
+  }
+  return parseRecordingFilePrefs(localStorage.getItem(RECORDING_FILE_PREFS_KEY));
 };
 
 const adaptRecorder = (recorder: MediaRecorder): RecorderLike => {
@@ -104,11 +116,14 @@ export function provideStudioRecording(
   const store = useStudioSessionStore();
   const { t } = useI18n();
   const library = createRecordingLibrary();
+  const storedPrefs = readStoredPrefs();
   const state = ref<RecordingState>('idle');
   const elapsedLabel = ref(formatRecordingClock(0));
   const error = ref<string | null>(null);
   const mimeType = ref('');
-  const videoBitrate = ref<VideoBitratePreset>('standard');
+  const videoBitrate = ref<VideoBitratePreset>(storedPrefs.quality);
+  const container = ref<RecordingContainer>(storedPrefs.container);
+  const namePattern = ref(storedPrefs.namePattern);
   const requestedFrameRate = ref(0);
   const measuredFrameRate = ref<number | null>(null);
   const frameLabel = ref('');
@@ -210,6 +225,8 @@ export function provideStudioRecording(
     error,
     mimeType,
     videoBitrate,
+    container,
+    namePattern,
     audioBitrate: AUDIO_BITRATE,
     requestedFrameRate,
     measuredFrameRate,
@@ -217,7 +234,11 @@ export function provideStudioRecording(
     recordings,
     canOpen: (record) => canOpenHandle(record.fileHandle),
     async start() {
-      if (!store.project || (engine && ['preparing', 'recording', 'paused', 'finalizing'].includes(engine.state))) {
+      if (
+        !store.project ||
+        state.value === 'preparing' ||
+        (engine && ['preparing', 'recording', 'paused', 'finalizing'].includes(engine.state))
+      ) {
         return;
       }
       error.value = null;
@@ -232,7 +253,7 @@ export function provideStudioRecording(
         return;
       }
       const supported = (type: string) => typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported(type);
-      const chosen = chooseRecordingMime(supported);
+      const chosen = chooseRecordingMime(supported, container.value);
       if (!chosen) {
         capture.stop();
         composition.setOutputCaptureActive(false);
@@ -241,7 +262,7 @@ export function provideStudioRecording(
         return;
       }
       const profile = outputFrame(store.project);
-      const fileName = recordingFileName(store.project.name, new Date(), chosen.extension);
+      const fileName = recordingNameFromPattern(namePattern.value, store.project.name, new Date(), chosen.extension);
       const picker = (window as SavePickerWindow).showSaveFilePicker?.bind(window);
       try {
         fileSession = await beginRecordingFile(
@@ -272,6 +293,7 @@ export function provideStudioRecording(
         onChunk: (chunk) => {
           writes = writes.then(() => session.write(chunk));
         },
+        container: () => container.value,
         createRecorder: (stream, mime, videoBits, audioBits) =>
           adaptRecorder(
             new MediaRecorder(stream as MediaStream, {
@@ -332,6 +354,22 @@ export function provideStudioRecording(
       return true;
     },
   };
+
+  watch([videoBitrate, container, namePattern], () => {
+    if (typeof localStorage === 'undefined') {
+      return;
+    }
+    const prefs: RecordingFilePrefs = {
+      quality: videoBitrate.value,
+      container: container.value,
+      namePattern: namePattern.value,
+    };
+    try {
+      localStorage.setItem(RECORDING_FILE_PREFS_KEY, JSON.stringify(prefs));
+    } catch (cause) {
+      console.warn('[studio] Recording file settings were not stored:', cause);
+    }
+  });
 
   watch(
     () => store.project?.id ?? null,

@@ -28,6 +28,24 @@ export type RecordingWriterOptions = {
 
 const isAbort = (error: unknown): boolean => error instanceof DOMException && error.name === 'AbortError';
 
+const sessionFromHandle = async (handle: RecordingFileHandle): Promise<RecordingWriterSession> => {
+  const writable = await handle.createWritable();
+  let sizeBytes = 0;
+  return {
+    cancelled: false,
+    handle,
+    write: async (chunk) => {
+      sizeBytes += chunk.size;
+      await writable.write(chunk);
+    },
+    close: async () => {
+      await writable.close();
+      return { sizeBytes };
+    },
+    abort: () => writable.abort(),
+  };
+};
+
 /** `showSaveFilePicker` rejects codec parameters such as `video/webm;codecs=vp9,opus`. */
 export const filePickerMimeType = (mimeType: string): string => {
   const base = mimeType.split(';', 1)[0]?.trim().toLowerCase() ?? '';
@@ -57,21 +75,7 @@ export const beginRecordingFile = async (
           },
         ],
       });
-      const writable = await handle.createWritable();
-      let sizeBytes = 0;
-      return {
-        cancelled: false,
-        handle,
-        write: async (chunk) => {
-          sizeBytes += chunk.size;
-          await writable.write(chunk);
-        },
-        close: async () => {
-          await writable.close();
-          return { sizeBytes };
-        },
-        abort: () => writable.abort(),
-      };
+      return sessionFromHandle(handle);
     } catch (error) {
       if (isAbort(error)) {
         return cancelledSession();

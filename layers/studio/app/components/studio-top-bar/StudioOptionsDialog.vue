@@ -101,8 +101,18 @@ const shortcutRows = computed(() => {
   }));
 });
 
+const LIVE_RECORDING_FIELDS = new Set([
+  'quality',
+  'recordingPath',
+  'container',
+  'filenamePattern',
+  'recordingBitrateKbps',
+]);
+
 function fieldRows(section: SectionId): OptionFieldSpec[] {
-  return OPTION_FIELD_CATALOG.filter((row) => row.section === section);
+  return OPTION_FIELD_CATALOG.filter(
+    (row) => row.section === section && !(section === 'recording' && LIVE_RECORDING_FIELDS.has(row.id)),
+  );
 }
 
 function showsFieldGroup(section: SectionId, index: number): boolean {

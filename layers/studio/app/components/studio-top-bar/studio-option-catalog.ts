@@ -431,7 +431,7 @@ export const OPTION_FIELD_CATALOG: OptionFieldSpec[] = [
   {
     id: 'overwrite',
     section: 'recording',
-    groupKey: 'studio.options.groups.recording',
+    groupKey: 'studio.options.groups.encoder',
     labelKey: 'studio.options.fields.overwrite',
     off: true,
     kind: 'check',
@@ -449,7 +449,7 @@ export const OPTION_FIELD_CATALOG: OptionFieldSpec[] = [
   {
     id: 'recordingEncoder',
     section: 'recording',
-    groupKey: 'studio.options.groups.recording',
+    groupKey: 'studio.options.groups.encoder',
     labelKey: 'studio.options.fields.recordingEncoder',
     off: true,
     kind: 'select',
