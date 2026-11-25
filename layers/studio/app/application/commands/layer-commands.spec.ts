@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { IDENTITY, moveElement } from '../../playback/scene-element-gesture';
 import { createSessionWithProject } from '../../test-utils/studio-session-fixtures';
-import { addLayer, duplicateLayer, moveLayer, removeLayer, updateLayer } from './layer-commands';
+import { addLayer, duplicateLayer, moveLayer, removeLayer, renameLayer, updateLayer } from './layer-commands';
 import { createScene } from './scene-commands';
 import { selectLayer } from './session-commands';
 import { addSource } from './source-commands';
@@ -210,6 +210,37 @@ describe('layer commands', () => {
     if (noop.ok) {
       expect(noop.value.isDirty).toBe(current.isDirty);
       expect(current.project!.scenes.find((scene) => scene.id === otherSceneId)!.elements).toHaveLength(otherBefore);
+    }
+  });
+
+  it('renames the mixer strip when a sound layer is renamed', () => {
+    const { session, ctx } = createSessionWithProject(['p', 's1', 'src', 'el1', 'ch']);
+    const sourced = addSource(session, { type: 'audio', name: 'Mic', deviceId: 'mic-1' }, ctx);
+    if (!sourced.ok || !sourced.value.project) {
+      throw new Error('source not added');
+    }
+    const sceneId = sourced.value.project.scenes[0]!.id;
+    const sourceId = sourced.value.project.sources[0]!.id;
+    const added = addLayer(sourced.value, sceneId, sourceId, undefined, ctx);
+    if (!added.ok || !added.value.project) {
+      throw new Error('layer not added');
+    }
+    const layerId = added.value.project.scenes[0]!.elements[0]!.id;
+
+    const renamed = updateLayer(added.value, sceneId, layerId, { name: 'Host' }, ctx);
+    expect(renamed.ok).toBe(true);
+    if (!renamed.ok || !renamed.value.project) {
+      return;
+    }
+    expect(renamed.value.project.scenes[0]!.elements[0]!.name).toBe('Host');
+    expect(renamed.value.project.audioMixer.channels[0]!.name).toBe('Host');
+    expect(renamed.value.project.sources[0]!.name).toBe('Host');
+
+    const fromList = renameLayer(renamed.value, sceneId, layerId, 'Guest', ctx);
+    expect(fromList.ok).toBe(true);
+    if (fromList.ok && fromList.value.project) {
+      expect(fromList.value.project.audioMixer.channels[0]!.name).toBe('Guest');
+      expect(fromList.value.project.sources[0]!.name).toBe('Guest');
     }
   });
 

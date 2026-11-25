@@ -1,6 +1,7 @@
 import { channelOwningSource, createDefaultAudioChannel } from '../../models/audio.domain';
 import type { Appearance, ElementCrop, ElementEffect, Transform2D } from '../../models/common.domain';
 import type { ChannelId, ElementId, SceneId, SourceId } from '../../models/ids.domain';
+import type { Project } from '../../models/project.domain';
 import {
   createSourceBackedElement,
   elementTypeForSource,
@@ -23,6 +24,23 @@ import { mergeElementSettings } from '../merge-element-settings';
 import { duplicateSceneElement } from '../scene-clone';
 import { findLayerInScene, findSceneInProject, type StudioSession } from '../session';
 import { selectLayer } from './session-commands';
+
+/** The mixer strip is the channel name. A sound layer renames that strip, and its one source. */
+const renameAudioStripWithLayer = (project: Project, element: SceneElement): void => {
+  if (element.type !== 'audioVisual') {
+    return;
+  }
+  const channel = project.audioMixer.channels.find((item) => item.id === element.channelId);
+  if (!channel) {
+    return;
+  }
+  channel.name = element.name;
+  const sourceId = channel.sourceIds.length === 1 ? channel.sourceIds[0] : undefined;
+  const source = sourceId ? project.sources.find((item) => item.id === sourceId) : undefined;
+  if (source?.type === 'audio') {
+    source.name = element.name;
+  }
+};
 
 const ALLOWED_LAYER_UPDATE_KEYS = new Set([
   'name',
@@ -351,6 +369,10 @@ const mutateLayerWithoutLockGate = (
     return applied;
   }
 
+  if (changes.name !== undefined) {
+    renameAudioStripWithLayer(project, element);
+  }
+
   return commitProjectChange(session, project, ctx);
 };
 
@@ -501,6 +523,10 @@ export const updateLayer = (
   const applied = applyLayerUpdate(element, changes);
   if (!applied.ok) {
     return applied;
+  }
+
+  if (changes.name !== undefined) {
+    renameAudioStripWithLayer(project, element);
   }
 
   applyElementFrameRules(project, element, changes);
