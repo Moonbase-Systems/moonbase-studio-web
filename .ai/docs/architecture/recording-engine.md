@@ -16,15 +16,17 @@ Wideo przy 1080p: Low 4, Standard 8, High 12, Very High 20 Mb/s. Inny rozmiar ka
 
 ## Plik
 
+Jakość to cztery presety bitrate wideo, skalowane liczbą pikseli kadru. Kontener to `auto`, WebM albo MP4, z typów, które `MediaRecorder` zgłasza. Nazwa jest wzorcem `{name}` `{date}` `{time}` i reszty daty. Rozszerzenie dokłada wybrany kontener. Katalog zostaje wyłączony do Bridge.
+
 Gdy przeglądarka ma `showSaveFilePicker`, fragmenty idą do strumienia pliku. W przeciwnym razie powstaje Blob i pobranie, a adres obiektu jest zwalniany. Anulowanie wyboru pliku nie jest zapisem.
 
-Nazwa: oczyszczona nazwa projektu, data `RRRRMMDD-ggmmss` i rozszerzenie MIME.
+Domyślna nazwa: oczyszczona nazwa projektu, data `RRRRMMDD-ggmmss` i rozszerzenie MIME.
 
-Metadane (`id`, `projectId`, `fileName`, `mimeType`, `sizeBytes`, `durationMs`, `width`, `height`, `frameRate`, `createdAt`) idą do store IndexedDB `recordings` w bazie `moonbase-studio` (wersja 2). Nie ma ich w `ProjectFile` i nie ma ich w PostgreSQL. `FileSystemFileHandle` zostaje tylko tam, gdzie przeglądarka umie go odtworzyć. Brak uchwytu oznacza wpis, którego nie da się otworzyć ponownie. UI mówi to wprost.
+Metadane (`id`, `projectId`, `fileName`, `mimeType`, `sizeBytes`, `durationMs`, `width`, `height`, `frameRate`, `createdAt`) idą do store IndexedDB `recordings` w bazie `moonbase-studio` (wersja 4). Nie ma ich w `ProjectFile` i nie ma ich w PostgreSQL. `FileSystemFileHandle` zostaje tylko tam, gdzie przeglądarka umie go odtworzyć. Brak uchwytu oznacza wpis, którego nie da się otworzyć ponownie. UI mówi to wprost.
 
 ## UI
 
-Przycisk Record w górnym pasku uruchamia ten silnik. Stream zostaje wyłączony, dopóki nie ma Bridge. Sekcja Recording w opcjach pokazuje stan, czas, wymiary profilu, FPS żądane i zmierzone, MIME oraz bitrate. Nie ma procentu zapisu.
+Przycisk Record w górnym pasku uruchamia ten silnik. Stream zostaje wyłączony, dopóki nie ma Bridge. Zakładka Nagranie w opcjach ma kategorię Plik: jakość, kontener i nazwa. Katalog jest wyłączony. Niżej jest stan, czas, wymiary profilu, FPS żądane i zmierzone oraz MIME. Nie ma procentu zapisu. Koder sprzętowy i nadpisywanie pliku czekają na Bridge.
 
 Usunięcie warstwy aktywnej sceny w trakcie nagrania pyta, czy zatrzymać nagranie. Reszta edytora działa.
 

@@ -192,17 +192,17 @@ Akcje, nie pola dokumentu. [STU-19](https://linear.app/moonbase-systems/issue/ST
 
 ## 7. Nagranie
 
-**Propozycja.** Przycisk nagrywania jest na pasku i jest wyłączony. OBS i vMix nagrywają ten sam Program Output osobnym koderem, bez zrywania RTMP. `mkv` przeżywa przerwanie procesu. `mp4` jest wygodniejszy do odtworzenia i psuje się, gdy zapis urwie się w połowie pliku.
+Lokalne nagranie idzie przez `MediaRecorder` w tej przeglądarce, bez Bridge. Kategoria Plik w zakładce Nagranie ustawia jakość, kontener i nazwę. Katalog, `mkv`, `mov`, nadpisywanie i koder sprzętowy zostają przy Bridge.
 
-| Właściwość             | Typ          | Zakres                                                  | Domyślnie                | Dostęp    | Wdrożenie                                                             |
-| ---------------------- | ------------ | ------------------------------------------------------- | ------------------------ | --------- | --------------------------------------------------------------------- |
-| `quality`              | enum         | `same-as-stream`, `high`, `indistinguishable`           | `same-as-stream`         | Od razu   | Przebudowa. Nie ma kodera pliku, któremu da się podać jakość.         |
-| `recordingPath`        | ścieżka      | katalog zapisu na maszynie Bridge                       | katalog domowy operatora | Po Bridge | Przebudowa. Ścieżka jest na maszynie Bridge, studio jej nie zapisuje. |
-| `container`            | enum         | `mp4`, `mkv`, `mov`                                     | `mkv`                    | Od razu   | Przebudowa. Wybór kontenera należy do kodera pliku.                   |
-| `filenamePattern`      | tekst        | wzorzec z datą, na przykład `%CCYY-%MM-%DD_%hh-%mm-%ss` | data i godzina           | Od razu   | Przebudowa. Wzorzec nazywa plik, którego zapis jeszcze nie istnieje.  |
-| `overwrite`            | bool         | tak / nie                                               | nie                      | Od razu   | Przebudowa. Wraz z zapisem pliku.                                     |
-| `recordingBitrateKbps` | liczba, kb/s | używane, gdy `quality` nie jest `same-as-stream`        | 15000                    | Od razu   | Przebudowa. Bitrate należy do kodera pliku.                           |
-| `recordingEncoder`     | enum         | te same kodery co transmisja                            | `auto`                   | Po Bridge | Przebudowa. Ta sama lista koderów co transmisja, na maszynie Bridge.  |
+| Właściwość             | Typ          | Zakres                                   | Domyślnie                | Dostęp    | Wdrożenie                                                                       |
+| ---------------------- | ------------ | ---------------------------------------- | ------------------------ | --------- | ------------------------------------------------------------------------------- |
+| `quality`              | enum         | `low`, `standard`, `high`, `veryHigh`    | `standard`               | Od razu   | Działa. Bitrate wideo skaluje się liczbą pikseli kadru. Audio zostaje 128 kb/s. |
+| `recordingPath`        | ścieżka      | katalog zapisu na maszynie Bridge        | katalog domowy operatora | Po Bridge | Wyłączone. Wybór katalogu czeka na Bridge.                                      |
+| `container`            | enum         | `auto`, `webm`, `mp4`                    | `auto`                   | Od razu   | Działa. Lista jest obcięta do typów, które zgłasza `MediaRecorder`.             |
+| `filenamePattern`      | tekst        | `{name}` `{date}` `{time}` i części daty | `{name}-{date}-{time}`   | Od razu   | Działa. Rozszerzenie dokłada kontener.                                          |
+| `overwrite`            | bool         | tak / nie                                | nie                      | Od razu   | Przebudowa. Wraz z koderem Bridge.                                              |
+| `recordingBitrateKbps` | liczba, kb/s | używane, gdy jakość nie jest presetem    | 15000                    | Od razu   | Przebudowa. Lokalnie bitrate wynika z presetu jakości.                          |
+| `recordingEncoder`     | enum         | te same kodery co transmisja             | `auto`                   | Po Bridge | Przebudowa. Ta sama lista koderów co transmisja, na maszynie Bridge.            |
 
 ## 8. Tło sceny
 
