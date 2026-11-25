@@ -1,5 +1,5 @@
 import { createElapsedClock } from './recording-clock';
-import { chooseRecordingMime, type RecordingMime } from './recording-mime';
+import { chooseRecordingMime, type RecordingContainer, type RecordingMime } from './recording-mime';
 
 export type RecordingState = 'idle' | 'preparing' | 'recording' | 'paused' | 'finalizing' | 'completed' | 'error';
 
@@ -35,6 +35,7 @@ export type RecordingEngineOptions = {
     audioBitsPerSecond: number,
   ) => RecorderLike;
   onChunk: (chunk: Blob) => void;
+  container?: () => RecordingContainer;
 };
 
 export type RecordingEngine = {
@@ -75,7 +76,7 @@ export const createRecordingEngine = (options: RecordingEngineOptions): Recordin
       if (BUSY.includes(state)) {
         return { ok: false, reason: 'busy' };
       }
-      const chosen = chooseRecordingMime(options.isTypeSupported);
+      const chosen = chooseRecordingMime(options.isTypeSupported, options.container?.() ?? 'auto');
       if (!chosen) {
         setState('error');
         return { ok: false, reason: 'mime' };

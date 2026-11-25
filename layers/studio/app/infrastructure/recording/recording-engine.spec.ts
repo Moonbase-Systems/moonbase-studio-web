@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { createElapsedClock, formatRecordingClock } from './recording-clock';
 import { createRecordingEngine, type RecorderLike } from './recording-engine';
-import { recordingFileName, sanitizeProjectName } from './recording-filename';
+import { recordingFileName, recordingNameFromPattern, sanitizeProjectName } from './recording-filename';
 import { chooseRecordingMime } from './recording-mime';
 import { createRecordingRecord, recordingRecordKeepsMedia } from './recording-record';
 import { beginRecordingFile, filePickerMimeType } from './recording-writer';
@@ -13,6 +13,12 @@ describe('chooseRecordingMime', () => {
     expect(chooseRecordingMime((mime) => mime.includes('vp8'))?.extension).toBe('webm');
     expect(chooseRecordingMime((mime) => mime.startsWith('video/mp4'))?.extension).toBe('mp4');
     expect(chooseRecordingMime(() => false)).toBeNull();
+  });
+
+  it('stays inside the container the operator picked', () => {
+    expect(chooseRecordingMime(() => true, 'mp4')?.extension).toBe('mp4');
+    expect(chooseRecordingMime((mime) => mime.includes('vp9'), 'mp4')).toBeNull();
+    expect(chooseRecordingMime((mime) => mime.includes('vp8'), 'webm')?.mimeType).toContain('vp8');
   });
 });
 
@@ -38,6 +44,14 @@ describe('recordingFileName', () => {
     expect(sanitizeProjectName('   ')).toBe('recording');
     const name = recordingFileName('My/Show', new Date(2026, 10, 18, 9, 5, 3), 'webm');
     expect(name).toBe('My-Show-20261118-090503.webm');
+  });
+
+  it('fills a custom pattern and still appends the container extension', () => {
+    const at = new Date(2026, 10, 18, 9, 5, 3);
+    expect(recordingNameFromPattern('{name}_{year}-{month}-{day}', 'My/Show', at, 'mp4')).toBe(
+      'My-Show_2026-11-18.mp4',
+    );
+    expect(recordingNameFromPattern('   ', 'Show', at, 'webm')).toBe('Show-20261118-090503.webm');
   });
 });
 

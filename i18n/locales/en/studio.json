@@ -671,15 +671,28 @@
     "recording": {
       "audioBitrate": "Audio bitrate",
       "bitrate": "Video bitrate",
+      "container": "Container",
+      "containers": {
+        "auto": "Automatic",
+        "mp4": "MP4",
+        "webm": "WebM"
+      },
       "elapsed": "Elapsed",
       "empty": "No recordings for this project.",
       "error": "Recording failed",
+      "errors": {
+        "mime": "This browser cannot write the chosen container.",
+        "save": "The recording file could not be opened.",
+        "video": "The recording picture could not be opened."
+      },
       "fpsHint": "Requested FPS is the profile value. Measured FPS counts frames copied to the output canvas.",
       "frame": "Frame",
       "interrupt": "This changes the active scene while recording. Stop the recording first?",
       "library": "Recordings",
       "measuredFps": "Measured FPS",
       "mime": "MIME",
+      "name": "File name",
+      "nameHint": "Tokens: {'{name}'} {'{date}'} {'{time}'} {'{year}'} {'{month}'} {'{day}'} {'{hour}'} {'{minute}'} {'{second}'}. The container adds the extension.",
       "noHandle": "This browser did not keep a file handle, so the recording cannot be opened again from here.",
       "open": "Open",
       "presets": {
@@ -688,6 +701,7 @@
         "standard": "Standard",
         "veryHigh": "Very high"
       },
+      "quality": "Quality",
       "requestedFps": "Requested FPS",
       "state": "State",
       "title": "Recording"

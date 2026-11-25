@@ -671,15 +671,28 @@
     "recording": {
       "audioBitrate": "Bitrate audio",
       "bitrate": "Bitrate wideo",
+      "container": "Kontener",
+      "containers": {
+        "auto": "Automatyczny",
+        "mp4": "MP4",
+        "webm": "WebM"
+      },
       "elapsed": "Czas",
       "empty": "Brak nagrań tego projektu.",
       "error": "Nagranie nie powiodło się",
+      "errors": {
+        "mime": "Ta przeglądarka nie umie zapisać wybranego kontenera.",
+        "save": "Nie udało się otworzyć pliku nagrania.",
+        "video": "Nie udało się otworzyć obrazu nagrania."
+      },
       "fpsHint": "Żądane FPS to wartość profilu. Zmierzone FPS liczy klatki skopiowane na kanwę wyjścia.",
       "frame": "Kadr",
       "interrupt": "To zmienia aktywną scenę w trakcie nagrania. Zatrzymać nagranie?",
       "library": "Nagrania",
       "measuredFps": "Zmierzone FPS",
       "mime": "MIME",
+      "name": "Nazwa pliku",
+      "nameHint": "Znaczniki: {'{name}'} {'{date}'} {'{time}'} {'{year}'} {'{month}'} {'{day}'} {'{hour}'} {'{minute}'} {'{second}'}. Rozszerzenie dokłada kontener.",
       "noHandle": "Ta przeglądarka nie zachowała uchwytu pliku, więc nagrania nie da się stąd otworzyć ponownie.",
       "open": "Otwórz",
       "presets": {
@@ -688,6 +701,7 @@
         "standard": "Standard",
         "veryHigh": "Bardzo wysoki"
       },
+      "quality": "Jakość",
       "requestedFps": "Żądane FPS",
       "state": "Stan",
       "title": "Nagrywanie"
