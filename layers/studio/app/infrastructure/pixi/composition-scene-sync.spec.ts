@@ -39,9 +39,9 @@ const rootIds = (scene: Scene): string[] =>
   );
 
 describe('planSceneSync', () => {
-  it('keeps scene.elements order bottom to top and draws audio-visual layers', () => {
+  it('keeps scene.elements order bottom to top and leaves audio layers off the canvas', () => {
     const scene = sceneWith([element('a', shapeSource), element('mic', audioSource), element('b', textSource)]);
-    expect(rootIds(scene)).toEqual(['a', 'mic', 'b']);
+    expect(rootIds(scene)).toEqual(['a', 'b']);
   });
 
   it('places a group at its lowest member index with members in group order', () => {
