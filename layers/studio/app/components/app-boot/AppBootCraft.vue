@@ -23,13 +23,6 @@
       />
       <ellipse
         cx="60"
-        cy="38"
-        rx="36"
-        ry="4"
-        class="boot-craft-rim-glow"
-      />
-      <ellipse
-        cx="60"
         cy="23"
         rx="17"
         ry="15"
@@ -41,13 +34,6 @@
         rx="11"
         ry="9"
         class="boot-craft-cabin"
-      />
-      <ellipse
-        cx="52"
-        cy="17"
-        rx="5"
-        ry="3"
-        class="boot-craft-shine"
       />
       <circle
         cx="38"
@@ -79,47 +65,44 @@
 </template>
 
 <style scoped>
-.boot-craft-saucer {
-  fill: rgb(var(--color-surface-container));
+/* Orbit line craft: 1 px signal strokes on the surface, no gloss. */
+.boot-craft-svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.boot-craft-saucer,
+.boot-craft-dome {
+  fill: rgb(var(--color-surface));
   stroke: rgb(var(--color-accent));
-  stroke-width: 1.5;
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
 }
 
 .boot-craft-saucer-belly {
-  fill: rgb(var(--color-surface));
-  opacity: 0.55;
-}
-
-.boot-craft-rim-glow {
-  fill: rgb(var(--color-accent));
-  opacity: 0.12;
-}
-
-.boot-craft-dome {
-  fill: rgb(var(--color-surface-container));
-  stroke: rgb(var(--color-accent));
-  stroke-width: 1.5;
+  fill: rgb(var(--color-surface-container-high));
+  stroke: rgb(var(--color-line));
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
 }
 
 .boot-craft-cabin {
-  fill: rgb(var(--color-accent));
-  opacity: 0.2;
-}
-
-.boot-craft-shine {
-  fill: rgb(var(--color-on-surface));
-  opacity: 0.35;
+  fill: rgb(var(--color-surface-container));
+  stroke: rgb(var(--color-line));
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
 }
 
 .boot-craft-port {
   fill: rgb(var(--color-accent));
-  opacity: 0.85;
 }
 
 .boot-craft-lamp {
   fill: rgb(var(--color-accent));
   opacity: calc(0.25 + var(--boot-light, 0) * 0.75);
-  filter: drop-shadow(0 0 calc(5px * var(--boot-light, 0)) rgb(var(--color-accent)));
+  filter: drop-shadow(0 0 calc(6px * var(--boot-light, 0)) rgb(var(--color-accent)));
   transition:
     opacity var(--boot-light-duration, 0.45s) ease-out,
     filter var(--boot-light-duration, 0.45s) ease-out;

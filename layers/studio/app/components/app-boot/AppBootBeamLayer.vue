@@ -40,6 +40,7 @@ useBootBeamTrack(
     aria-hidden="true"
   >
     <defs>
+      <!-- Flat signal beam (Orbit boot artboard: signal at ~10%), fading only at the label. -->
       <linearGradient
         id="boot-beam-gradient-live"
         ref="gradientRef"
@@ -52,34 +53,19 @@ useBootBeamTrack(
         <stop
           offset="0%"
           stop-color="rgb(var(--color-accent))"
-          stop-opacity="0.42"
+          stop-opacity="0.14"
         />
         <stop
-          offset="50%"
+          offset="85%"
           stop-color="rgb(var(--color-accent))"
-          stop-opacity="0.16"
+          stop-opacity="0.1"
         />
         <stop
           offset="100%"
           stop-color="rgb(var(--color-accent))"
-          stop-opacity="0"
+          stop-opacity="0.06"
         />
       </linearGradient>
-      <radialGradient
-        id="boot-beam-target-glow"
-        gradientUnits="userSpaceOnUse"
-      >
-        <stop
-          offset="0%"
-          stop-color="rgb(var(--color-accent))"
-          stop-opacity="0.38"
-        />
-        <stop
-          offset="100%"
-          stop-color="rgb(var(--color-accent))"
-          stop-opacity="0"
-        />
-      </radialGradient>
     </defs>
     <g class="boot-beam-shapes">
       <polygon
@@ -89,7 +75,7 @@ useBootBeamTrack(
       />
       <ellipse
         ref="ellipseRef"
-        fill="url(#boot-beam-target-glow)"
+        fill="none"
         class="boot-beam-spot"
       />
     </g>
@@ -108,14 +94,6 @@ useBootBeamTrack(
 }
 
 .boot-beam-shapes {
-  opacity: calc(var(--boot-light, 0) * 0.85);
-}
-
-.boot-beam-polygon {
-  mix-blend-mode: screen;
-}
-
-.boot-beam-spot {
-  mix-blend-mode: screen;
+  opacity: var(--boot-light, 0);
 }
 </style>
