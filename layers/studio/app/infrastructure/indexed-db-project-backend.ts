@@ -5,8 +5,9 @@ import type { ProjectFile } from '../models/project.domain';
 const DB_NAME = 'moonbase-studio';
 const STORE_NAME = 'projects';
 export const RECORDINGS_STORE_NAME = 'recordings';
+export const ASSETS_STORE_NAME = 'assets';
 const LEGACY_RECORDING_DIRECTORY_STORE = 'recording-directory';
-const DB_VERSION = 4;
+const DB_VERSION = 5;
 
 export const requestToPromise = <T>(request: IDBRequest<T>): Promise<T> =>
   new Promise((resolve, reject) => {
@@ -25,6 +26,10 @@ export const upgradeStudioDatabase = (database: IDBDatabase): void => {
   }
   if (database.objectStoreNames.contains(LEGACY_RECORDING_DIRECTORY_STORE)) {
     database.deleteObjectStore(LEGACY_RECORDING_DIRECTORY_STORE);
+  }
+  if (!database.objectStoreNames.contains(ASSETS_STORE_NAME)) {
+    const assets = database.createObjectStore(ASSETS_STORE_NAME, { keyPath: ['projectId', 'key'] });
+    assets.createIndex('projectId', 'projectId', { unique: false });
   }
 };
 

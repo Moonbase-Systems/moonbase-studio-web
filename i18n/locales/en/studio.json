@@ -163,6 +163,7 @@
         "startError": "Start error"
       },
       "systemEnded": "System audio stopped. Start it again from the button. It does not resume on its own.",
+      "systemNotLoaded": "The source could not be loaded. Choose system audio again.",
       "types": {
         "compressor": "Compressor",
         "eq-band": "EQ band",
@@ -209,6 +210,7 @@
       "discardTitle": "Discard unsaved changes?",
       "emptyCatalog": "No saved projects.",
       "exportFile": "Export to file",
+      "importFile": "Import from file",
       "invalidFile": "This project file is invalid or uses an unsupported format.",
       "invalidProjectName": "Name must be between 1 and 128 characters.",
       "menu": "Project menu",
@@ -222,6 +224,7 @@
       "rename": "Rename",
       "renameProject": "Rename project",
       "save": "Save",
+      "saveAs": "Save as",
       "saveFailed": "Could not save the project.",
       "saved": "Saved"
     },
@@ -626,7 +629,8 @@
       },
       "resize": "Resize properties",
       "screen": {
-        "choose": "Choose screen"
+        "choose": "Choose screen",
+        "notLoaded": "The source could not be loaded. Choose the screen again."
       },
       "sections": {
         "appearance": "Appearance",

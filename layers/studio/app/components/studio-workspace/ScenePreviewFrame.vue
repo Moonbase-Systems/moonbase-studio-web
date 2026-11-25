@@ -5,6 +5,7 @@ import { channelAudibleInScene, normalizeLevelDb } from '../../models/audio.doma
 import { outputFrame } from '../../models/output-profile.domain';
 import type { AudioVisualElement } from '../../models/scene-elements/audio-element.domain';
 import { useStudioSessionStore } from '../../store/studio-session.store';
+import { screenStreamRevision } from '../properties-inspector/screen-preview-stream';
 import PreviewSignalField from './PreviewSignalField.vue';
 import SceneBrowserFrames from './SceneBrowserFrames.vue';
 import SceneTransformOverlay from './SceneTransformOverlay.vue';
@@ -112,11 +113,14 @@ const overlayMeter = computed(() => {
   };
 });
 
-watch([() => store.activeScene, () => store.project?.settings.outputProfile, isReady], ([scene, , ready]) => {
-  if (scene && ready) {
-    void compositionEngine.render(scene);
-  }
-});
+watch(
+  [() => store.activeScene, () => store.project?.settings.outputProfile, isReady, screenStreamRevision],
+  ([scene, , ready]) => {
+    if (scene && ready) {
+      void compositionEngine.render(scene);
+    }
+  },
+);
 </script>
 
 <template>

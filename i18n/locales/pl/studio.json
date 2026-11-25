@@ -163,6 +163,7 @@
         "startError": "Błąd startu"
       },
       "systemEnded": "Dźwięk systemu się zatrzymał. Włącz go ponownie przyciskiem. Sam się nie wznawia.",
+      "systemNotLoaded": "Nie udało się wczytać źródła. Wybierz dźwięk systemu ponownie.",
       "types": {
         "compressor": "Kompresor",
         "eq-band": "Pasmo EQ",
@@ -209,6 +210,7 @@
       "discardTitle": "Odrzucić niezapisane zmiany?",
       "emptyCatalog": "Brak zapisanych projektów.",
       "exportFile": "Eksportuj do pliku",
+      "importFile": "Importuj z pliku",
       "invalidFile": "Plik projektu jest niepoprawny albo ma nieobsługiwaną wersję.",
       "invalidProjectName": "Nazwa musi mieć od 1 do 128 znaków.",
       "menu": "Menu projektu",
@@ -222,6 +224,7 @@
       "rename": "Zmień nazwę",
       "renameProject": "Zmień nazwę projektu",
       "save": "Zapisz",
+      "saveAs": "Zapisz jako",
       "saveFailed": "Nie udało się zapisać projektu.",
       "saved": "Zapisano"
     },
@@ -626,7 +629,8 @@
       },
       "resize": "Zmień wysokość właściwości",
       "screen": {
-        "choose": "Wybierz ekran"
+        "choose": "Wybierz ekran",
+        "notLoaded": "Nie udało się wczytać źródła. Wybierz ekran ponownie."
       },
       "sections": {
         "appearance": "Wygląd",

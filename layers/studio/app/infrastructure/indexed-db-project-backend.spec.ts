@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { RECORDINGS_STORE_NAME, upgradeStudioDatabase } from './indexed-db-project-backend';
+import { ASSETS_STORE_NAME, RECORDINGS_STORE_NAME, upgradeStudioDatabase } from './indexed-db-project-backend';
 
 describe('upgradeStudioDatabase', () => {
   const databaseWith = (initial: string[]) => {
@@ -34,8 +34,8 @@ describe('upgradeStudioDatabase', () => {
     upgradeStudioDatabase(database as unknown as IDBDatabase);
     upgradeStudioDatabase(database as unknown as IDBDatabase);
 
-    expect(names).toEqual(['projects', RECORDINGS_STORE_NAME]);
-    expect(indexes).toEqual(['projectId']);
+    expect(names).toEqual(['projects', RECORDINGS_STORE_NAME, ASSETS_STORE_NAME]);
+    expect(indexes).toEqual(['projectId', 'projectId']);
   });
 
   it('drops a directory store left by an earlier preview', () => {
@@ -43,6 +43,6 @@ describe('upgradeStudioDatabase', () => {
 
     upgradeStudioDatabase(database as unknown as IDBDatabase);
 
-    expect(names).toEqual(['projects', RECORDINGS_STORE_NAME]);
+    expect(names).toEqual(['projects', RECORDINGS_STORE_NAME, ASSETS_STORE_NAME]);
   });
 });

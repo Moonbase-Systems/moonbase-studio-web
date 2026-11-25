@@ -18,7 +18,9 @@ const {
   confirmDiscard,
   cancelDiscard,
   saveProject,
+  saveProjectAs,
   exportProjectFile,
+  importProjectFile,
 } = useProjectDocument();
 
 const menuOpen = ref(false);
@@ -28,6 +30,7 @@ const nameDraft = ref('');
 const nameError = ref<string | null>(null);
 const nameInputRef = ref<HTMLInputElement | null>(null);
 const menuRootRef = ref<HTMLElement | null>(null);
+const importInputRef = ref<HTMLInputElement | null>(null);
 
 const menuProjects = computed(() => {
   const current = store.project;
@@ -128,9 +131,32 @@ async function onSave() {
   await saveProject();
 }
 
-function onExport() {
-  exportProjectFile();
+async function onSaveAs() {
   menuOpen.value = false;
+  await saveProjectAs();
+}
+
+async function onExport() {
+  await exportProjectFile();
+  menuOpen.value = false;
+}
+
+function onImport() {
+  menuOpen.value = false;
+  importInputRef.value?.click();
+}
+
+async function onImportFile(event: Event) {
+  const input = event.target;
+  if (!(input instanceof HTMLInputElement)) {
+    return;
+  }
+  const file = input.files?.[0];
+  input.value = '';
+  if (!file) {
+    return;
+  }
+  await importProjectFile(file);
 }
 
 function onOptions() {
@@ -253,9 +279,26 @@ const menuItemClass =
             role="menuitem"
             :class="[menuItemClass, 'text-on-surface']"
             :disabled="!store.project"
+            @click="onSaveAs"
+          >
+            {{ t('studio.document.saveAs') }}
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            :class="[menuItemClass, 'text-on-surface']"
+            :disabled="!store.project"
             @click="onExport"
           >
             {{ t('studio.document.exportFile') }}
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            :class="[menuItemClass, 'text-on-surface']"
+            @click="onImport"
+          >
+            {{ t('studio.document.importFile') }}
           </button>
           <button
             type="button"
@@ -322,5 +365,13 @@ const menuItemClass =
     </AlertDialogRoot>
 
     <StudioOptionsDialog v-model="optionsOpen" />
+    <input
+      ref="importInputRef"
+      type="file"
+      accept=".moonbase,.json,application/json"
+      class="sr-only"
+      :aria-label="t('studio.document.importFile')"
+      @change="onImportFile"
+    />
   </div>
 </template>
