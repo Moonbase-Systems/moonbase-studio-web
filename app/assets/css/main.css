@@ -1,4 +1,10 @@
 /* Orbit: one face (Space Grotesk), thin large sizes, white titles. Values mirror the core tokens. */
+
+/* One dark theme: native pickers, option lists and scrollbars follow it (no white popups). */
+:root {
+  color-scheme: dark;
+}
+
 html,
 body {
   background-color: rgb(var(--color-surface));
