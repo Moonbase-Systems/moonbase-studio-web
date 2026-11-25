@@ -155,6 +155,11 @@ type ContentHolder = {
   capture: CaptureBinding | null;
   /** Level bars for an audio-visual layer. */
   bars: Graphics | null;
+  /**
+   * Browser stand-in for the output copy. Hidden on the preview so a transparent
+   * page shows the layers underneath instead of this plate.
+   */
+  plate: Container | null;
   /** Sprite used as an alpha mask. */
   maskSprite: Sprite | null;
   disposables: { destroy(): void }[];
@@ -275,6 +280,7 @@ const createContentHolder = (): ContentHolder => ({
   image: null,
   capture: null,
   bars: null,
+  plate: null,
   maskSprite: null,
   disposables: [],
 });
@@ -641,6 +647,20 @@ export const createPixiCompositionEngine = (options: PixiCompositionEngineOption
     rt.outputTexture = RenderTexture.create({ width, height, resolution: 1 });
   };
 
+  const showBrowserPlates = (rt: Runtime): Container[] => {
+    const plates: Container[] = [];
+    for (const scene of rt.scenes.values()) {
+      for (const node of scene.elements.values()) {
+        if (!node.plate) {
+          continue;
+        }
+        node.plate.visible = true;
+        plates.push(node.plate);
+      }
+    }
+    return plates;
+  };
+
   const publishOutput = (rt: Runtime): void => {
     ensureOutputTarget(rt);
     if (!rt.outputTexture || !rt.outputContext) {
@@ -652,6 +672,7 @@ export const createPixiCompositionEngine = (options: PixiCompositionEngineOption
     const scaleX = frame.scale.x;
     const scaleY = frame.scale.y;
     const hidden = hideCropGhosts(rt);
+    const plates = showBrowserPlates(rt);
     frame.position.set(0, 0);
     frame.scale.set(1, 1);
     try {
@@ -672,6 +693,9 @@ export const createPixiCompositionEngine = (options: PixiCompositionEngineOption
       frame.scale.set(scaleX, scaleY);
       for (const ghost of hidden) {
         ghost.visible = true;
+      }
+      for (const plate of plates) {
+        plate.visible = false;
       }
     }
   };
@@ -1093,6 +1117,8 @@ export const createPixiCompositionEngine = (options: PixiCompositionEngineOption
     holder.relayout = null;
     holder.cropGhost = null;
     holder.bars = null;
+    holder.plate = null;
+    holder.content.visible = true;
     holder.content.mask = null;
     holder.maskSprite = null;
     holder.content.filters = null;
@@ -1589,6 +1615,8 @@ export const createPixiCompositionEngine = (options: PixiCompositionEngineOption
         return finish();
       case 'browser-plate':
         drawPlaceholder(node.content, element.transform, element.name, BROWSER_PLATE_CAPTION);
+        node.plate = node.content;
+        node.content.visible = false;
         return finish();
       case 'camera': {
         if (element.type !== 'camera') {

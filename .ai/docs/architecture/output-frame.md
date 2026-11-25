@@ -74,7 +74,7 @@ Piksele programu w grafie są pikselami nagrania. Uchwyty i obrys zostają poza 
 
 - `shape`, `text`, `image`, `screen`, `camera`, `video`, `animation` i `overlay` są w grafie. Kamera i plik wideo dzielą jeden `HTMLVideoElement` na źródło. Element wideo w grafie jest wyciszony; dźwięk nagrania to Program Mix.
 - `audioVisual` nie wchodzi do grafu. Włącza kanał miksera i nie ma obrazu na podglądzie ani w nagraniu.
-- `browser` widać jako iframe w edytorze. W kadrze, w prostokącie warstwy, jest plansza „Browser nie wchodzi do nagrania”. Pikseli obcej strony nie czytamy.
+- `browser` widać jako iframe w edytorze. Prześwit strony pokazuje warstwy pod spodem. Plansza „Browser nie wchodzi do nagrania” jest tylko na kopii nagrania, bo pikseli obcej strony nie czytamy.
 - Blur i maska alfa bez odwrócenia są filtrami Pixi. Pozostałe efekty inspektor oznacza jako nieaktywne.
 - Cut i fade idą zegarem kompozycji. Slide, zoom i dissolve zgłaszają brak odtwarzacza i scena zmienia się od razu.
 

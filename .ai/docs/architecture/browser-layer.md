@@ -1,6 +1,6 @@
 # Browser layer
 
-A browser layer is a page inside the scene preview. The source owns the address and the page viewport. The element owns the transform: position, size, rotation, and crop. Pixi does not draw the page. `SceneBrowserFrames` paints one clipped iframe per visible browser element, with `pointer-events: none` and `allow="autoplay"`. The composition engine skips the browser case so it does not also draw a placeholder.
+A browser layer is a page inside the scene preview. The source owns the address and the page viewport. The element owns the transform: position, size, rotation, and crop. Pixi does not draw the page. `SceneBrowserFrames` paints one clipped iframe per visible browser element, with `pointer-events: none` and `allow="autoplay"`. A transparent part of that page shows the layers underneath. The output copy draws a plate in the layer box instead, because a foreign page's pixels are not read.
 
 Field lists are in [data-models.md](./data-models.md). Tab audio joins the graph in [audio-engine.md](./audio-engine.md).
 
